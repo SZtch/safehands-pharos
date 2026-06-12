@@ -25,6 +25,12 @@ User intent
 → SafeHands risk report
 ```
 
+## Real-World Use Cases
+
+1. **Anti-Drain Protection:** An AI Agent is tricked by a prompt injection to approve `999999 USDC` to a hacker's contract. SafeHands intercepts the action, detects an unlimited approval, and returns `BLOCK`.
+2. **SSRF Payment Prevention:** A malicious website asks the AI Agent to pay `0.001 USDC` to an x402 URL pointing to `http://localhost:8080/admin`. SafeHands detects the private IP address, blocks the HTTP request, and returns `BLOCK` preventing server compromise.
+3. **Fake Token Detection:** An AI Agent decides to buy a token named "Official Pharos Coin" on the testnet. SafeHands checks the `token_registry_status`, realizes it's a fake token not listed in the official docs, and returns `WARN` to ask the human for confirmation before swapping.
+
 ## Prerequisites
 
 1. **Install SafeHands** (via npx, no global install required):
