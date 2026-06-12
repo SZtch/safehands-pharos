@@ -36,3 +36,5 @@ Thumbs.db
 # Build artifacts
 *.tsbuildinfo
 *.tgz
+dist/
+.agents/wallets.json
