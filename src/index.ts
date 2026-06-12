@@ -184,8 +184,6 @@ EXAMPLES
 
 DOCS
   README.md
-  SECURITY.md
-  EXAMPLES.md
   skill/SKILL.md
 `);
   process.exit(0);

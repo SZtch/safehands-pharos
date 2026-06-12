@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-dist/
 coverage/
 .nyc_output/
 .turbo/
@@ -10,6 +9,7 @@ coverage/
 safehands-prd.md
 *.prd.md
 docs/
+!docs/reports/
 
 # Environment and local secrets
 .env

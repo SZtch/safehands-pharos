@@ -30,8 +30,14 @@ export const publishRiskScoreTool = {
 };
 
 export async function handlePublishRiskScore(raw: PublishRiskScoreInput) {
-  const writeGuard = requireWriteToolsEnabled("publish_risk_score");
-  if (writeGuard) return writeGuard;
+  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
+    return fail(
+      "WRITE_TOOLS_DISABLED",
+      "publish_risk_score is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
+      false,
+      "publish_risk_score"
+    );
+  }
 
   const input = publishRiskScoreSchema.parse(raw);
   const signer = await getSigner(input.agentId);

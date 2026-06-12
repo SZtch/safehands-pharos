@@ -196,11 +196,11 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
   }
 
   if (input.actionType === "approve_token") {
-    const unlimited = input.approvalUnlimited || isUnlimitedApprovalAmount(input.approvalAmount);
+    const unlimited = input.approvalUnlimited || isUnlimitedApprovalAmount(input.approvalAmount) || isUnlimitedApprovalAmount(input.amount);
     if (unlimited && input.allowUnlimitedApproval !== true) {
       pushCheck(checks, "approval_amount", "fail", "Unlimited approval is blocked by default.", reasons, requiredActions, "Unlimited approval requested.", "Use a limited approval amount.");
     } else {
-      const approvalAmount = numeric(input.approvalAmount);
+      const approvalAmount = numeric(input.approvalAmount) ?? numeric(input.amount);
       if (approvalAmount !== null && approvalAmount > Number(MAX_APPROVAL_AMOUNT_USDC)) {
         pushCheck(checks, "approval_limit", "fail", `Approval ${approvalAmount} exceeds limit ${MAX_APPROVAL_AMOUNT_USDC}.`, reasons, requiredActions, "Approval exceeds configured limit.", "Reduce approval or increase MAX_APPROVAL_AMOUNT_USDC consciously for testnet.");
       } else {

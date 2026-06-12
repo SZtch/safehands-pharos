@@ -18,6 +18,8 @@
     "skill",
     "README.md",
     ".env.example",
+    "docs",
+    ".agents",
     "LICENSE"
   ],
   "scripts": {

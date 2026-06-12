@@ -24,8 +24,14 @@ export const sendPaymentTool = {
 };
 
 export async function handleSendPayment(raw: SendPaymentInput) {
-  const writeGuard = requireWriteToolsEnabled("send_payment");
-  if (writeGuard) return writeGuard;
+  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
+    return fail(
+      "WRITE_TOOLS_DISABLED",
+      "send_payment is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
+      false,
+      "send_payment"
+    );
+  }
 
   const input = sendPaymentSchema.parse(raw);
   const signer = await getSigner(input.agentId);

@@ -25,8 +25,14 @@ export const executeSwapTool = {
 };
 
 export async function handleExecuteSwap(raw: ExecuteSwapInput) {
-  const writeGuard = requireWriteToolsEnabled("execute_swap");
-  if (writeGuard) return writeGuard;
+  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
+    return fail(
+      "WRITE_TOOLS_DISABLED",
+      "execute_swap is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
+      false,
+      "execute_swap"
+    );
+  }
 
   const input = executeSwapSchema.parse(raw);
   const signer = await getSigner(input.agentId);

@@ -26,8 +26,14 @@ export const approveTokenTool = {
 };
 
 export async function handleApproveToken(raw: ApproveTokenInput) {
-  const writeGuard = requireWriteToolsEnabled("approve_token");
-  if (writeGuard) return writeGuard;
+  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
+    return fail(
+      "WRITE_TOOLS_DISABLED",
+      "approve_token is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
+      false,
+      "approve_token"
+    );
+  }
 
   const input = approveTokenSchema.parse(raw);
   const signer = await getSigner(input.agentId);

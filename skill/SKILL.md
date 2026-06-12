@@ -6,7 +6,7 @@ description: >
   and returns ALLOW, WARN, BLOCK, REQUIRE_CONFIRMATION, REQUIRE_FUNDING, or REQUIRE_TOKEN_REVIEW
   before execution. Use this skill as a safety firewall before invoking Pharos Skill Engine
   write operations.
-version: 1.2.0
+version: 1.2.6
 requires:
   anyBins:
   - npx

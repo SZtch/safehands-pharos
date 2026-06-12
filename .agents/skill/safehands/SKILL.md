@@ -1,5 +1,5 @@
 name: safehands
-version: 1.2.0
+version: 1.2.6
 description: Transaction Safety Firewall for Pharos agents. 27 tools (17 legacy/core + 3 managed wallet + 7 guardrail) that preflight, assess, simulate, and gate payments, token approvals, swaps, and x402 paid requests before execution.
 author: "SZtch"
 chain: pharos
@@ -111,7 +111,7 @@ Any agent (including those built with **Anvita Flow**) that performs on-chain ac
 
 ### Cross-agent risk intelligence
 
-The RiskRegistry contract (`0x71fc28ed3a31016b42f18764889cd911f22b67b8`) enables agents to share risk assessments:
+The RiskRegistry contract (`0x61962a6c812ee9f57b207e1ea47c19ae70bb7141`) enables agents to share risk assessments:
 
 - **Agent A** publishes a risk score for a wallet via `publish_risk_score`
 - **Agent B** queries that score via `query_risk_registry` before interacting with the same wallet
@@ -169,7 +169,7 @@ Agent B: → query_risk_registry(0xsuspicious...)
 
 ## On-Chain Registry
 
-**Contract:** `0x71fc28ed3a31016b42f18764889cd911f22b67b8`
+**Contract:** `0x61962a6c812ee9f57b207e1ea47c19ae70bb7141`
 **Chain:** Pharos Atlantic Testnet (688689)
 
 The RiskRegistry is a Solidity smart contract deployed on Pharos that stores risk assessments on-chain. Any agent can publish. Any agent can query. No API keys, no centralized infrastructure.
@@ -200,12 +200,12 @@ SafeHands exposes a paid HTTP REST API server using the Coinbase-designed **x402
 
 Pharos Atlantic Testnet registered tokens:
 - **PHRS**: Native Pharos token (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`)
-- **USDC**: USD Coin (`0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B`) - Canonical address from the official Pharos Token Registry
+- **USDC**: USD Coin (`0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8`) - Primary Pharos Skill Engine USDC
 - **USDT**: Tether USD (`0xE7E84B8B4f39C507499c40B4ac199B050e2882d5`)
 - **WBTC**: Wrapped BTC (`0x0c64F03EEa5c30946D5c55B4b532D08ad74638a4`)
 - **WETH**: Wrapped ETH (`0x7d211F77525ea39A0592794f793cC1036eEaccD5`)
 - **WPHRS**: Wrapped PHRS (`0x838800b758277CC111B2d48Ab01e5E164f8E9471`)
-- **tUSDC**: Test USDC (`0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8`) - Legacy test token used in some x402 examples
+- **altUSDC**: Alternate USDC (`0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B`) - Alternate Circle-referenced USDC
 
 ## Chain
 

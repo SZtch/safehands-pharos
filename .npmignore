@@ -10,7 +10,7 @@ node_modules/
 coverage/
 .DS_Store
 .safehands/
-.agents/
+
 docs/
 *.md
 !README.md
