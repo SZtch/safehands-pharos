@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeHands Pharos | Threat Radar</title>
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --surface-color: rgba(31, 40, 51, 0.7);
+            --border-color: rgba(69, 162, 158, 0.2);
+            --text-main: #c5c6c7;
+            --text-accent: #66fcf1;
+            --danger: #ff4b4b;
+            --success: #4caf50;
+            --warning: #ffc107;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(102, 252, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(255, 75, 75, 0.05) 0%, transparent 50%);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(90deg, #fff, var(--text-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background: rgba(102, 252, 241, 0.1);
+            color: var(--text-accent);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(102, 252, 241, 0.3);
+            box-shadow: 0 0 10px rgba(102, 252, 241, 0.1);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--surface-color);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(102, 252, 241, 0.4);
+        }
+
+        .card-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .metric {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* Table Styles */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 1rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 1rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .hash {
+            font-family: 'Courier New', Courier, monospace;
+            color: #888;
+        }
+
+        .status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status.blocked {
+            background: rgba(255, 75, 75, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255, 75, 75, 0.3);
+        }
+
+        .status.allowed {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status.warn {
+            background: rgba(255, 193, 7, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--danger);
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 8px var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        /* Pulse animation for new rows */
+        @keyframes highlightRow {
+            0% { background-color: rgba(255, 75, 75, 0.2); }
+            100% { background-color: transparent; }
+        }
+
+        .new-row {
+            animation: highlightRow 2s ease-out;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                SafeHands
+            </div>
+            <div class="badge">Pharos Atlantic Testnet (688689)</div>
+        </header>
+
+        <div class="dashboard-grid">
+            <div class="column-left">
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">Threats Blocked</div>
+                    <div class="metric" id="threatCount">1,248</div>
+                    <div class="metric-label">+12 in the last hour</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Top Blocked Vectors</div>
+                    <ul style="list-style: none; margin-top: 1rem;">
+                        <li style="margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                            <span>Unlimited Approvals</span>
+                            <span style="color: var(--danger);">68%</span>
+                        </li>
+                        <li style="margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                            <span>SSRF (Localhost) x402</span>
+                            <span style="color: var(--warning);">22%</span>
+                        </li>
+                        <li style="display: flex; justify-content: space-between;">
+                            <span>Mainnet Leakage</span>
+                            <span style="color: #888;">10%</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="column-right">
+                <div class="card" style="height: 100%;">
+                    <div class="card-header">
+                        <div><span class="live-indicator"></span> Live Agent Preflight Log</div>
+                        <span style="font-size: 0.8rem; color: #888;">RiskRegistry.sol Sync</span>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Action</th>
+                                    <th>Target / Details</th>
+                                    <th>Decision</th>
+                                    <th>Risk Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logTable">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const initialLogs = [
+            { action: "approve_token", target: "0xBadActor...9812", decision: "BLOCK", reason: "Unlimited approval requested" },
+            { action: "x402_pay", target: "http://127.0.0.1/admin", decision: "BLOCK", reason: "SSRF_BLOCKED (Localhost)" },
+            { action: "send_payment", target: "0xAgentB...4411 (0.001 PHRS)", decision: "ALLOW", reason: "Low risk testnet payment" },
+            { action: "execute_swap", target: "Unverified Token Pool", decision: "WARN", reason: "Custom Token Non-Registry" },
+            { action: "approve_token", target: "0xSkillEngine...4321", decision: "ALLOW", reason: "Limited approval (50 USDC)" }
+        ];
+
+        const logTable = document.getElementById('logTable');
+
+        function createRow(log, isNew = false) {
+            const tr = document.createElement('tr');
+            if (isNew) tr.classList.add('new-row');
+            
+            let statusClass = 'allowed';
+            if (log.decision === 'BLOCK') statusClass = 'blocked';
+            if (log.decision === 'WARN') statusClass = 'warn';
+
+            tr.innerHTML = `
+                <td style="font-weight: 600;">${log.action}</td>
+                <td class="hash">${log.target}</td>
+                <td><span class="status ${statusClass}">${log.decision}</span></td>
+                <td style="color: #aaa; font-size: 0.85rem;">${log.reason}</td>
+            `;
+            return tr;
+        }
+
+        // Init table
+        initialLogs.forEach(log => logTable.appendChild(createRow(log)));
+
+        // Simulate live incoming threats
+        const newThreats = [
+            { action: "x402_pay", target: "http://192.168.1.1/config", decision: "BLOCK", reason: "SSRF_BLOCKED (Private IP)" },
+            { action: "custom_call", target: "Mainnet Router (Chain 1)", decision: "BLOCK", reason: "Mainnet execution blocked" },
+            { action: "send_payment", target: "0xUnknown...9999 (1000 PHRS)", decision: "BLOCK", reason: "Payment exceeds 0.01 limit" }
+        ];
+
+        let count = parseInt(document.getElementById('threatCount').innerText.replace(',', ''));
+        
+        let threatIndex = 0;
+        setInterval(() => {
+            if(threatIndex >= newThreats.length) threatIndex = 0; // loop for demo
+            
+            const log = newThreats[threatIndex];
+            const row = createRow(log, true);
+            
+            logTable.insertBefore(row, logTable.firstChild);
+            if(logTable.children.length > 6) {
+                logTable.removeChild(logTable.lastChild);
+            }
+            
+            count++;
+            document.getElementById('threatCount').innerText = count.toLocaleString();
+            
+            threatIndex++;
+        }, 4000); // New log every 4 seconds
+    </script>
+</body>
+</html>
