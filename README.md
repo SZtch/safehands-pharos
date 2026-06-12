@@ -106,9 +106,12 @@ If an AI agent requests a swap to the primary `USDC` token and the routing engin
 
 SafeHands supports three usage modes:
 
-1. **MCP server usage** for Claude Desktop, Anvita Flow, and other MCP-compatible clients.
-2. **npm/npx CLI usage** for terminal and CI checks.
-3. **Pharos Skill Engine reference-file usage** through the `skill/` package.
+1. **Pharos Skill Engine (Recommended for Agents):** Install directly into your AI agent project via GitHub:
+   ```bash
+   npx skills add SZtch/safehands-pharos
+   ```
+2. **MCP server usage:** Run directly as a standard MCP server for Claude Desktop, Anvita Flow, etc.
+3. **npm/npx CLI usage:** Run manually in the terminal for testing and CI checks.
 
 ---
 
