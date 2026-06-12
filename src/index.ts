@@ -107,7 +107,7 @@ if (process.argv.includes("--demo")) {
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
   process.stdout.write(`
 🛡️  SafeHands-Pharos — Transaction Safety Firewall for AI Agents
-   v1.2.0 | Pharos Atlantic Testnet | Chain ID 688689
+   v1.2.4 | Pharos Atlantic Testnet | Chain ID 688689
 
 USAGE
   npx safehands-pharos
@@ -212,7 +212,7 @@ if (process.env.WRITE_TOOLS_ENABLED !== "true") {
 
 const server = new McpServer({
   name: "safehands",
-  version: "1.2.0",
+  version: "1.2.4",
 });
 
 // ─── Tool Registration ─────────────────────────────────────────────────
