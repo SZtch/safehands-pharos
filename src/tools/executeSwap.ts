@@ -1,19 +1,15 @@
 // ─── Tool: execute_swap ────────────────────────────────────────────────
 import { z } from "zod";
-import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
+import { publicClient, createPharosWalletClient, getExplorerUrl } from "../lib/pharosClient.js";
 import { getDodoRoute, isNativeToken, resolveTokenAddress, resolveTokenDecimals, toWei } from "../lib/dodoApi.js";
 import { assessRisk } from "../lib/riskEngine.js";
-import { fail, ok, requireWriteToolsEnabled, classifyExternalError } from "../lib/toolResponse.js";
-import { DODO_APPROVE_ADDRESS, ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PHRS, CHAIN_ID, PHAROS_ENVIRONMENT } from "../lib/constants.js";
-import { getSigner, isSignerFailure } from "../lib/signer/index.js";
-import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { DODO_APPROVE_ADDRESS, ERC20_ABI, RISK_BLOCK_THRESHOLD } from "../lib/constants.js";
 
 export const executeSwapSchema = z.object({
   tokenIn: z.string(),
   tokenOut: z.string(),
   amountIn: z.string(),
   slippageTolerance: z.number().optional().default(3.225),
-  agentId: z.string().optional().describe("Managed testnet wallet agentId when WALLET_MODE=managed-testnet"),
 });
 
 export type ExecuteSwapInput = z.input<typeof executeSwapSchema>;
@@ -25,69 +21,55 @@ export const executeSwapTool = {
 };
 
 export async function handleExecuteSwap(raw: ExecuteSwapInput) {
-  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
-    return fail(
-      "WRITE_TOOLS_DISABLED",
-      "execute_swap is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
-      false,
-      "execute_swap"
-    );
-  }
-
+  const privateKey = process.env.PRIVATE_KEY;
+  const walletAddress = process.env.WALLET_ADDRESS;
+  if (!privateKey || !walletAddress) throw new Error("Missing PRIVATE_KEY or WALLET_ADDRESS in environment variables.");
   const input = executeSwapSchema.parse(raw);
-  const signer = await getSigner(input.agentId);
-  if (isSignerFailure(signer)) {
-    return fail(signer.error.code, signer.error.message, false, "execute_swap");
-  }
-  const walletAddress = signer.address;
+  // 1. Risk assessment
+  let riskScore = 0;
+  let wasBlocked = false;
+  let blockReason: string | undefined;
 
-  const policy = evaluateActionPolicy({
-    actionType: "execute_swap",
-    amount: input.amountIn,
-    amountUnit: "TOKEN",
-    tokenIn: input.tokenIn,
-    tokenOut: input.tokenOut,
-    chainId: CHAIN_ID,
-    environment: PHAROS_ENVIRONMENT,
-    isMainnet: false,
-    signerAvailable: true,
-    requiresSigner: true,
-  });
-  if (policy.decision === "BLOCK") {
-    return fail("POLICY_BLOCKED", policy.reasons.join(" ") || "Swap blocked by SafeHands policy.", false, "execute_swap");
-  }
+  if (true) {
+    const risk = await assessRisk({
+      action: "swap",
+      tokenIn: input.tokenIn,
+      tokenOut: input.tokenOut,
+      amount: input.amountIn,
+      walletAddress: walletAddress,
+    });
+    riskScore = risk.riskScore;
 
-  if (Number(input.amountIn) > Number(MAX_TX_AMOUNT_PHRS) && input.tokenIn.toUpperCase() === "PHRS") {
-    return fail("TX_LIMIT_EXCEEDED", `Swap amount exceeds configured testnet limit (${MAX_TX_AMOUNT_PHRS}).`, false, "execute_swap");
-  }
-
-  const risk = await assessRisk({
-    action: "swap",
-    tokenIn: input.tokenIn,
-    tokenOut: input.tokenOut,
-    amount: input.amountIn,
-    walletAddress,
-  });
-
-  if (risk.riskScore > RISK_BLOCK_THRESHOLD) {
-    return fail("POLICY_BLOCKED", `Swap blocked — risk score ${risk.riskScore}/100: ${risk.suggestion}`, false, "execute_swap");
+    if (riskScore > RISK_BLOCK_THRESHOLD) {
+      return {
+        success: false,
+        riskAssessment: { riskScore, wasBlocked: true, blockReason: risk.suggestion },
+        error: `Swap blocked — risk score ${riskScore}/100: ${risk.suggestion}`,
+      };
+    }
   }
 
   try {
+    // 2. Get DODO route
     const quote = await getDodoRoute({
       fromToken: input.tokenIn,
       toToken: input.tokenOut,
       amountHuman: input.amountIn,
-      walletAddress,
+      walletAddress: walletAddress,
       slippage: input.slippageTolerance,
     });
 
     if (!quote.routeAvailable) {
-      return fail("NO_ROUTE_AVAILABLE", "No swap route available — insufficient liquidity", true, "dodo_api");
+      return {
+        success: false,
+        riskAssessment: { riskScore, wasBlocked: false },
+        error: "No swap route available — insufficient liquidity",
+      };
     }
 
-    const wallet = createPharosWalletClientFromAccount(signer.account);
+    const wallet = createPharosWalletClient(privateKey as `0x${string}`);
 
+    // 3. Approve if non-native token
     if (!isNativeToken(input.tokenIn)) {
       const tokenAddr = resolveTokenAddress(input.tokenIn);
       const decimals = resolveTokenDecimals(input.tokenIn);
@@ -97,34 +79,21 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
         address: tokenAddr,
         abi: ERC20_ABI,
         functionName: "allowance",
-        args: [walletAddress, DODO_APPROVE_ADDRESS],
+        args: [walletAddress as `0x${string}`, DODO_APPROVE_ADDRESS],
       })) as bigint;
 
       if (allowance < amountWei) {
-        const approvalPolicy = evaluateActionPolicy({
-          actionType: "approve_token",
-          approvalAmount: input.amountIn,
-          spender: DODO_APPROVE_ADDRESS,
-          spenderVerified: true,
-          chainId: CHAIN_ID,
-          environment: PHAROS_ENVIRONMENT,
-          isMainnet: false,
-          signerAvailable: true,
-          requiresSigner: true,
-        });
-        if (approvalPolicy.decision === "BLOCK") {
-          return fail("POLICY_BLOCKED", `Swap approval blocked: ${approvalPolicy.reasons.join(" ")}`, false, "execute_swap");
-        }
         const approveHash = await wallet.writeContract({
           address: tokenAddr,
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [DODO_APPROVE_ADDRESS, amountWei],
+          args: [DODO_APPROVE_ADDRESS, amountWei * 2n],
         });
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
       }
     }
 
+    // 4. Send swap tx
     const txHash = await wallet.sendTransaction({
       to: quote.to as `0x${string}`,
       value: BigInt(quote.value),
@@ -134,19 +103,19 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-    return ok({
-      txSuccess: receipt.status === "success",
+    return {
+      success: receipt.status === "success",
       txHash,
       explorerUrl: getExplorerUrl(txHash),
       amountOut: quote.amountOut,
-      signerMode: signer.mode,
-      walletAddress,
       gasUsed: receipt.gasUsed.toString(),
-      policy,
-      riskAssessment: { riskScore: risk.riskScore, wasBlocked: false },
-      source: "execute_swap",
-    });
+      riskAssessment: { riskScore, wasBlocked: false },
+    };
   } catch (err) {
-    return classifyExternalError("pharos_rpc", err);
+    return {
+      success: false,
+      riskAssessment: { riskScore, wasBlocked: false },
+      error: `Swap failed: ${(err as Error).message}`,
+    };
   }
 }
