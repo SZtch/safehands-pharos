@@ -12,6 +12,9 @@ import { handleTokenRegistryStatus } from "./tools/tokenRegistryStatus.js";
 import { handleExplainRisk } from "./tools/explainRisk.js";
 import { handleSafeHandsRiskReport } from "./tools/safehandsRiskReport.js";
 import { handleSafeHandsSafeExecute } from "./tools/safehandsSafeExecute.js";
+import { handleCreateAgentWallet } from "./tools/createAgentWallet.js";
+import { handleGetAgentWallet } from "./tools/getAgentWallet.js";
+import { handleGetAgentWalletBalance } from "./tools/getAgentWalletBalance.js";
 
 export type SkillCliToolName =
   | "safehands_preflight_check"
@@ -20,7 +23,10 @@ export type SkillCliToolName =
   | "token_registry_status"
   | "explain_risk"
   | "safehands_risk_report"
-  | "safehands_safe_execute";
+  | "safehands_safe_execute"
+  | "create_agent_wallet"
+  | "get_agent_wallet"
+  | "get_agent_wallet_balance";
 
 type SkillCliHandler = (input: any) => Promise<unknown>;
 
@@ -32,6 +38,9 @@ const SKILL_CLI_TOOLS: Record<SkillCliToolName, SkillCliHandler> = {
   explain_risk: handleExplainRisk,
   safehands_risk_report: handleSafeHandsRiskReport,
   safehands_safe_execute: handleSafeHandsSafeExecute,
+  create_agent_wallet: handleCreateAgentWallet,
+  get_agent_wallet: handleGetAgentWallet,
+  get_agent_wallet_balance: handleGetAgentWalletBalance,
 };
 
 function isStructuredResponse(value: unknown): value is ToolResponse<unknown> {
