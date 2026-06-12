@@ -1,6 +1,6 @@
 {
   "name": "safehands-pharos",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Pharos Skill Engine-compatible transaction safety firewall for AI agents.",
   "type": "module",
   "main": "dist/index.js",
