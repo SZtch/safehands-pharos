@@ -15,6 +15,7 @@ import { handleSafeHandsSafeExecute } from "./tools/safehandsSafeExecute.js";
 import { handleCreateAgentWallet } from "./tools/createAgentWallet.js";
 import { handleGetAgentWallet } from "./tools/getAgentWallet.js";
 import { handleGetAgentWalletBalance } from "./tools/getAgentWalletBalance.js";
+import { handleCheckTokenSecurity } from "./tools/checkTokenSecurity.js";
 
 export type SkillCliToolName =
   | "safehands_preflight_check"
@@ -26,7 +27,8 @@ export type SkillCliToolName =
   | "safehands_safe_execute"
   | "create_agent_wallet"
   | "get_agent_wallet"
-  | "get_agent_wallet_balance";
+  | "get_agent_wallet_balance"
+  | "check_token_security";
 
 type SkillCliHandler = (input: any) => Promise<unknown>;
 
@@ -41,6 +43,7 @@ const SKILL_CLI_TOOLS: Record<SkillCliToolName, SkillCliHandler> = {
   create_agent_wallet: handleCreateAgentWallet,
   get_agent_wallet: handleGetAgentWallet,
   get_agent_wallet_balance: handleGetAgentWalletBalance,
+  check_token_security: handleCheckTokenSecurity,
 };
 
 function isStructuredResponse(value: unknown): value is ToolResponse<unknown> {
