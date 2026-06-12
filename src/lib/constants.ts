@@ -273,7 +273,7 @@ export const ERC20_ABI = [
 // ─── Risk Registry Contract ────────────────────────────────────────────
 
 export const RISK_REGISTRY_ADDRESS = (process.env.RISK_REGISTRY_ADDRESS ||
-  "0x71fc28ed3a31016b42f18764889cd911f22b67b8") as `0x${string}`;
+  "0x61962a6c812ee9f57b207e1ea47c19ae70bb7141") as `0x${string}`;
 
 export const RISK_REGISTRY_ABI = [
   {

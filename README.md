@@ -79,7 +79,7 @@ Default project configuration:
 | RPC URL | `https://atlantic.dplabs-internal.com` |
 | Explorer | `https://atlantic.pharosscan.xyz/` |
 | Mainnet support | `false` |
-| RiskRegistry | `0x71fc28ed3a31016b42f18764889cd911f22b67b8` |
+| RiskRegistry | `0x61962a6c812ee9f57b207e1ea47c19ae70bb7141` |
 | Primary Pharos Skill Engine USDC | `0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8` |
 | Alternate Circle-referenced USDC | `0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B` |
 

@@ -158,7 +158,7 @@ PHAROS ATLANTIC TESTNET
   Chain ID: 688689
   RPC: https://atlantic.dplabs-internal.com
   Explorer: https://atlantic.pharosscan.xyz/
-  RiskRegistry: 0x71fc28ed3a31016b42f18764889cd911f22b67b8
+  RiskRegistry: 0x61962a6c812ee9f57b207e1ea47c19ae70bb7141
 
 x402 BEHAVIOR
   Free endpoints, such as /supported and /health, do not require a private key.
