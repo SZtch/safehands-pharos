@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+dist/
+coverage/
+.nyc_output/
+.turbo/
+.cache/
+
+# Internal docs
+safehands-prd.md
+*.prd.md
+docs/
+
+# Environment and local secrets
+.env
+*.env
+.env.*
+!.env.example
+wallet-store.json
+*.pem
+*.key
+*.log
+logs/
+.safehands/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.tsbuildinfo
+*.tgz

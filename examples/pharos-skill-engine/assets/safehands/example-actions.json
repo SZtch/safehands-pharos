@@ -1,0 +1,49 @@
+{
+  "safeApproval": {
+    "actionType": "approve_token",
+    "chainId": 688689,
+    "isMainnet": false,
+    "tokenAddress": "0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B",
+    "spender": "0x000000000000000000000000000000000000dEaD",
+    "approvalAmount": "1"
+  },
+  "blockedUnlimitedApproval": {
+    "actionType": "approve_token",
+    "chainId": 688689,
+    "isMainnet": false,
+    "tokenAddress": "0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B",
+    "spender": "0x000000000000000000000000000000000000dEaD",
+    "approvalAmount": "max"
+  },
+  "x402FreeEndpoint": {
+    "url": "https://example.com/health",
+    "paymentAmountUsdc": "0",
+    "probeEndpoint": false
+  },
+  "x402PaidEndpoint": {
+    "url": "https://example.com/assess-risk",
+    "paymentAmountUsdc": "0.001",
+    "probeEndpoint": false
+  },
+  "mainnetBlockedAction": {
+    "actionType": "send_payment",
+    "chainId": 1,
+    "isMainnet": true,
+    "recipient": "0x000000000000000000000000000000000000dEaD",
+    "amount": "0.001"
+  },
+  "chainIdMismatch": {
+    "actionType": "send_payment",
+    "chainId": 688688,
+    "isMainnet": false,
+    "recipient": "0x000000000000000000000000000000000000dEaD",
+    "amount": "0.001"
+  },
+  "customTokenWarning": {
+    "actionType": "execute_swap",
+    "chainId": 688689,
+    "isMainnet": false,
+    "tokenAddress": "0x000000000000000000000000000000000000dEaD",
+    "amount": "1"
+  }
+}
