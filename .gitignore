@@ -8,7 +8,6 @@ coverage/
 # Internal docs
 safehands-prd.md
 *.prd.md
-docs/
 !docs/reports/
 
 # Environment and local secrets
@@ -36,5 +35,11 @@ Thumbs.db
 # Build artifacts
 *.tsbuildinfo
 *.tgz
-dist/
 .agents/wallets.json
+
+# Keep compiled distribution and hackathon reports
+!dist/
+!dist/**
+!docs/
+!docs/reports/
+!docs/reports/**

@@ -11,10 +11,6 @@ coverage/
 .DS_Store
 .safehands/
 
-docs/
-*.md
 !README.md
-!SECURITY.md
-!EXAMPLES.md
 tsconfig.json
 tsconfig.all.json
