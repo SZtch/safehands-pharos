@@ -48,27 +48,7 @@ export declare const simulateTransactionTool: {
         toAddress?: string | undefined;
     }>;
 };
-export declare function handleSimulateTransaction(input: SimulateTransactionInput): Promise<{
-    wouldSucceed: boolean;
-    gasEstimate: string;
-    revertReason: string;
-    balanceChanges: {
-        token: string;
-        delta: string;
-    }[];
-    warnings: string[];
-    expectedOutput?: undefined;
-} | {
-    wouldSucceed: boolean;
-    expectedOutput: string;
-    gasEstimate: string;
-    revertReason: string;
-    balanceChanges: {
-        token: string;
-        delta: string;
-    }[];
-    warnings: string[];
-} | {
+export declare function handleSimulateTransaction(input: SimulateTransactionInput): Promise<import("../lib/toolResponse.js").ToolFailure | import("../lib/toolResponse.js").ToolSuccess<{
     wouldSucceed: boolean;
     expectedOutput: string;
     gasEstimate: string;
@@ -77,6 +57,5 @@ export declare function handleSimulateTransaction(input: SimulateTransactionInpu
         delta: string;
     }[];
     warnings: string[];
-    revertReason?: undefined;
-}>;
+}>>;
 //# sourceMappingURL=simulateTransaction.d.ts.map

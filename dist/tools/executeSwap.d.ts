@@ -43,10 +43,12 @@ export declare const executeSwapTool: {
     }>;
 };
 export declare function handleExecuteSwap(raw: ExecuteSwapInput): Promise<import("../lib/toolResponse.js").ToolFailure | import("../lib/toolResponse.js").ToolSuccess<{
-    txSuccess: boolean;
     txHash: `0x${string}`;
     explorerUrl: string;
     amountOut: string;
+    usedFromToken: string;
+    usedToToken: string;
+    wasSubstituted: boolean;
     signerMode: import("../lib/signer/index.js").SignerMode;
     walletAddress: `0x${string}`;
     gasUsed: string;

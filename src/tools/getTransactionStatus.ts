@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import { publicClient, getExplorerUrl } from "../lib/pharosClient.js";
+import { ok, fail } from "../lib/toolResponse.js";
 
 export const getTransactionStatusSchema = z.object({
   txHash: z.string().describe("Transaction hash to look up"),
@@ -27,9 +28,8 @@ export async function handleGetTransactionStatus(raw: GetTransactionStatusInput)
     const receipt = await publicClient.getTransactionReceipt({ hash });
     const tx = await publicClient.getTransaction({ hash });
 
-    return {
+    const details = {
       txHash: input.txHash,
-      status: receipt.status === "success" ? "success" : "failed",
       blockNumber: receipt.blockNumber.toString(),
       blockHash: receipt.blockHash,
       from: receipt.from,
@@ -39,13 +39,19 @@ export async function handleGetTransactionStatus(raw: GetTransactionStatusInput)
       value: tx.value.toString(),
       explorerUrl: getExplorerUrl(input.txHash),
     };
+
+    if (receipt.status !== "success") {
+      return fail("TX_REVERTED", "Transaction was mined but reverted on-chain.", false, "get_transaction_status");
+    }
+
+    return ok({ ...details, txStatus: "success" });
   } catch {
     // Receipt not found — check if the tx exists at all (pending)
     try {
       const tx = await publicClient.getTransaction({ hash });
-      return {
+      return ok({
         txHash: input.txHash,
-        status: "pending" as const,
+        txStatus: "pending" as const,
         blockNumber: null,
         blockHash: null,
         from: tx.from,
@@ -54,21 +60,9 @@ export async function handleGetTransactionStatus(raw: GetTransactionStatusInput)
         effectiveGasPrice: null,
         value: tx.value.toString(),
         explorerUrl: getExplorerUrl(input.txHash),
-      };
+      });
     } catch {
-      return {
-        txHash: input.txHash,
-        status: "not_found" as const,
-        blockNumber: null,
-        blockHash: null,
-        from: null,
-        to: null,
-        gasUsed: null,
-        effectiveGasPrice: null,
-        value: null,
-        explorerUrl: getExplorerUrl(input.txHash),
-        error: "Transaction not found on chain",
-      };
+      return fail("TX_NOT_FOUND", "Transaction not found on chain.", false, "get_transaction_status");
     }
   }
 }

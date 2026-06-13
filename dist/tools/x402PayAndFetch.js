@@ -7,7 +7,7 @@ import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { registerExactEvmScheme } from "@x402/evm/exact/client";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, MAX_X402_PAYMENT_USDC, X402_PAYMENT_TOKEN_ADDRESS } from "../lib/constants.js";
 import { assertSafeFetchUrl, fetchWithTimeoutAndRetry } from "../lib/http.js";
-import { fail, ok } from "../lib/toolResponse.js";
+import { fail, ok, requireWriteToolsEnabled } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 export const x402PayAndFetchSchema = z.object({
@@ -90,6 +90,9 @@ export async function handleX402PayAndFetch(raw) {
                 source: "x402_fetch",
             });
         }
+        const writeGuard = requireWriteToolsEnabled("x402_pay_and_fetch");
+        if (writeGuard)
+            return writeGuard;
         const signer = await getSigner(input.agentId, { purpose: "x402" });
         if (isSignerFailure(signer)) {
             return fail("X402_PAYMENT_REQUIRED", `The resource returned HTTP 402, but no safe x402 signer is available: ${signer.error.message}`, false, "x402_pay_and_fetch");

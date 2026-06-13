@@ -1,8 +1,28 @@
 // ─── Tool: get_execution_history ───────────────────────────────────────
+// Uses eth_getLogs for ERC-20 Transfer events (fast, covers token swaps)
+// and a parallelised block scan of the last 100 blocks for native PHRS transfers.
+// Prior approach scanned 500 blocks sequentially — 500+ RPC calls, always timed out.
+// ────────────────────────────────────────────────────────────────────────
+
 import { z } from "zod";
 import { publicClient, getExplorerUrl } from "../lib/pharosClient.js";
-import { DODO_ROUTE_PROXY_ADDRESS } from "../lib/constants.js";
-import { formatEther } from "viem";
+import {
+  DODO_ROUTE_PROXY_ADDRESS,
+  USDC_ADDRESS,
+  USDT_ADDRESS,
+  WBTC_ADDRESS,
+  WETH_ADDRESS,
+  WPHRS_ADDRESS,
+  CIRCLE_USDC_ADDRESS,
+} from "../lib/constants.js";
+import { formatEther, parseAbiItem, type Log } from "viem";
+import { ok, fail } from "../lib/toolResponse.js";
+
+const TRANSFER_EVENT = parseAbiItem(
+  "event Transfer(address indexed from, address indexed to, uint256 value)"
+);
+
+type TransferLog = Log<bigint, number, false, typeof TRANSFER_EVENT, true>;
 
 export const getExecutionHistorySchema = z.object({
   walletAddress: z.string(),
@@ -12,99 +32,176 @@ export const getExecutionHistorySchema = z.object({
 
 export type GetExecutionHistoryInput = z.infer<typeof getExecutionHistorySchema>;
 
+// All known token addresses to scan for Transfer events (mutable array for viem compatibility)
+const KNOWN_TOKEN_ADDRESSES: `0x${string}`[] = [
+  USDC_ADDRESS,
+  USDT_ADDRESS,
+  WBTC_ADDRESS,
+  WETH_ADDRESS,
+  WPHRS_ADDRESS,
+  CIRCLE_USDC_ADDRESS,
+];
+
+const ERC20_LOG_RANGE = 10_000n;   // blocks to scan for ERC-20 events
+const NATIVE_SCAN_RANGE = 100n;    // blocks for native PHRS scan
+const NATIVE_BATCH_SIZE = 10;      // parallel block fetches per batch
+
 export const getExecutionHistoryTool = {
   name: "get_execution_history",
-  description: "Pull on-chain transaction history for a wallet on Pharos. Filters by swap, transfer, or all.",
+  description:
+    "Pull on-chain transaction history for a wallet. Uses eth_getLogs for ERC-20 transfers and parallel block scan for native PHRS. Filters by swap, transfer, or all.",
   inputSchema: getExecutionHistorySchema,
 };
 
+interface HistoryEntry {
+  txHash: string;
+  explorerUrl: string;
+  type: "swap" | "transfer" | "other";
+  timestamp: string;
+  status: "success" | "failed" | "unknown";
+  value: string;
+  details: string;
+  blockNumber: string;
+}
+
 export async function handleGetExecutionHistory(input: GetExecutionHistoryInput) {
-  const history: Array<{
-    txHash: string;
-    explorerUrl: string;
-    type: "swap" | "transfer" | "other";
-    timestamp: string;
-    status: "success" | "failed";
-    value: string;
-    details: string;
-  }> = [];
+  const seen = new Set<string>();
+  const history: HistoryEntry[] = [];
 
   try {
     const blockNumber = await publicClient.getBlockNumber();
-    // Scan last ~500 blocks for transactions
-    const fromBlock = blockNumber > 500n ? blockNumber - 500n : 0n;
+    const erc20FromBlock = blockNumber > ERC20_LOG_RANGE ? blockNumber - ERC20_LOG_RANGE : 0n;
+    const nativeFromBlock = blockNumber > NATIVE_SCAN_RANGE ? blockNumber - NATIVE_SCAN_RANGE : 0n;
+    const walletAddr = input.walletAddress as `0x${string}`;
 
-    // Use eth_getLogs to find transactions involving the wallet
-    // For a more complete solution, we'd use an indexer. Here we check recent blocks.
-    const batchSize = 50;
-    let found = 0;
+    // ── ERC-20 Transfer logs ─────────────────────────────────────────────
+    // Two queries: wallet as sender (from) and wallet as receiver (to)
+    const empty: TransferLog[] = [];
+    const [sentLogs, receivedLogs]: [TransferLog[], TransferLog[]] = await Promise.all([
+      publicClient.getLogs({
+        fromBlock: erc20FromBlock,
+        toBlock: blockNumber,
+        address: KNOWN_TOKEN_ADDRESSES,
+        event: TRANSFER_EVENT,
+        args: { from: walletAddr },
+        strict: true,
+      }).catch(() => empty),
+      publicClient.getLogs({
+        fromBlock: erc20FromBlock,
+        toBlock: blockNumber,
+        address: KNOWN_TOKEN_ADDRESSES,
+        event: TRANSFER_EVENT,
+        args: { to: walletAddr },
+        strict: true,
+      }).catch(() => empty),
+    ]);
 
-    for (let b = blockNumber; b > fromBlock && found < input.limit; b -= 1n) {
-      try {
-        const block = await publicClient.getBlock({
-          blockNumber: b,
-          includeTransactions: true,
-        });
+    const allLogs = [...sentLogs, ...receivedLogs];
 
-        for (const tx of block.transactions) {
-          if (found >= input.limit) break;
-          if (typeof tx === "string") continue;
-
-          const isFrom = tx.from.toLowerCase() === input.walletAddress.toLowerCase();
-          const isTo = tx.to?.toLowerCase() === input.walletAddress.toLowerCase();
-
-          if (!isFrom && !isTo) continue;
-
-          const isDodoSwap = tx.to?.toLowerCase() === DODO_ROUTE_PROXY_ADDRESS.toLowerCase();
-          const txType: "swap" | "transfer" | "other" = isDodoSwap
-            ? "swap"
-            : tx.value > 0n
-              ? "transfer"
-              : "other";
-
-          if (input.filter !== "all" && txType !== input.filter) continue;
-
-          // Get receipt for status
-          let status: "success" | "failed" = "success";
-          try {
-            const receipt = await publicClient.getTransactionReceipt({ hash: tx.hash });
-            status = receipt.status === "success" ? "success" : "failed";
-          } catch {
-            // skip
-          }
-
-          history.push({
-            txHash: tx.hash,
-            explorerUrl: getExplorerUrl(tx.hash),
-            type: txType,
-            timestamp: new Date(Number(block.timestamp) * 1000).toISOString(),
-            status,
-            value: formatEther(tx.value),
-            details: isDodoSwap
-              ? `Swap via FaroSwap (DODO)`
-              : isFrom
-                ? `Sent ${formatEther(tx.value)} PHRS to ${tx.to}`
-                : `Received ${formatEther(tx.value)} PHRS from ${tx.from}`,
-          });
-          found++;
+    // Resolve block timestamps in bulk for unique block numbers in logs
+    const uniqueBlocks = [...new Set(allLogs.map((l) => l.blockNumber))];
+    const blockTimestampMap = new Map<bigint, string>();
+    for (let i = 0; i < uniqueBlocks.length; i += NATIVE_BATCH_SIZE) {
+      const batch = uniqueBlocks.slice(i, i + NATIVE_BATCH_SIZE);
+      const blocks = await Promise.all(
+        batch.map((bn) =>
+          publicClient.getBlock({ blockNumber: bn }).catch(() => null)
+        )
+      );
+      for (const block of blocks) {
+        if (block) {
+          blockTimestampMap.set(block.number, new Date(Number(block.timestamp) * 1000).toISOString());
         }
-      } catch {
-        // skip blocks that fail to load
-        continue;
       }
     }
+
+    for (const log of allLogs) {
+      if (history.length >= input.limit) break;
+      if (!log.transactionHash || seen.has(log.transactionHash)) continue;
+
+      const isDodoSwap = log.address.toLowerCase() === DODO_ROUTE_PROXY_ADDRESS.toLowerCase()
+        || sentLogs.some((l) => l.transactionHash === log.transactionHash && l.address.toLowerCase() === DODO_ROUTE_PROXY_ADDRESS.toLowerCase())
+        || receivedLogs.some((l) => l.transactionHash === log.transactionHash && l.address.toLowerCase() === DODO_ROUTE_PROXY_ADDRESS.toLowerCase());
+
+      const txType: "swap" | "transfer" = isDodoSwap ? "swap" : "transfer";
+      if (input.filter !== "all" && txType !== input.filter) continue;
+
+      seen.add(log.transactionHash);
+      history.push({
+        txHash: log.transactionHash,
+        explorerUrl: getExplorerUrl(log.transactionHash),
+        type: txType,
+        timestamp: blockTimestampMap.get(log.blockNumber) ?? "unknown",
+        status: "unknown", // receipt not fetched per-log to avoid N+1
+        value: "0",
+        details: `ERC-20 Transfer on block ${log.blockNumber.toString()}`,
+        blockNumber: log.blockNumber.toString(),
+      });
+    }
+
+    // ── Native PHRS transfers — parallel block scan (last 100 blocks) ───
+    if (input.filter !== "swap" && history.length < input.limit) {
+      const blockNums: bigint[] = [];
+      for (let b = blockNumber; b > nativeFromBlock; b--) {
+        blockNums.push(b);
+      }
+
+      for (let i = 0; i < blockNums.length && history.length < input.limit; i += NATIVE_BATCH_SIZE) {
+        const batch = blockNums.slice(i, i + NATIVE_BATCH_SIZE);
+        const blocks = await Promise.all(
+          batch.map((bn) =>
+            publicClient.getBlock({ blockNumber: bn, includeTransactions: true }).catch(() => null)
+          )
+        );
+
+        for (const block of blocks) {
+          if (!block) continue;
+          const ts = new Date(Number(block.timestamp) * 1000).toISOString();
+
+          for (const tx of block.transactions) {
+            if (history.length >= input.limit) break;
+            if (typeof tx === "string") continue;
+            if (tx.value === 0n) continue; // no native transfer
+
+            const isFrom = tx.from.toLowerCase() === input.walletAddress.toLowerCase();
+            const isTo = tx.to?.toLowerCase() === input.walletAddress.toLowerCase();
+            if (!isFrom && !isTo) continue;
+            if (seen.has(tx.hash)) continue;
+
+            seen.add(tx.hash);
+            history.push({
+              txHash: tx.hash,
+              explorerUrl: getExplorerUrl(tx.hash),
+              type: "transfer",
+              timestamp: ts,
+              status: "unknown",
+              value: formatEther(tx.value),
+              details: isFrom
+                ? `Sent ${formatEther(tx.value)} PHRS to ${tx.to}`
+                : `Received ${formatEther(tx.value)} PHRS from ${tx.from}`,
+              blockNumber: block.number.toString(),
+            });
+          }
+        }
+      }
+    }
+
+    // Sort descending by block number
+    history.sort((a, b) => Number(BigInt(b.blockNumber) - BigInt(a.blockNumber)));
+
   } catch (err) {
-    return {
-      walletAddress: input.walletAddress,
-      totalFetched: 0,
-      history: [],
-      error: `Failed to fetch history: ${(err as Error).message}`,
-    };
+    return fail(
+      "HISTORY_FETCH_FAILED",
+      `Failed to fetch history: ${(err as Error).message}`,
+      true,
+      "get_execution_history"
+    );
   }
 
-  return {
+  return ok({
     walletAddress: input.walletAddress,
     totalFetched: history.length,
     history,
-  };
+    note: "ERC-20 history covers last 10,000 blocks via eth_getLogs. Native PHRS transfers cover last 100 blocks via parallel block scan.",
+  });
 }

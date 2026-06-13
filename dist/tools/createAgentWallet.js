@@ -1,11 +1,11 @@
 // ─── create_agent_wallet ────────────────────────────────────────────────
 // Creates a new managed testnet agent wallet.
-// Private key is obfuscated before storage, never returned in response.
+// Private key is AES-256-GCM encrypted before storage, never returned in response.
 // ────────────────────────────────────────────────────────────────────────
 import { z } from "zod";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { ok, fail } from "../lib/toolResponse.js";
-import { walletStore, obfuscateKey, usesPersistentWalletStore } from "../lib/wallet/index.js";
+import { walletStore, encryptKey, usesPersistentWalletStore, getEffectiveEncryptionKey } from "../lib/wallet/index.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET } from "../lib/constants.js";
 export const createAgentWalletSchema = z.object({
     agentId: z
@@ -32,9 +32,8 @@ export async function handleCreateAgentWallet(params) {
     // Generate new wallet
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
-    // Obfuscate key before storage
-    const encryptionKey = process.env.WALLET_ENCRYPTION_KEY || "safehands-testnet-default-key";
-    const encryptedKey = obfuscateKey(privateKey, encryptionKey);
+    // Encrypt key before storage (AES-256-GCM)
+    const encryptedKey = encryptKey(privateKey, getEffectiveEncryptionKey());
     // Store wallet
     await walletStore.set(agentId, {
         agentId,
@@ -53,7 +52,7 @@ export async function handleCreateAgentWallet(params) {
         isMainnet: IS_MAINNET,
         isTestnet: true,
         createdAt: new Date().toISOString(),
-        warning: "This is a TESTNET wallet only. Never use for mainnet funds. Private key is stored locally and obfuscated — not production-grade encryption.",
+        warning: "This is a TESTNET wallet only. Never use for mainnet funds. Private key is AES-256-GCM encrypted locally — testnet-grade, not KMS/Vault.",
         instructions: `Fund this wallet with testnet PHRS from https://testnet.pharosnetwork.xyz/ before executing write operations. Set WRITE_TOOLS_ENABLED=true to enable transactions.`,
     });
 }

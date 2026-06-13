@@ -3,6 +3,7 @@ import { z } from "zod";
 import { publicClient } from "../lib/pharosClient.js";
 import { getDodoRoute, isNativeToken, resolveTokenDecimals, fromWei } from "../lib/dodoApi.js";
 import { parseEther, formatEther } from "viem";
+import { ok, fail } from "../lib/toolResponse.js";
 
 export const simulateTransactionSchema = z.object({
   action: z.enum(["swap", "transfer"]),
@@ -28,7 +29,7 @@ export async function handleSimulateTransaction(input: SimulateTransactionInput)
   try {
     if (input.action === "swap") {
       if (!input.tokenIn || !input.tokenOut) {
-        return { wouldSucceed: false, gasEstimate: "0", revertReason: "tokenIn and tokenOut required for swap simulation", balanceChanges, warnings };
+        return fail("INVALID_INPUT", "tokenIn and tokenOut required for swap simulation", false, "simulate_transaction");
       }
 
       const quote = await getDodoRoute({
@@ -39,7 +40,7 @@ export async function handleSimulateTransaction(input: SimulateTransactionInput)
       });
 
       if (!quote.routeAvailable) {
-        return { wouldSucceed: false, gasEstimate: "0", revertReason: "No swap route available", balanceChanges, warnings };
+        return fail("NO_ROUTE_AVAILABLE", "No swap route available", true, "simulate_transaction");
       }
 
       // Simulate via eth_call
@@ -53,7 +54,7 @@ export async function handleSimulateTransaction(input: SimulateTransactionInput)
       } catch (err) {
         const msg = (err as Error).message;
         if (msg.includes("revert")) {
-          return { wouldSucceed: false, expectedOutput: quote.amountOut, gasEstimate: quote.gasLimit, revertReason: msg, balanceChanges, warnings };
+          return fail("SIMULATION_REVERTED", msg, false, "simulate_transaction");
         }
         warnings.push(`Simulation warning: ${msg}`);
       }
@@ -61,25 +62,24 @@ export async function handleSimulateTransaction(input: SimulateTransactionInput)
       balanceChanges.push({ token: input.tokenIn, delta: `-${input.amount}` });
       balanceChanges.push({ token: input.tokenOut, delta: `+${quote.amountOut}` });
 
-      return { wouldSucceed: true, expectedOutput: quote.amountOut, gasEstimate: quote.gasLimit, balanceChanges, warnings };
+      return ok({ wouldSucceed: true, expectedOutput: quote.amountOut, gasEstimate: quote.gasLimit, balanceChanges, warnings });
     }
 
     // Transfer simulation
     if (!input.toAddress) {
-      return { wouldSucceed: false, gasEstimate: "0", revertReason: "toAddress required for transfer simulation", balanceChanges, warnings };
+      return fail("INVALID_INPUT", "toAddress required for transfer simulation", false, "simulate_transaction");
     }
 
     const amountWei = parseEther(input.amount);
     const balance = await publicClient.getBalance({ address: input.walletAddress as `0x${string}` });
 
     if (balance < amountWei) {
-      return {
-        wouldSucceed: false,
-        gasEstimate: "21000",
-        revertReason: `Insufficient balance: have ${formatEther(balance)}, need ${input.amount}`,
-        balanceChanges,
-        warnings,
-      };
+      return fail(
+        "INSUFFICIENT_TESTNET_BALANCE",
+        `Insufficient balance: have ${formatEther(balance)}, need ${input.amount}`,
+        false,
+        "simulate_transaction"
+      );
     }
 
     const gasEstimate = await publicClient.estimateGas({
@@ -90,14 +90,14 @@ export async function handleSimulateTransaction(input: SimulateTransactionInput)
 
     balanceChanges.push({ token: "PHRS", delta: `-${input.amount}` });
 
-    return {
+    return ok({
       wouldSucceed: true,
       expectedOutput: input.amount,
       gasEstimate: gasEstimate.toString(),
       balanceChanges,
       warnings,
-    };
+    });
   } catch (err) {
-    return { wouldSucceed: false, gasEstimate: "0", revertReason: (err as Error).message, balanceChanges, warnings };
+    return fail("SIMULATION_FAILED", (err as Error).message, true, "simulate_transaction");
   }
 }

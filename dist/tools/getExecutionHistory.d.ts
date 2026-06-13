@@ -30,23 +30,21 @@ export declare const getExecutionHistoryTool: {
         limit?: number | undefined;
     }>;
 };
-export declare function handleGetExecutionHistory(input: GetExecutionHistoryInput): Promise<{
+interface HistoryEntry {
+    txHash: string;
+    explorerUrl: string;
+    type: "swap" | "transfer" | "other";
+    timestamp: string;
+    status: "success" | "failed" | "unknown";
+    value: string;
+    details: string;
+    blockNumber: string;
+}
+export declare function handleGetExecutionHistory(input: GetExecutionHistoryInput): Promise<import("../lib/toolResponse.js").ToolFailure | import("../lib/toolResponse.js").ToolSuccess<{
     walletAddress: string;
     totalFetched: number;
-    history: never[];
-    error: string;
-} | {
-    walletAddress: string;
-    totalFetched: number;
-    history: {
-        txHash: string;
-        explorerUrl: string;
-        type: "swap" | "transfer" | "other";
-        timestamp: string;
-        status: "success" | "failed";
-        value: string;
-        details: string;
-    }[];
-    error?: undefined;
-}>;
+    history: HistoryEntry[];
+    note: string;
+}>>;
+export {};
 //# sourceMappingURL=getExecutionHistory.d.ts.map

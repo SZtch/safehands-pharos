@@ -1,9 +1,19 @@
 // ─── Pharos Chain Client ───────────────────────────────────────────────
 // viem publicClient & walletClient factory for Pharos Atlantic Testnet.
 // ────────────────────────────────────────────────────────────────────────
-import { createPublicClient, createWalletClient, http, defineChain, } from "viem";
+import { createPublicClient, createWalletClient, http, fallback, defineChain, } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { RPC_URL, CHAIN_ID, EXPLORER_BASE, PHAROS_ENVIRONMENT, IS_MAINNET } from "./constants.js";
+// Support multiple comma-separated RPC URLs for failover.
+// PHAROS_RPC_URLS takes priority; falls back to single PHAROS_RPC_URL.
+const RPC_URLS = (process.env.PHAROS_RPC_URLS || RPC_URL)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+function buildTransport() {
+    const transports = RPC_URLS.map((url) => http(url, { timeout: 10_000, retryCount: 1, retryDelay: 250 }));
+    return transports.length > 1 ? fallback(transports) : transports[0];
+}
 // ─── Chain Definition ──────────────────────────────────────────────────
 export const pharosAtlantic = defineChain({
     id: CHAIN_ID,
@@ -29,7 +39,7 @@ export const pharosAtlantic = defineChain({
 // ─── Public Client (read-only) ─────────────────────────────────────────
 export const publicClient = createPublicClient({
     chain: pharosAtlantic,
-    transport: http(RPC_URL, { timeout: 10_000, retryCount: 2, retryDelay: 250 }),
+    transport: buildTransport(),
 });
 // ─── Wallet Client Factory ─────────────────────────────────────────────
 /**
@@ -44,7 +54,7 @@ export function createPharosWalletClientFromAccount(account) {
     return createWalletClient({
         account,
         chain: pharosAtlantic,
-        transport: http(RPC_URL, { timeout: 10_000, retryCount: 2, retryDelay: 250 }),
+        transport: buildTransport(),
     });
 }
 // ─── Utility: Explorer Link ────────────────────────────────────────────

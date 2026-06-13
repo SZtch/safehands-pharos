@@ -7,6 +7,7 @@ import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { DODO_APPROVE_ADDRESS, ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PHRS, CHAIN_ID, PHAROS_ENVIRONMENT } from "../lib/constants.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
 export const executeSwapSchema = z.object({
     tokenIn: z.string(),
     tokenOut: z.string(),
@@ -46,6 +47,11 @@ export async function handleExecuteSwap(raw) {
     }
     if (Number(input.amountIn) > Number(MAX_TX_AMOUNT_PHRS) && input.tokenIn.toUpperCase() === "PHRS") {
         return fail("TX_LIMIT_EXCEEDED", `Swap amount exceeds configured testnet limit (${MAX_TX_AMOUNT_PHRS}).`, false, "execute_swap");
+    }
+    const amountUsd = estimateUsd(input.amountIn, input.tokenIn);
+    const dailyCheck = checkDailyLimit(walletAddress, amountUsd);
+    if (!dailyCheck.allowed) {
+        return fail("DAILY_SPEND_LIMIT_EXCEEDED", `Daily spend limit reached. Spent $${dailyCheck.currentUsd.toFixed(2)} of $${dailyCheck.limitUsd.toFixed(2)} USD today. Remaining: $${dailyCheck.remainingUsd.toFixed(2)}. Resets at UTC midnight.`, false, "execute_swap");
     }
     const risk = await assessRisk({
         action: "swap",
@@ -110,11 +116,17 @@ export async function handleExecuteSwap(raw) {
             gas: BigInt(quote.gasLimit),
         });
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+            return fail("TX_REVERTED", "execute_swap transaction was mined but reverted on-chain.", false, "execute_swap");
+        }
+        recordSpend(walletAddress, amountUsd);
         return ok({
-            txSuccess: receipt.status === "success",
             txHash,
             explorerUrl: getExplorerUrl(txHash),
             amountOut: quote.amountOut,
+            usedFromToken: quote.usedFromToken,
+            usedToToken: quote.usedToToken,
+            wasSubstituted: quote.wasSubstituted,
             signerMode: signer.mode,
             walletAddress,
             gasUsed: receipt.gasUsed.toString(),

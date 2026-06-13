@@ -3,6 +3,7 @@
 // ───────────────────────────────────────────────────────────────────────
 import { z } from "zod";
 import { fail, ok, requireWriteToolsEnabled } from "../lib/toolResponse.js";
+import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { handleSafeHandsPreflightCheck } from "./safehandsPreflightCheck.js";
 import { handleSendPayment } from "./sendPayment.js";
 import { handleApproveToken } from "./approveToken.js";
@@ -14,24 +15,29 @@ export const safehandsSafeExecuteSchema = z.object({
     confirmExecution: z.boolean().optional().default(false).describe("Additional explicit runtime confirmation."),
     action: z.record(z.any()).describe("Underlying tool input object"),
 });
-function toPreflight(path, action) {
+function toPreflight(path, action, signerAvailable) {
     if (path === "safe_execute_send_payment") {
-        return { actionType: "send_payment", amount: String(action.amount || ""), amountUnit: "PHRS", recipient: String(action.toAddress || ""), recipientVerified: false, requiresSigner: true, signerAvailable: true };
+        return { actionType: "send_payment", amount: String(action.amount || ""), amountUnit: "PHRS", recipient: String(action.toAddress || ""), recipientVerified: false, requiresSigner: true, signerAvailable };
     }
     if (path === "safe_execute_approve_token") {
-        return { actionType: "approve_token", approvalAmount: String(action.amount || ""), approvalToken: String(action.token || ""), approvalUnlimited: action.amount === "max", requiresSigner: true, signerAvailable: true };
+        return { actionType: "approve_token", approvalAmount: String(action.amount || ""), approvalToken: String(action.token || ""), approvalUnlimited: action.amount === "max", requiresSigner: true, signerAvailable };
     }
     if (path === "safe_execute_swap") {
-        return { actionType: "execute_swap", amount: String(action.amountIn || ""), tokenIn: String(action.tokenIn || ""), tokenOut: String(action.tokenOut || ""), requiresSigner: true, signerAvailable: true };
+        return { actionType: "execute_swap", amount: String(action.amountIn || ""), tokenIn: String(action.tokenIn || ""), tokenOut: String(action.tokenOut || ""), requiresSigner: true, signerAvailable };
     }
-    return { actionType: "x402_pay_and_fetch", url: String(action.url || ""), paymentAmountUsdc: String(action.maxPaymentUsdc || "0.001"), requiresSigner: true, signerAvailable: true };
+    return { actionType: "x402_pay_and_fetch", url: String(action.url || ""), paymentAmountUsdc: String(action.maxPaymentUsdc || "0.001"), requiresSigner: true, signerAvailable };
 }
 export async function handleSafeHandsSafeExecute(raw) {
     const input = safehandsSafeExecuteSchema.parse(raw);
     const writeGuard = requireWriteToolsEnabled("safehands_safe_execute");
     if (writeGuard)
         return writeGuard;
-    const preflight = await handleSafeHandsPreflightCheck(toPreflight(input.path, input.action));
+    // Resolve actual signer availability so the preflight report is truthful
+    const purpose = input.path === "safe_x402_pay_and_fetch" ? "x402" : "write";
+    const agentId = typeof input.action.agentId === "string" ? input.action.agentId : undefined;
+    const signerResult = await getSigner(agentId, { purpose });
+    const signerAvailable = !isSignerFailure(signerResult);
+    const preflight = await handleSafeHandsPreflightCheck(toPreflight(input.path, input.action, signerAvailable));
     if (!preflight.success)
         return preflight;
     const report = preflight.data;

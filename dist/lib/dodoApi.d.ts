@@ -24,6 +24,14 @@ export interface DodoQuote {
     routeAvailable: boolean;
     sourceStatus: "ok" | "no_route_available" | "auth_required" | "unavailable";
     usedApiKey: boolean;
+    /** Actual on-chain address used for fromToken (may differ from input if USDC fallback triggered) */
+    usedFromToken: string;
+    /** Actual on-chain address used for toToken (may differ from input if USDC fallback triggered) */
+    usedToToken: string;
+    /** True when a silent token substitution occurred (e.g. canonical USDC → altUSDC) */
+    wasSubstituted: boolean;
+    /** Human-readable explanation when wasSubstituted is true */
+    substitutionNote?: string;
     rawResponse: DodoRouteResponse;
 }
 /**

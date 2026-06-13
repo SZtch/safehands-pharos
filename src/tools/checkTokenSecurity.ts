@@ -31,6 +31,19 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
     return fail("INVALID_TOKEN_ADDRESS", `Invalid token address: ${input.tokenAddress}`, false, "check_token_security");
   }
 
+  // GoPlus does not index Pharos Atlantic Testnet (chain 688689). Return a clear diagnostic
+  // rather than a confusing empty result from the API.
+  if (chainId === CHAIN_ID) {
+    return fail(
+      "CHAIN_NOT_SUPPORTED_BY_GOPLUS",
+      `GoPlus Security API does not support Pharos Atlantic Testnet (chain ${CHAIN_ID}). ` +
+        "Token security data is unavailable for this chain. Use token_registry_status to check " +
+        "whether a token address is canonical, custom, or unknown on Pharos.",
+      false,
+      "check_token_security"
+    );
+  }
+
   const url = `https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${address}`;
 
   try {

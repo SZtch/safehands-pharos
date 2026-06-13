@@ -5,7 +5,7 @@
 
 import { privateKeyToAccount } from "viem/accounts";
 import type { Account } from "viem";
-import { walletStore, deobfuscateKey } from "../wallet/index.js";
+import { walletStore, decryptKey, getEffectiveEncryptionKey } from "../wallet/index.js";
 
 export type SignerMode = "none" | "env" | "managed-testnet" | "external-signer" | "x402-env";
 export type SignerPurpose = "write" | "x402";
@@ -66,16 +66,15 @@ async function accountFromManagedWallet(agentId?: string): Promise<GetSignerResu
   const stored = await walletStore.get(agentId);
   if (!stored) return null;
 
-  const encryptionKey = process.env.WALLET_ENCRYPTION_KEY || "safehands-testnet-default-key";
   try {
-    const privateKey = deobfuscateKey(stored.encryptedKey, encryptionKey);
+    const privateKey = decryptKey(stored.encryptedKey, getEffectiveEncryptionKey());
     const account = privateKeyToAccount(normalizePrivateKey(privateKey));
     return { account, address: account.address, mode: "managed-testnet" };
   } catch {
     return {
       error: {
         code: "NO_SIGNER_AVAILABLE",
-        message: "Managed wallet key could not be decrypted/deobfuscated for signing.",
+        message: "Managed wallet key could not be decrypted for signing. Check WALLET_ENCRYPTION_KEY matches the key used when the wallet was created.",
       },
     };
   }

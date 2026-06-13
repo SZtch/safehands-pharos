@@ -18,14 +18,13 @@ export declare const queryRiskRegistryTool: {
         walletAddress: string;
     }>;
 };
-export declare function handleQueryRiskRegistry(raw: QueryRiskRegistryInput): Promise<{
+export declare function handleQueryRiskRegistry(raw: QueryRiskRegistryInput): Promise<import("../lib/toolResponse.js").ToolFailure | import("../lib/toolResponse.js").ToolSuccess<{
     walletAddress: string;
     found: boolean;
     record: null;
     registryContract: `0x${string}`;
     message: string;
-    error?: undefined;
-} | {
+}> | import("../lib/toolResponse.js").ToolSuccess<{
     walletAddress: string;
     found: boolean;
     record: {
@@ -36,14 +35,5 @@ export declare function handleQueryRiskRegistry(raw: QueryRiskRegistryInput): Pr
         assessedBy: `0x${string}`;
     };
     registryContract: `0x${string}`;
-    message?: undefined;
-    error?: undefined;
-} | {
-    walletAddress: string;
-    found: boolean;
-    record: null;
-    registryContract: `0x${string}`;
-    error: string;
-    message?: undefined;
-}>;
+}>>;
 //# sourceMappingURL=queryRiskRegistry.d.ts.map
