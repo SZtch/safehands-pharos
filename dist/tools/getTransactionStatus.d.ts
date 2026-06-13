@@ -18,9 +18,9 @@ export declare const getTransactionStatusTool: {
         txHash: string;
     }>;
 };
-export declare function handleGetTransactionStatus(raw: GetTransactionStatusInput): Promise<{
+export declare function handleGetTransactionStatus(raw: GetTransactionStatusInput): Promise<import("../lib/toolResponse.js").ToolFailure | import("../lib/toolResponse.js").ToolSuccess<{
+    txStatus: string;
     txHash: string;
-    status: string;
     blockNumber: string;
     blockHash: `0x${string}`;
     from: `0x${string}`;
@@ -29,10 +29,9 @@ export declare function handleGetTransactionStatus(raw: GetTransactionStatusInpu
     effectiveGasPrice: string;
     value: string;
     explorerUrl: string;
-    error?: undefined;
-} | {
+}> | import("../lib/toolResponse.js").ToolSuccess<{
     txHash: string;
-    status: "pending";
+    txStatus: "pending";
     blockNumber: null;
     blockHash: null;
     from: `0x${string}`;
@@ -41,18 +40,5 @@ export declare function handleGetTransactionStatus(raw: GetTransactionStatusInpu
     effectiveGasPrice: null;
     value: string;
     explorerUrl: string;
-    error?: undefined;
-} | {
-    txHash: string;
-    status: "not_found";
-    blockNumber: null;
-    blockHash: null;
-    from: null;
-    to: null;
-    gasUsed: null;
-    effectiveGasPrice: null;
-    value: null;
-    explorerUrl: string;
-    error: string;
-}>;
+}>>;
 //# sourceMappingURL=getTransactionStatus.d.ts.map

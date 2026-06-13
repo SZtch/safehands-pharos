@@ -7,6 +7,7 @@ import { fail, ok, requireWriteToolsEnabled, classifyExternalError } from "../li
 import { MAX_BALANCE_USAGE_PCT, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PHRS, CHAIN_ID, PHAROS_ENVIRONMENT } from "../lib/constants.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
 
 export const sendPaymentSchema = z.object({
   toAddress: z.string(),
@@ -60,6 +61,17 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     return fail("TX_LIMIT_EXCEEDED", `Payment amount exceeds configured testnet limit (${MAX_TX_AMOUNT_PHRS} PHRS).`, false, "send_payment");
   }
 
+  const amountUsd = estimateUsd(input.amount, "PHRS");
+  const dailyCheck = checkDailyLimit(walletAddress, amountUsd);
+  if (!dailyCheck.allowed) {
+    return fail(
+      "DAILY_SPEND_LIMIT_EXCEEDED",
+      `Daily spend limit reached. Spent $${dailyCheck.currentUsd.toFixed(2)} of $${dailyCheck.limitUsd.toFixed(2)} USD today. Remaining: $${dailyCheck.remainingUsd.toFixed(2)}. Resets at UTC midnight.`,
+      false,
+      "send_payment"
+    );
+  }
+
   const warnings: string[] = [];
   const validation = { addressValid: false, balanceSufficient: false, warnings };
 
@@ -108,8 +120,13 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     });
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+    if (receipt.status !== "success") {
+      return fail("TX_REVERTED", "send_payment transaction was mined but reverted on-chain.", false, "send_payment");
+    }
+
+    recordSpend(walletAddress, amountUsd);
+
     return ok({
-      txSuccess: receipt.status === "success",
       txHash,
       explorerUrl: getExplorerUrl(txHash),
       amountSent: input.amount,

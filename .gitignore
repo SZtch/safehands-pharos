@@ -22,9 +22,10 @@ wallet-store.json
 logs/
 .safehands/
 
-# IDE
+# IDE / tooling
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 
@@ -33,13 +34,12 @@ logs/
 Thumbs.db
 
 # Build artifacts
+dist/
 *.tsbuildinfo
 *.tgz
-.agents/wallets.json
+.agents/*.json
 
-# Keep compiled distribution and hackathon reports
-!dist/
-!dist/**
+# docs/ is tracked; specific sub-paths excluded from internal-only patterns above
 !docs/
 !docs/reports/
 !docs/reports/**

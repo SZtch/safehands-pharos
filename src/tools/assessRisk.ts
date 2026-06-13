@@ -98,14 +98,24 @@ export async function handleAssessRisk(raw: AssessRiskInput): Promise<AssessRisk
         ],
       });
 
-      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      result.registryPublish = {
-        published: true,
-        txHash,
-        explorerUrl: getExplorerUrl(txHash),
-        signerMode: signer.mode,
-      };
+      if (receipt.status !== "success") {
+        result.registryPublish = {
+          published: false,
+          txHash,
+          explorerUrl: getExplorerUrl(txHash),
+          error: "TX_REVERTED: transaction was mined but reverted. Ensure the calling wallet is authorized via RiskRegistry.setAuthorizedAgent() by the contract owner.",
+          signerMode: signer.mode,
+        };
+      } else {
+        result.registryPublish = {
+          published: true,
+          txHash,
+          explorerUrl: getExplorerUrl(txHash),
+          signerMode: signer.mode,
+        };
+      }
     } catch (err) {
       result.registryPublish = {
         published: false,

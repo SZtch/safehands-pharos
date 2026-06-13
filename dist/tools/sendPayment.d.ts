@@ -37,7 +37,6 @@ export declare const sendPaymentTool: {
     }>;
 };
 export declare function handleSendPayment(raw: SendPaymentInput): Promise<import("../lib/toolResponse.js").ToolFailure | import("../lib/toolResponse.js").ToolSuccess<{
-    txSuccess: boolean;
     txHash: `0x${string}`;
     explorerUrl: string;
     amountSent: string;

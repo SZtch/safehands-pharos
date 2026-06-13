@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { publicClient } from "../lib/pharosClient.js";
 import { RISK_REGISTRY_ADDRESS, RISK_REGISTRY_ABI } from "../lib/constants.js";
+import { ok, fail } from "../lib/toolResponse.js";
 export const queryRiskRegistrySchema = z.object({
     walletAddress: z.string().describe("Wallet address to query risk score for"),
 });
@@ -27,15 +28,15 @@ export async function handleQueryRiskRegistry(raw) {
         const timestamp = Number(result.timestamp);
         // Check if record exists (timestamp will be 0 if never published)
         if (timestamp === 0) {
-            return {
+            return ok({
                 walletAddress: input.walletAddress,
                 found: false,
                 record: null,
                 registryContract: RISK_REGISTRY_ADDRESS,
                 message: "No risk score published for this wallet",
-            };
+            });
         }
-        return {
+        return ok({
             walletAddress: input.walletAddress,
             found: true,
             record: {
@@ -46,16 +47,10 @@ export async function handleQueryRiskRegistry(raw) {
                 assessedBy: result.assessedBy,
             },
             registryContract: RISK_REGISTRY_ADDRESS,
-        };
+        });
     }
     catch (err) {
-        return {
-            walletAddress: input.walletAddress,
-            found: false,
-            record: null,
-            registryContract: RISK_REGISTRY_ADDRESS,
-            error: `Failed to query registry: ${err.message}`,
-        };
+        return fail("REGISTRY_QUERY_FAILED", `Failed to query registry: ${err.message}`, true, "query_risk_registry");
     }
 }
 //# sourceMappingURL=queryRiskRegistry.js.map

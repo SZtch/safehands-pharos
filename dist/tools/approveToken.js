@@ -62,8 +62,10 @@ export async function handleApproveToken(raw) {
             args: [DODO_APPROVE_ADDRESS, approveAmount],
         });
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success") {
+            return fail("TX_REVERTED", "approve_token transaction was mined but reverted on-chain.", false, "approve_token");
+        }
         return ok({
-            txSuccess: receipt.status === "success",
             txHash,
             explorerUrl: getExplorerUrl(txHash),
             token: input.token,

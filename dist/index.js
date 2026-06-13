@@ -32,9 +32,41 @@ import { tokenRegistryStatusSchema, handleTokenRegistryStatus } from "./tools/to
 import { getAgentWalletSchema, handleGetAgentWallet } from "./tools/getAgentWallet.js";
 import { getAgentWalletBalanceSchema, handleGetAgentWalletBalance } from "./tools/getAgentWalletBalance.js";
 import { fail, ok } from "./lib/toolResponse.js";
+import { auditLog } from "./lib/auditLog.js";
 import { runSkillCli } from "./cli.js";
 import { runDemo } from "./demo.js";
 import { runInit } from "./init.js";
+// ─── Per-tool rate limiting ────────────────────────────────────────────
+// Heavy tools (block-scan history) get a tighter limit.
+// Write tools get a moderate limit to prevent agent loops.
+// All other tools share a generous global limit.
+const HEAVY_TOOLS = new Set(["get_execution_history"]);
+const WRITE_TOOLS = new Set([
+    "execute_swap", "send_payment", "approve_token",
+    "publish_risk_score", "x402_pay_and_fetch", "safehands_safe_execute",
+]);
+const RATE_LIMITS = {
+    heavy: parseInt(process.env.MCP_RATE_LIMIT_HEAVY || "5", 10),
+    write: parseInt(process.env.MCP_RATE_LIMIT_WRITE || "15", 10),
+    default: parseInt(process.env.MCP_RATE_LIMIT_DEFAULT || "120", 10),
+};
+const rateBuckets = new Map();
+function checkMcpRateLimit(tool) {
+    const limit = HEAVY_TOOLS.has(tool) ? RATE_LIMITS.heavy
+        : WRITE_TOOLS.has(tool) ? RATE_LIMITS.write
+            : RATE_LIMITS.default;
+    const now = Date.now();
+    let bucket = rateBuckets.get(tool);
+    if (!bucket || bucket.resetAt <= now) {
+        bucket = { count: 0, resetAt: now + 60_000 };
+    }
+    bucket.count++;
+    rateBuckets.set(tool, bucket);
+    if (bucket.count > limit) {
+        return `Rate limit exceeded for ${tool} (${limit}/min). Slow down and retry after ${Math.ceil((bucket.resetAt - now) / 1000)}s.`;
+    }
+    return null;
+}
 function isStructuredResponse(value) {
     return (!!value &&
         typeof value === "object" &&
@@ -43,16 +75,37 @@ function isStructuredResponse(value) {
         "error" in value);
 }
 async function invokeTool(handler, params, source) {
+    const rateLimitMsg = checkMcpRateLimit(source);
+    if (rateLimitMsg) {
+        auditLog({ ts: new Date().toISOString(), tool: source, success: false, errorCode: "RATE_LIMITED" });
+        return fail("RATE_LIMITED", rateLimitMsg, true, source);
+    }
+    const start = Date.now();
     try {
         const result = await handler(params);
-        if (isStructuredResponse(result))
+        if (isStructuredResponse(result)) {
+            const r = result;
+            auditLog({ ts: new Date().toISOString(), tool: source, success: r.success, errorCode: r.success ? undefined : r.error?.code, durationMs: Date.now() - start });
             return result;
-        if (result && typeof result === "object" && "error" in result && !("success" in result)) {
-            return fail("TOOL_RETURNED_ERROR", String(result.error), false, source);
         }
+        if (result && typeof result === "object") {
+            if ("error" in result && !("success" in result)) {
+                const msg = String(result.error);
+                auditLog({ ts: new Date().toISOString(), tool: source, success: false, errorCode: "TOOL_RETURNED_ERROR", durationMs: Date.now() - start });
+                return fail("TOOL_RETURNED_ERROR", msg, false, source);
+            }
+            // Defense-in-depth: non-ToolResponse shapes with success:false must not surface as ok()
+            if ("success" in result && result.success === false) {
+                const msg = "error" in result ? String(result.error) : "Tool returned failure without ToolResponse shape";
+                auditLog({ ts: new Date().toISOString(), tool: source, success: false, errorCode: "TOOL_RETURNED_ERROR", durationMs: Date.now() - start });
+                return fail("TOOL_RETURNED_ERROR", msg, false, source);
+            }
+        }
+        auditLog({ ts: new Date().toISOString(), tool: source, success: true, durationMs: Date.now() - start });
         return ok(result);
     }
     catch (err) {
+        auditLog({ ts: new Date().toISOString(), tool: source, success: false, errorCode: "TOOL_EXECUTION_FAILED", durationMs: Date.now() - start });
         return fail("TOOL_EXECUTION_FAILED", err instanceof Error ? err.message : String(err), false, source);
     }
 }

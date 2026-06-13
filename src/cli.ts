@@ -16,6 +16,13 @@ import { handleCreateAgentWallet } from "./tools/createAgentWallet.js";
 import { handleGetAgentWallet } from "./tools/getAgentWallet.js";
 import { handleGetAgentWalletBalance } from "./tools/getAgentWalletBalance.js";
 import { handleCheckTokenSecurity } from "./tools/checkTokenSecurity.js";
+import { handleAssessRisk } from "./tools/assessRisk.js";
+import { handleGetWalletBalance } from "./tools/getWalletBalance.js";
+import { handleSimulateTransaction } from "./tools/simulateTransaction.js";
+import { handleEstimateGas } from "./tools/estimateGas.js";
+import { handleGetTokenPrice } from "./tools/getTokenPrice.js";
+import { handleGetTransactionStatus } from "./tools/getTransactionStatus.js";
+import { handleQueryRiskRegistry } from "./tools/queryRiskRegistry.js";
 
 export type SkillCliToolName =
   | "safehands_preflight_check"
@@ -28,7 +35,14 @@ export type SkillCliToolName =
   | "create_agent_wallet"
   | "get_agent_wallet"
   | "get_agent_wallet_balance"
-  | "check_token_security";
+  | "check_token_security"
+  | "assess_risk"
+  | "get_wallet_balance"
+  | "simulate_transaction"
+  | "estimate_gas"
+  | "get_token_price"
+  | "get_transaction_status"
+  | "query_risk_registry";
 
 type SkillCliHandler = (input: any) => Promise<unknown>;
 
@@ -44,6 +58,13 @@ const SKILL_CLI_TOOLS: Record<SkillCliToolName, SkillCliHandler> = {
   get_agent_wallet: handleGetAgentWallet,
   get_agent_wallet_balance: handleGetAgentWalletBalance,
   check_token_security: handleCheckTokenSecurity,
+  assess_risk: handleAssessRisk,
+  get_wallet_balance: handleGetWalletBalance,
+  simulate_transaction: handleSimulateTransaction,
+  estimate_gas: handleEstimateGas,
+  get_token_price: handleGetTokenPrice,
+  get_transaction_status: handleGetTransactionStatus,
+  query_risk_registry: handleQueryRiskRegistry,
 };
 
 function isStructuredResponse(value: unknown): value is ToolResponse<unknown> {
@@ -57,20 +78,30 @@ function printJson(response: ToolResponse<unknown>) {
 function usage(): string {
   const tools = Object.keys(SKILL_CLI_TOOLS).sort().join(", ");
   return [
-    "Usage: npx safehands-pharos skill <tool_name> --input-json '<json>'",
+    "Usage: npx safehands-pharos skill <tool_name> [<json> | --input-json '<json>' | -i '<json>']",
     "",
     `Supported Skill Engine tools: ${tools}`,
     "",
-    "Example:",
-    "  npx safehands-pharos skill safehands_preflight_check --input-json '{\"actionType\":\"approve_token\",\"chainId\":688689,\"amount\":\"1\"}'",
+    "Examples:",
+    "  npx safehands-pharos skill assess_risk '{\"action\":\"swap\",\"amount\":\"0.01\"}'",
+    "  npx safehands-pharos skill get_wallet_balance '{\"walletAddress\":\"0xABC...\"}'",
+    "  npx safehands-pharos skill safehands_preflight_check -i '{\"actionType\":\"approve_token\",\"chainId\":688689,\"amount\":\"1\"}'",
   ].join("\n");
 }
 
 function readInputJsonArg(argv: string[]): string | null {
-  const positional = argv.indexOf("--input-json");
-  if (positional >= 0) return argv[positional + 1] ?? null;
-  const prefixed = argv.find((arg) => arg.startsWith("--input-json="));
-  return prefixed ? prefixed.slice("--input-json=".length) : null;
+  // --input-json <json>
+  const flag = argv.indexOf("--input-json");
+  if (flag >= 0) return argv[flag + 1] ?? null;
+  // --input-json=<json>
+  const inline = argv.find((a) => a.startsWith("--input-json="));
+  if (inline) return inline.slice("--input-json=".length);
+  // -i <json>
+  const short = argv.indexOf("-i");
+  if (short >= 0) return argv[short + 1] ?? null;
+  // positional: first arg that looks like JSON or is not a flag
+  const positional = argv.find((a) => !a.startsWith("-"));
+  return positional ?? null;
 }
 
 export function getSkillCliToolNames(): string[] {

@@ -84,6 +84,15 @@ export async function handlePublishRiskScore(raw: PublishRiskScoreInput) {
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+    if (receipt.status !== "success") {
+      return fail(
+        "TX_REVERTED",
+        "publish_risk_score transaction was mined but reverted on-chain. Ensure the calling wallet is authorized via RiskRegistry.setAuthorizedAgent() by the contract owner.",
+        false,
+        "publish_risk_score"
+      );
+    }
+
     return ok({
       assessment,
       policy,

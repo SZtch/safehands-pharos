@@ -31,7 +31,6 @@ export declare const approveTokenTool: {
     }>;
 };
 export declare function handleApproveToken(raw: ApproveTokenInput): Promise<import("../lib/toolResponse.js").ToolFailure | import("../lib/toolResponse.js").ToolSuccess<{
-    txSuccess: boolean;
     txHash: `0x${string}`;
     explorerUrl: string;
     token: "USDC" | "USDT";

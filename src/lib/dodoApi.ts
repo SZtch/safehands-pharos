@@ -47,6 +47,14 @@ export interface DodoQuote {
   routeAvailable: boolean;
   sourceStatus: "ok" | "no_route_available" | "auth_required" | "unavailable";
   usedApiKey: boolean;
+  /** Actual on-chain address used for fromToken (may differ from input if USDC fallback triggered) */
+  usedFromToken: string;
+  /** Actual on-chain address used for toToken (may differ from input if USDC fallback triggered) */
+  usedToToken: string;
+  /** True when a silent token substitution occurred (e.g. canonical USDC → altUSDC) */
+  wasSubstituted: boolean;
+  /** Human-readable explanation when wasSubstituted is true */
+  substitutionNote?: string;
   rawResponse: DodoRouteResponse;
 }
 
@@ -122,6 +130,8 @@ export async function _getDodoRouteCore(params: {
 
   const fromAddress = resolveTokenAddress(params.fromToken);
   const toAddress = resolveTokenAddress(params.toToken);
+  const usedFromToken = fromAddress;
+  const usedToToken = toAddress;
   const fromDecimals = resolveTokenDecimals(params.fromToken);
   const toDecimals = resolveTokenDecimals(params.toToken);
   const amountInWei = toWei(params.amountHuman, fromDecimals);
@@ -185,6 +195,9 @@ export async function _getDodoRouteCore(params: {
       routeAvailable: false,
       sourceStatus: "no_route_available",
       usedApiKey,
+      usedFromToken,
+      usedToToken,
+      wasSubstituted: false,
       rawResponse: json,
     };
   }
@@ -203,6 +216,9 @@ export async function _getDodoRouteCore(params: {
     routeAvailable: true,
     sourceStatus: "ok",
     usedApiKey,
+    usedFromToken,
+    usedToToken,
+    wasSubstituted: false,
     rawResponse: json,
   };
 }
@@ -227,13 +243,25 @@ export async function getDodoRoute(params: {
     // Smart Fallback: If swapping TO canonical USDC failed, try Alternate Circle USDC
     if (toUpper === "USDC" || toUpper === USDC_ADDRESS.toUpperCase()) {
       const fallbackQuote = await _getDodoRouteCore({ ...params, toToken: CIRCLE_USDC_ADDRESS });
-      if (fallbackQuote.routeAvailable) return fallbackQuote;
+      if (fallbackQuote.routeAvailable) {
+        return {
+          ...fallbackQuote,
+          wasSubstituted: true,
+          substitutionNote: `toToken substituted: canonical USDC (${USDC_ADDRESS}) had no route; used altUSDC (${CIRCLE_USDC_ADDRESS}). Ensure your approval targets the correct address.`,
+        };
+      }
     }
-    
+
     // Smart Fallback: If swapping FROM canonical USDC failed, try Alternate Circle USDC
     if (fromUpper === "USDC" || fromUpper === USDC_ADDRESS.toUpperCase()) {
       const fallbackQuote = await _getDodoRouteCore({ ...params, fromToken: CIRCLE_USDC_ADDRESS });
-      if (fallbackQuote.routeAvailable) return fallbackQuote;
+      if (fallbackQuote.routeAvailable) {
+        return {
+          ...fallbackQuote,
+          wasSubstituted: true,
+          substitutionNote: `fromToken substituted: canonical USDC (${USDC_ADDRESS}) had no route; used altUSDC (${CIRCLE_USDC_ADDRESS}). Ensure your allowance covers the correct address.`,
+        };
+      }
     }
   }
   
