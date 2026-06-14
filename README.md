@@ -91,6 +91,13 @@ SafeHands is a **Pharos Skill Engine-compatible MCP package** — a composable g
 
 ## Getting Started
 
+### Quick Install
+
+```bash
+npx skills add SZtch/safehands-pharos
+
+Then connect to Claude Desktop, Anvita Flow, or use from CLI.
+
 ### Option A — Connect to your AI agent (Claude Desktop)
 
 Add to `claude_desktop_config.json`, then restart Claude Desktop:
