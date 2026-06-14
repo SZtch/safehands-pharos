@@ -253,7 +253,6 @@ EXAMPLES
 
 DOCS
   README.md
-  skill/SKILL.md
 `);
   process.exit(0);
 }
