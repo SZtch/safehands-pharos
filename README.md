@@ -257,13 +257,13 @@ On failure: `success: false`, `data: null`, `error: { code, message, retryable }
 
 ## Configuration
 
-Copy the example file:
+If you cloned the repo, copy the example file:
 
 ```bash
-cp .env.example .env
+cp .env.example .env   # then edit .env with your settings
 ```
 
-Key settings:
+If you installed via `npx` or `npm install`, create a `.env` in your working directory with these settings:
 
 ```env
 # Wallet mode
@@ -357,12 +357,14 @@ SafeHands acts as both an x402 client and server.
 
 **Threat Radar dashboard** (`examples/dashboard/index.html`) — open in any browser to see a visual ALLOW / WARN / BLOCK feed. Uses illustrative sample data; not connected to live on-chain events.
 
-**Prompt-injection attack scenario** (`examples/scenario-hack.ts`) — runnable demo showing SafeHands blocking an unlimited token approval triggered by a simulated prompt-injection attack.
+**Prompt-injection attack scenario** (`examples/scenario-hack.ts`) — demo showing SafeHands blocking an unlimited token approval triggered by a simulated prompt-injection attack. Run the equivalent check directly with the CLI (no extra dependencies):
 
 ```bash
-# run the attack scenario
-npx tsx examples/scenario-hack.ts
+npx safehands-pharos skill safehands_preflight_check \
+  '{"actionType":"approve_token","chainId":688689,"approvalAmount":"max","spender":"0xBadActor12300000000000000000000000000000"}'
 ```
+
+The `.ts` source file shows the full narrative output — run it with `npx tsx examples/scenario-hack.ts` after cloning the repo.
 
 ---
 
