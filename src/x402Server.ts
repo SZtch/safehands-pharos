@@ -19,6 +19,7 @@ import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { handleAssessRisk } from "./tools/assessRisk.js";
 import { handleCheckTokenSecurity } from "./tools/checkTokenSecurity.js";
 import { handleSimulateTransaction } from "./tools/simulateTransaction.js";
+import { handleSafeHandsPreflightCheck } from "./tools/safehandsPreflightCheck.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, X402_PAYMENT_TOKEN_ADDRESS } from "./lib/constants.js";
 import { fail, ok } from "./lib/toolResponse.js";
 
@@ -56,6 +57,10 @@ const pharos = defineChain({
 const app = express();
 app.disable("x-powered-by");
 app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-PAYMENT, Accept");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
   req.setTimeout(15_000);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer");
@@ -254,6 +259,42 @@ app.get("/simulate-transaction", async (req, res) => {
   try {
     const { action, tokenIn, tokenOut, amount, toAddress, walletAddress } = req.query;
     const result = await handleSimulateTransaction({
+      action: action as any,
+      tokenIn: tokenIn as string,
+      tokenOut: tokenOut as string,
+      amount: amount as string,
+      toAddress: toAddress as string,
+      walletAddress: walletAddress as string,
+    });
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json(fail("BAD_REQUEST", e.message, false, "x402_server"));
+  }
+});
+
+// Free endpoints for live dashboard
+app.get("/preflight", async (req, res) => {
+  try {
+    const { actionType, chainId, amount, tokenAddress, spender, approvalAmount, recipient } = req.query;
+    const result = await handleSafeHandsPreflightCheck({
+      actionType: actionType as any,
+      chainId: chainId ? parseInt(chainId as string, 10) : CHAIN_ID,
+      amount: amount as string,
+      tokenAddress: tokenAddress as string,
+      spender: spender as string,
+      approvalAmount: approvalAmount as string,
+      recipient: recipient as string,
+    });
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json(fail("BAD_REQUEST", e.message, false, "x402_server"));
+  }
+});
+
+app.get("/risk", async (req, res) => {
+  try {
+    const { action, tokenIn, tokenOut, amount, toAddress, walletAddress } = req.query;
+    const result = await handleAssessRisk({
       action: action as any,
       tokenIn: tokenIn as string,
       tokenOut: tokenOut as string,
