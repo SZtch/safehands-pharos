@@ -51,8 +51,6 @@ no loss.
 
 **Live preflight examples:** see [DEMO.md](DEMO.md) — real ALLOW and BLOCK outputs.
 
----
-
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
   <img src="https://img.shields.io/badge/MCP_Skill-000000?style=for-the-badge" />
@@ -61,21 +59,25 @@ no loss.
   <img src="https://img.shields.io/badge/Testnet_Only-SAFE-blue?style=for-the-badge" />
 </p>
 
-SafeHands is a **Pharos Skill Engine-compatible MCP package** that acts as a safety layer before your AI agent executes any on-chain action — payments, swaps, token approvals, or x402 paid requests.
-
-Every action goes through a preflight check first:
-
-```
-Agent wants to act
-       ↓
-safehands_preflight_check
-       ↓
-  ALLOW  →  safe, proceed
-  WARN   →  proceed with caution
-  BLOCK  →  stop, reason explained
-```
-
 > **Testnet only.** SafeHands targets Pharos Atlantic Testnet (Chain ID 688689). Not audited for mainnet use.
+
+---
+
+## Why AI Agents Need This
+
+Generic Web3 tools answer: *"Can this transaction be sent?"*
+SafeHands answers: **"Should this action be allowed at all?"**
+
+| Risk | What goes wrong without SafeHands | SafeHands guardrail |
+|------|----------------------------------|---------------------|
+| Unlimited approval | Agent approves malicious spender forever | Blocked by default |
+| Wrong chain | Agent signs on mainnet by mistake | Blocked |
+| Risky x402 URL | Agent pays a localhost / private IP | Blocked (SSRF guard) |
+| Overspending | Agent drains wallet in one session | Daily cap enforced |
+| Unknown token | Agent swaps unverified contract | Warns, requires review |
+| Missing signer | Agent attempts write without wallet | Structured error returned |
+
+SafeHands is a **Pharos Skill Engine-compatible MCP package** — a composable guardrail layer that any agent can add in front of any action, without modifying existing skill logic.
 
 ---
 
@@ -150,16 +152,6 @@ WRITE_TOOLS_ENABLED=true
 MAX_TX_AMOUNT_PHRS=0.1      # per-transaction cap
 MAX_DAILY_SPEND_USD=10      # daily spend cap
 ```
-
----
-
-## Start with These 3 Tools
-
-| Goal | Tool |
-|------|------|
-| Check if an action is safe | `safehands_preflight_check` |
-| Check wallet / signer readiness | `safehands_wallet_health` |
-| Execute with built-in safety gate | `safehands_safe_execute` |
 
 ---
 
@@ -339,22 +331,6 @@ SafeHands ships safe by default — nothing is enabled without explicit opt-in:
 
 ---
 
-## Why AI Agents Need This
-
-Generic Web3 tools answer: *"Can this transaction be sent?"*  
-SafeHands answers: **"Should this action be allowed at all?"**
-
-| Risk | What goes wrong | SafeHands guardrail |
-|------|----------------|---------------------|
-| Unlimited approval | Agent approves malicious spender forever | Blocked by default |
-| Wrong chain | Agent signs on mainnet | Blocked |
-| Risky x402 URL | Agent pays a localhost/private IP | Blocked |
-| Overspending | Agent drains wallet | Daily cap enforced |
-| Unknown token | Agent swaps unverified token | Warns or requires review |
-| Missing signer | Agent tries write without wallet | Structured error returned |
-
----
-
 ## x402 Support
 
 SafeHands acts as both an x402 client and server.
@@ -425,8 +401,16 @@ npm run test:dodo:live    # DODO API check (skips if DODO_API_KEY not set)
 
 ## Roadmap
 
-- **Per-wallet spend limits**: move limits from global `.env` config to per-agent settings (a `set_spend_limits` / `get_spend_limits` tool) so each user configures their own guardrails, stored in the existing encrypted wallet store.
-- **Community risk registry**: as more agents publish to the on-chain RiskRegistry, `query_risk_registry` becomes a shared reputation layer other skills can rely on.
-- **Chain-agnostic x402 guardrails**: SafeHands's x402 preflight is designed to compose with x402 marketplaces beyond Pharos (e.g. AgentCash on Base/Solana), extending guardrails to cross-ecosystem agent payments.
-- **Mainnet support**: currently testnet-only by design; mainnet requires a full re-audit of every safety check before it can be trusted with real funds.
-- **Standardized tool naming**: align all guardrail tools under a consistent prefix in a future major version (breaking change).
+SafeHands is designed to grow from a single-project guardrail into **shared safety infrastructure** for the Pharos agent economy.
+
+**Near-term**
+- **Per-agent spend limits** — a `set_spend_limits` / `get_spend_limits` tool pair so each agent carries its own policy instead of a shared global cap. Stored in the existing AES-256-GCM encrypted wallet store.
+- **x402 live endpoint verification** — validate SafeHands's x402 preflight against production third-party x402 endpoints on Pharos as they become available.
+
+**Medium-term**
+- **Community risk registry** — as more agents publish scores to the on-chain RiskRegistry (`0x61962a6c812ee9f57b207e1ea47c19ae70bb7141`), `query_risk_registry` becomes shared reputation infrastructure. A malicious contract blocked by one agent is flagged for all agents across the ecosystem.
+- **Cross-chain x402 guardrails** — SafeHands's x402 preflight logic is protocol-level, not Pharos-specific. The same guardrail pattern can protect agents making x402 payments on AgentCash (Base / Solana) or any other compatible network.
+
+**Long-term**
+- **Mainnet support** — currently testnet-only by design. Mainnet requires a full re-audit of every safety check, formal verification of the RiskRegistry contract, and KMS/Vault-grade key management before it can be trusted with real funds.
+- **Standardized guardrail interface** — a community spec so any Pharos skill can expose a `preflight(action) → ALLOW | WARN | BLOCK` interface and compose with SafeHands, rather than each skill reinventing safety logic independently.
