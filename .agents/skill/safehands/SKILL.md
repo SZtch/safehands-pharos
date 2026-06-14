@@ -1,5 +1,5 @@
 name: safehands
-version: 1.3.0
+version: 1.4.0
 description: Transaction Safety Firewall for Pharos agents. 27 tools (17 legacy/core + 3 managed wallet + 7 guardrail) that preflight, assess, simulate, and gate payments, token approvals, swaps, and x402 paid requests before execution.
 author: "SZtch"
 chain: pharos

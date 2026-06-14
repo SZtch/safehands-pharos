@@ -1,3 +1,58 @@
+# SafeHands-Pharos — Transaction Safety Firewall for AI Agents
+
+> **Most Pharos skills let an agent *do* things — check balances, swap, pay, deploy.**
+> **SafeHands is the one that decides whether the agent *should*.**
+
+```bash
+npx safehands-pharos skill safehands_preflight_check --input-json \
+  '{"actionType":"approve_token","chainId":688689,"tokenAddress":"0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8","spenderAddress":"0x000000000000000000000000000000000000dEaD","approvalAmount":"max"}'
+```
+
+Sample output:
+
+```json
+{
+  "success": true,
+  "data": {
+    "decision": "BLOCK",
+    "riskLevel": "HIGH",
+    "safeToExecute": false,
+    "reasons": [
+      "Unlimited approval requested."
+    ],
+    "requiredActions": [
+      "Use a limited approval amount."
+    ],
+    "checks": [
+      { "name": "mainnet_guard", "status": "pass", "message": "Action is not targeting mainnet." },
+      { "name": "chain_id", "status": "pass", "message": "Chain ID is Pharos Atlantic Testnet (688689)." },
+      { "name": "environment", "status": "pass", "message": "Environment is atlantic-testnet." },
+      { "name": "approval_amount", "status": "fail", "message": "Unlimited approval is blocked by default." }
+    ],
+    "environment": "atlantic-testnet",
+    "chainId": 688689,
+    "isMainnet": false,
+    "tokenRegistry": {
+      "symbol": "USDC",
+      "status": "SKILL_ENGINE_CANONICAL_TOKEN",
+      "verificationStatus": "DOCS_VERIFIED_FROM_PHAROS_SKILL_ENGINE"
+    },
+    "source": "safehands_preflight_check"
+  },
+  "error": null,
+  "timestamp": "2026-06-14T00:00:00.000Z"
+}
+```
+
+That's the whole idea: **before** an agent approves a token, swaps, sends a payment,
+or pays an x402 resource, SafeHands runs a policy check and returns `ALLOW`, `WARN`,
+or `BLOCK` — with a plain-English reason. If `BLOCK`, the agent stops. No transaction,
+no loss.
+
+**Live preflight examples:** see [DEMO.md](DEMO.md) — real ALLOW and BLOCK outputs.
+
+---
+
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
   <img src="https://img.shields.io/badge/MCP_Skill-000000?style=for-the-badge" />
@@ -5,8 +60,6 @@
   <img src="https://img.shields.io/badge/Tools-27-orange?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Testnet_Only-SAFE-blue?style=for-the-badge" />
 </p>
-
-# SafeHands-Pharos — Transaction Safety Firewall for AI Agents
 
 SafeHands is a **Pharos Skill Engine-compatible MCP package** that acts as a safety layer before your AI agent executes any on-chain action — payments, swaps, token approvals, or x402 paid requests.
 
@@ -300,6 +353,19 @@ SafeHands acts as both an x402 client and server.
 
 ---
 
+## Examples
+
+**Threat Radar dashboard** (`examples/dashboard/index.html`) — open in any browser to see a visual ALLOW / WARN / BLOCK feed. Uses illustrative sample data; not connected to live on-chain events.
+
+**Prompt-injection attack scenario** (`examples/scenario-hack.ts`) — runnable demo showing SafeHands blocking an unlimited token approval triggered by a simulated prompt-injection attack.
+
+```bash
+# run the attack scenario
+npx tsx examples/scenario-hack.ts
+```
+
+---
+
 ## Network Info
 
 | Item | Value |
@@ -331,3 +397,14 @@ npm run test:dodo:live    # DODO API check (skips if DODO_API_KEY not set)
 - `get_token_price` and swap routing require a DODO API key
 - GoPlus token security does not support Pharos testnet (Chain 688689) — `check_token_security` returns a clear error
 - DODO reverse routes (e.g. USDT → PHRS) have no liquidity on testnet
+- x402 client and server are implemented with the official `@x402/fetch` and `@x402/evm` SDKs and verified against a local x402-compatible server. They have not yet been verified against live third-party x402 endpoints on Pharos.
+
+---
+
+## Roadmap
+
+- **Per-wallet spend limits**: move limits from global `.env` config to per-agent settings (a `set_spend_limits` / `get_spend_limits` tool) so each user configures their own guardrails, stored in the existing encrypted wallet store.
+- **Community risk registry**: as more agents publish to the on-chain RiskRegistry, `query_risk_registry` becomes a shared reputation layer other skills can rely on.
+- **Chain-agnostic x402 guardrails**: SafeHands's x402 preflight is designed to compose with x402 marketplaces beyond Pharos (e.g. AgentCash on Base/Solana), extending guardrails to cross-ecosystem agent payments.
+- **Mainnet support**: currently testnet-only by design; mainnet requires a full re-audit of every safety check before it can be trusted with real funds.
+- **Standardized tool naming**: align all guardrail tools under a consistent prefix in a future major version (breaking change).

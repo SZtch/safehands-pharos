@@ -496,12 +496,12 @@ async function run() {
   await record("readme_contains_final_positioning", async () => {
     const text = readFileSync(join(process.cwd(), "README.md"), "utf8");
     const required = [
-      "# SafeHands-Pharos: Transaction Safety Firewall for AI Agents",
+      "# SafeHands-Pharos — Transaction Safety Firewall for AI Agents",
       "Pharos Skill Engine-compatible MCP package",
-      "SafeHands is a guardrail layer",
+      "ALLOW",
       "WRITE_TOOLS_ENABLED=false",
-      "Testnet scope",
-      "Using SafeHands with Pharos Skill Engine",
+      "safehands_preflight_check",
+      "Known Limitations",
     ];
     return hasAll(text, required) ? ok({ required }) : fail("README_POSITIONING_INCOMPLETE", "Missing final positioning text.", false, "readme");
   },
