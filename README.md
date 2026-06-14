@@ -337,7 +337,11 @@ SafeHands acts as both an x402 client and server.
 
 **Client** (`x402_pay_and_fetch`): Fetches a resource normally first. If the server returns HTTP 402, SafeHands runs a preflight check, requests the signer, pays, and retries — all in one tool call. Payment proofs are never logged.
 
-**Server** (`npm run x402-server`): Exposes paid endpoints:
+**Server** (`npm run x402-server`): Exposes paid endpoints. A live instance runs at:
+
+```
+https://safehands-pharos-production.up.railway.app
+```
 
 | Endpoint | Type | Price |
 |----------|------|-------|
