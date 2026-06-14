@@ -81,15 +81,23 @@ safehands_preflight_check
 
 ## Getting Started
 
-### Install via Pharos Skill Engine
+### Step 1 — Try it now (no setup, no wallet)
 
 ```bash
-npx skills add SZtch/safehands-pharos
+npx safehands-pharos --demo
 ```
 
-### Connect to Claude Desktop
+Runs 10 live safety checks in your terminal: ALLOW/BLOCK decisions, wallet health, token registry, x402 preflight, risk report. No config, no private key, no transactions.
 
-Add to `claude_desktop_config.json`:
+---
+
+### Step 2 — Connect to your AI agent
+
+Pick **one** depending on how you use AI agents:
+
+#### Claude Desktop
+
+Add to your `claude_desktop_config.json`, then restart Claude Desktop:
 
 ```json
 {
@@ -102,34 +110,46 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop — SafeHands tools appear automatically in every conversation.
+All 27 SafeHands tools appear automatically in every Claude conversation.
 
-### Connect to Anvita Flow
+#### Anvita Flow
 
-Add as MCP server in Anvita Flow settings:
+Add as an MCP server in Anvita Flow settings:
 
 ```json
-{
-  "command": "npx",
-  "args": ["safehands-pharos"]
-}
+{ "command": "npx", "args": ["safehands-pharos"] }
 ```
 
-### First-time setup
+#### Terminal / scripts (CLI)
+
+Call any tool directly without connecting to an AI client:
+
+```bash
+npx safehands-pharos skill safehands_preflight_check \
+  '{"actionType":"send_payment","chainId":688689,"amount":"0.001","recipient":"0x1234567890123456789012345678901234567890"}'
+```
+
+---
+
+### Step 3 — (Optional) Enable write operations
+
+By default, SafeHands is **read-only**: preflight checks, risk scoring, token registry, wallet health. No private key needed.
+
+To unlock swaps, payments, and approvals, run the setup wizard:
 
 ```bash
 npx safehands-pharos init
 ```
 
-Interactive wizard that configures your `.env` — wallet mode, spend limits, write gates.
+Or set manually in a `.env` file in your working directory:
 
-### Run the demo
-
-```bash
-npx safehands-pharos --demo
+```env
+WALLET_MODE=env             # env | managed-testnet
+PRIVATE_KEY=0x...           # testnet key only — never mainnet
+WRITE_TOOLS_ENABLED=true
+MAX_TX_AMOUNT_PHRS=0.1      # per-transaction cap
+MAX_DAILY_SPEND_USD=10      # daily spend cap
 ```
-
-Non-destructive demo: shows ALLOW, BLOCK, wallet health, token registry, x402 preflight, and risk report — no real transactions.
 
 ---
 
