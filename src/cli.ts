@@ -23,6 +23,7 @@ import { handleEstimateGas } from "./tools/estimateGas.js";
 import { handleGetTokenPrice } from "./tools/getTokenPrice.js";
 import { handleGetTransactionStatus } from "./tools/getTransactionStatus.js";
 import { handleQueryRiskRegistry } from "./tools/queryRiskRegistry.js";
+import { handlePublishRiskScore } from "./tools/publishRiskScore.js";
 
 export type SkillCliToolName =
   | "safehands_preflight_check"
@@ -42,7 +43,8 @@ export type SkillCliToolName =
   | "estimate_gas"
   | "get_token_price"
   | "get_transaction_status"
-  | "query_risk_registry";
+  | "query_risk_registry"
+  | "publish_risk_score";
 
 type SkillCliHandler = (input: any) => Promise<unknown>;
 
@@ -65,6 +67,7 @@ const SKILL_CLI_TOOLS: Record<SkillCliToolName, SkillCliHandler> = {
   get_token_price: handleGetTokenPrice,
   get_transaction_status: handleGetTransactionStatus,
   query_risk_registry: handleQueryRiskRegistry,
+  publish_risk_score: handlePublishRiskScore,
 };
 
 function isStructuredResponse(value: unknown): value is ToolResponse<unknown> {

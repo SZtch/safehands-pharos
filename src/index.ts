@@ -3,6 +3,9 @@
 // Entry point — registers 27 tools (17 legacy/core + 3 managed wallet + 7 SafeHands guardrail tools) and starts the MCP server.
 // ────────────────────────────────────────────────────────────────────────
 
+// Must be first import — loads .env before any module reads process.env at init time
+import "./lib/envLoader.js";
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
