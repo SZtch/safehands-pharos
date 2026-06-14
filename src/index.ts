@@ -6,6 +6,10 @@
 // Must be first import — loads .env before any module reads process.env at init time
 import "./lib/envLoader.js";
 
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const PKG_VERSION: string = (require("../package.json") as { version: string }).version;
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
@@ -172,7 +176,7 @@ if (isDemoMode) {
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
   process.stdout.write(`
 🛡️  SafeHands-Pharos — Transaction Safety Firewall for AI Agents
-   v1.4.0 | Pharos Atlantic Testnet | Chain ID 688689
+   v${PKG_VERSION} | Pharos Atlantic Testnet | Chain ID 688689
 
 USAGE
   npx safehands-pharos
@@ -277,7 +281,7 @@ if (process.env.WRITE_TOOLS_ENABLED !== "true") {
 
 const server = new McpServer({
   name: "safehands",
-  version: "1.4.0",
+  version: PKG_VERSION,
 });
 
 // ─── Tool Registration ─────────────────────────────────────────────────
@@ -475,7 +479,7 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("SafeHands-Pharos MCP Server v1.4.0 running on stdio");
+  console.error(`SafeHands-Pharos MCP Server v${PKG_VERSION} running on stdio`);
 }
 
 main().catch((error) => {
