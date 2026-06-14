@@ -14,11 +14,8 @@
   "files": [
     "dist",
     "contracts",
-    "examples",
-    "skill",
     "README.md",
     ".env.example",
-    "docs",
     "LICENSE"
   ],
   "scripts": {
@@ -26,12 +23,6 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "x402-server": "tsx src/x402Server.ts",
-    "test:rpc": "tsx src/lib/testRpc.ts",
-    "test:rpc:live": "tsx src/lib/testRpcLive.ts",
-    "test:all": "tsx src/lib/testTools.ts",
-    "test:live:safehands": "tsx src/lib/testLiveSafehands.ts",
-    "test:x402:live": "tsx src/lib/testX402Live.ts",
-    "test:dodo:live": "tsx src/lib/testDodoLive.ts",
     "demo": "tsx src/demo.ts"
   },
   "keywords": [
