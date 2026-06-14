@@ -355,7 +355,7 @@ https://safehands-pharos-production.up.railway.app
 
 ## Examples
 
-**Threat Radar dashboard** (`examples/dashboard/index.html`) — open in any browser to see a visual ALLOW / WARN / BLOCK feed. Uses illustrative sample data; not connected to live on-chain events.
+**Threat Radar dashboard** — live at **[safehands-pharos.vercel.app](https://safehands-pharos.vercel.app)** — real-time ALLOW / WARN / BLOCK feed pulled from the live SafeHands server every 4 seconds. No setup required.
 
 **Prompt-injection attack scenario** (`examples/scenario-hack.ts`) — demo showing SafeHands blocking an unlimited token approval triggered by a simulated prompt-injection attack. Run the equivalent check directly with the CLI (no extra dependencies):
 
