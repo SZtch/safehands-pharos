@@ -355,16 +355,22 @@ https://safehands-pharos-production.up.railway.app
 
 ## Examples
 
-**Threat Radar dashboard** — live at **[safehands-pharos.vercel.app](https://safehands-pharos.vercel.app)** — real-time ALLOW / WARN / BLOCK feed pulled from the live SafeHands server every 4 seconds. No setup required.
-
-**Prompt-injection attack scenario** (`examples/scenario-hack.ts`) — demo showing SafeHands blocking an unlimited token approval triggered by a simulated prompt-injection attack. Run the equivalent check directly with the CLI (no extra dependencies):
+**Prompt-injection attack scenario** — SafeHands blocking an unlimited token approval triggered by a simulated prompt-injection attack:
 
 ```bash
 npx safehands-pharos skill safehands_preflight_check \
   '{"actionType":"approve_token","chainId":688689,"approvalAmount":"max","spender":"0xBadActor12300000000000000000000000000000"}'
 ```
 
-The `.ts` source file shows the full narrative output — run it with `npx tsx examples/scenario-hack.ts` after cloning the repo.
+Expected output: `BLOCK` — `"Unlimited approval is blocked by default."`
+
+**Live server** — the SafeHands x402 server runs at:
+
+```
+https://safehands-pharos-production.up.railway.app
+```
+
+Hit `/preflight?actionType=send_payment&amount=0.001&chainId=688689&recipient=0x1234...` for a live ALLOW/WARN/BLOCK response with no setup required.
 
 ---
 
@@ -392,11 +398,20 @@ The `.ts` source file shows the full narrative output — run it with `npx tsx e
 ## Testing
 
 ```bash
+npm run build    # compile TypeScript
+npm run demo     # run 10 live safety checks in terminal (no wallet needed)
+npm run dev      # run MCP server in dev mode (tsx, no build step)
+```
+
+For manual testing, use the CLI directly after building:
+
+```bash
+# Build first
 npm run build
-npm run test:all          # 43-point smoke test (no network needed)
-npm run test:rpc:live     # live RPC connectivity check
-npm run test:live:safehands  # 7 CLI safety checks against built dist
-npm run test:dodo:live    # DODO API check (skips if DODO_API_KEY not set)
+
+# Then call any tool
+node dist/index.js skill safehands_preflight_check \
+  '{"actionType":"approve_token","chainId":688689,"approvalAmount":"max"}'
 ```
 
 ---
