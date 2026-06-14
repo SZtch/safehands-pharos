@@ -378,31 +378,21 @@ SafeHands is designed to grow from a single-project guardrail into **shared safe
 
 > *Every agent carries its own safety policy, not a shared global config.*
 
-- [ ] **Per-agent spend limits** — `set_spend_limits` / `get_spend_limits` tool pair. Each agent instance defines its own daily cap, per-TX limit, and allowed action types — stored in the encrypted wallet store alongside the key.
-- [ ] **Policy templates** — preset profiles (`conservative`, `standard`, `degen`) that an agent or user can apply in one call, instead of configuring each limit manually.
-- [ ] **x402 third-party verification** — validate SafeHands's x402 preflight against production third-party x402 endpoints on Pharos as they go live.
-- [ ] **BLOCK event webhooks** — agents can register a callback URL; any BLOCK decision fires a structured alert payload to that endpoint for observability and audit.
+- [ ] **Per-agent spend limits** — `set_spend_limits` / `get_spend_limits` tool pair. Each agent instance defines its own daily cap, per-TX limit, and allowed action types — stored alongside the encrypted wallet key.
+- [ ] **Policy templates** — preset profiles (`conservative`, `standard`, `degen`) applied in one call, instead of configuring each limit manually.
+- [ ] **BLOCK event webhooks** — agents register a callback URL; any BLOCK decision fires a structured alert payload for observability and audit trails.
+- [ ] **Community risk registry** — as more agents call `publish_risk_score`, the on-chain RiskRegistry becomes a crowd-sourced reputation layer. A malicious contract flagged by one agent is visible to all.
 
 ---
 
-### Phase 3 — Shared Safety Infrastructure
-
-> *A malicious contract blocked by one agent becomes flagged for every agent in the ecosystem.*
-
-- [ ] **Community risk registry** — as more agents call `publish_risk_score`, the on-chain RiskRegistry (`0x61962a6c812ee9f57b207e1ea47c19ae70bb7141`) becomes a shared reputation layer. `query_risk_registry` returns a crowd-sourced signal, not just one agent's opinion.
-- [ ] **Cross-agent risk propagation** — if contract `0xBad...` gets a HIGH score from three independent agents, preflight checks for that address auto-escalate to WARN for all SafeHands users without any manual update.
-- [ ] **Policy versioning** — on-chain snapshots of safety policies, so auditors and users can verify what rules were active at the time of a disputed transaction.
-
----
-
-### Phase 4 — Ecosystem Standard
+### Phase 3 — Ecosystem Standard
 
 > *Any Pharos skill can plug into SafeHands as a composable guardrail layer.*
 
-- [ ] **Standardized guardrail interface** — a Pharos community spec so any skill can expose `preflight(action) → ALLOW | WARN | BLOCK`. Other skills don't reinvent safety logic — they compose with SafeHands.
-- [ ] **Cross-chain x402 guardrails** — SafeHands's x402 preflight is protocol-level, not chain-specific. The same pattern can protect agents on AgentCash (Base / Solana) or any x402-compatible network.
+- [ ] **Standardized guardrail interface** — a Pharos community spec so any skill exposes `preflight(action) → ALLOW | WARN | BLOCK`. Other skills compose with SafeHands instead of reinventing safety logic.
+- [ ] **Cross-chain x402 guardrails** — SafeHands's x402 preflight is protocol-level, not chain-specific. The same guardrail pattern can protect agents on AgentCash (Base / Solana) or any x402-compatible network.
+- [ ] **`@safehands/client` SDK** — a lightweight package other Pharos skill developers import to add preflight checks with one line of code.
 - [ ] **Mainnet support** — requires full re-audit of every policy check, formal verification of RiskRegistry, and KMS/Vault-grade key management before it can be trusted with real funds.
-- [ ] **SDK** — a lightweight `@safehands/client` package that other Pharos skill developers can import to add preflight checks with one line of code.
 
 ---
 
