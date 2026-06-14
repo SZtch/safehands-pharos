@@ -38,10 +38,10 @@ dist/
 *.tsbuildinfo
 *.tgz
 .agents/*.json
+.agents/.key
 
 # docs/ is tracked; specific sub-paths excluded from internal-only patterns above
 !docs/
 !docs/reports/
 !docs/reports/**
-dist/
 docs/reports/

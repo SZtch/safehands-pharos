@@ -65,7 +65,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@types/express": "^5.0.6",
     "@x402/core": "^2.14.0",
     "@x402/evm": "^2.14.0",
     "@x402/express": "^2.14.0",
@@ -75,6 +74,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^22.15.0",
     "solc": "^0.8.28",
     "tsx": "^4.20.3",

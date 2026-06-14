@@ -11,6 +11,7 @@ import {
   resolveTokenAddress,
   resolveTokenDecimals,
   toWei,
+  type DodoQuote,
 } from "./dodoApi.js";
 import {
   RISK_WEIGHTS,
@@ -86,72 +87,76 @@ function weightedAverage(breakdown: RiskBreakdown): number {
 
 // ─── Individual Risk Scorers ───────────────────────────────────────────
 
-async function scoreLiquidity(input: RiskInput): Promise<{ score: number; reasons: string[] }> {
-  const reasons: string[] = [];
-
-  if (input.action !== "swap") return { score: 0, reasons };
-
+/**
+ * Pre-fetches the DODO route quote once for swap actions.
+ * Both scoreLiquidity and scoreSlippage use this cached result.
+ */
+async function fetchSwapQuote(input: RiskInput): Promise<DodoQuote | null> {
+  if (input.action !== "swap") return null;
   try {
-    const quote = await getDodoRoute({
+    return await getDodoRoute({
       fromToken: input.tokenIn!,
       toToken: input.tokenOut!,
       amountHuman: input.amount,
       walletAddress: input.walletAddress,
     });
-
-    if (!quote.routeAvailable) {
-      reasons.push("No swap route available — liquidity may be exhausted");
-      return { score: 100, reasons };
-    }
-
-    const impact = Math.abs(quote.priceImpact);
-    if (impact > 5) {
-      reasons.push(`High price impact: ${impact.toFixed(2)}%`);
-      return { score: clamp(80 + impact), reasons };
-    }
-    if (impact > 2) {
-      reasons.push(`Moderate price impact: ${impact.toFixed(2)}%`);
-      return { score: clamp(40 + impact * 10), reasons };
-    }
-
-    reasons.push(`Price impact acceptable: ${impact.toFixed(2)}%`);
-    return { score: clamp(impact * 15), reasons };
-  } catch (err) {
-    reasons.push(`Failed to fetch liquidity data: ${(err as Error).message}`);
-    return { score: 70, reasons };
+  } catch {
+    return null;
   }
 }
 
-async function scoreSlippage(input: RiskInput): Promise<{ score: number; reasons: string[] }> {
+function scoreLiquidity(input: RiskInput, quote: DodoQuote | null): { score: number; reasons: string[] } {
   const reasons: string[] = [];
 
   if (input.action !== "swap") return { score: 0, reasons };
 
-  try {
-    const quote = await getDodoRoute({
-      fromToken: input.tokenIn!,
-      toToken: input.tokenOut!,
-      amountHuman: input.amount,
-      walletAddress: input.walletAddress,
-    });
+  if (!quote) {
+    reasons.push("Failed to fetch liquidity data");
+    return { score: 70, reasons };
+  }
 
-    if (!quote.routeAvailable) {
-      reasons.push("Cannot estimate slippage — no route");
-      return { score: 90, reasons };
-    }
+  if (!quote.routeAvailable) {
+    reasons.push("No swap route available — liquidity may be exhausted");
+    return { score: 100, reasons };
+  }
 
-    const impact = Math.abs(quote.priceImpact);
-    if (impact > MAX_SLIPPAGE_PCT) {
-      reasons.push(`Slippage exceeds max ${MAX_SLIPPAGE_PCT}%: estimated ${impact.toFixed(2)}%`);
-      return { score: clamp(80 + (impact - MAX_SLIPPAGE_PCT) * 5), reasons };
-    }
+  const impact = Math.abs(quote.priceImpact);
+  if (impact > 5) {
+    reasons.push(`High price impact: ${impact.toFixed(2)}%`);
+    return { score: clamp(80 + impact), reasons };
+  }
+  if (impact > 2) {
+    reasons.push(`Moderate price impact: ${impact.toFixed(2)}%`);
+    return { score: clamp(40 + impact * 10), reasons };
+  }
 
-    reasons.push(`Estimated slippage: ${impact.toFixed(2)}%`);
-    return { score: clamp(impact * 16), reasons };
-  } catch {
+  reasons.push(`Price impact acceptable: ${impact.toFixed(2)}%`);
+  return { score: clamp(impact * 15), reasons };
+}
+
+function scoreSlippage(input: RiskInput, quote: DodoQuote | null): { score: number; reasons: string[] } {
+  const reasons: string[] = [];
+
+  if (input.action !== "swap") return { score: 0, reasons };
+
+  if (!quote) {
     reasons.push("Slippage estimation failed");
     return { score: 60, reasons };
   }
+
+  if (!quote.routeAvailable) {
+    reasons.push("Cannot estimate slippage — no route");
+    return { score: 90, reasons };
+  }
+
+  const impact = Math.abs(quote.priceImpact);
+  if (impact > MAX_SLIPPAGE_PCT) {
+    reasons.push(`Slippage exceeds max ${MAX_SLIPPAGE_PCT}%: estimated ${impact.toFixed(2)}%`);
+    return { score: clamp(80 + (impact - MAX_SLIPPAGE_PCT) * 5), reasons };
+  }
+
+  reasons.push(`Estimated slippage: ${impact.toFixed(2)}%`);
+  return { score: clamp(impact * 16), reasons };
 }
 
 async function scoreCounterparty(input: RiskInput): Promise<{ score: number; reasons: string[] }> {
@@ -320,13 +325,17 @@ async function scoreMarketCondition(_input: RiskInput): Promise<{ score: number;
 // ─── Main Risk Assessment ──────────────────────────────────────────────
 
 export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
-  const [liquidity, slippage, counterparty, balance, market] = await Promise.all([
-    scoreLiquidity(input),
-    scoreSlippage(input),
+  // Fetch DODO route once and share between liquidity + slippage scorers
+  const swapQuote = await fetchSwapQuote(input);
+
+  const [counterparty, balance, market] = await Promise.all([
     scoreCounterparty(input),
     scoreBalance(input),
     scoreMarketCondition(input),
   ]);
+
+  const liquidity = scoreLiquidity(input, swapQuote);
+  const slippage = scoreSlippage(input, swapQuote);
 
   const breakdown: RiskBreakdown = {
     liquidityRisk: liquidity.score,

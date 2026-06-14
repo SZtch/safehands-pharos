@@ -131,7 +131,10 @@ app.post("/verify", async (req, res) => {
     return res.status(503).json(fail("X402_SERVER_RECEIVER_CONFIG_MISSING", "x402 facilitator is not configured. Set X402_PAY_TO/WALLET_ADDRESS and X402_FACILITATOR_PRIVATE_KEY for paid endpoints. Client PRIVATE_KEY is not used for server receiver config.", false, "x402_server"));
   }
   try {
-    const { paymentPayload, paymentRequirements } = req.body;
+    const { paymentPayload, paymentRequirements } = req.body ?? {};
+    if (!paymentPayload || !paymentRequirements) {
+      return res.status(400).json(fail("BAD_REQUEST", "Missing required fields: paymentPayload and paymentRequirements.", false, "x402_server"));
+    }
     const result = await facilitator.verify(paymentPayload, paymentRequirements);
     res.json(result);
   } catch (e: any) {
@@ -144,7 +147,10 @@ app.post("/settle", async (req, res) => {
     return res.status(503).json(fail("X402_SERVER_RECEIVER_CONFIG_MISSING", "x402 facilitator is not configured. Set X402_PAY_TO/WALLET_ADDRESS and X402_FACILITATOR_PRIVATE_KEY for paid endpoints. Client PRIVATE_KEY is not used for server receiver config.", false, "x402_server"));
   }
   try {
-    const { paymentPayload, paymentRequirements } = req.body;
+    const { paymentPayload, paymentRequirements } = req.body ?? {};
+    if (!paymentPayload || !paymentRequirements) {
+      return res.status(400).json(fail("BAD_REQUEST", "Missing required fields: paymentPayload and paymentRequirements.", false, "x402_server"));
+    }
     const result = await facilitator.settle(paymentPayload, paymentRequirements);
     res.json(result);
   } catch (e: any) {
