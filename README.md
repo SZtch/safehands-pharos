@@ -374,6 +374,15 @@ The `.ts` source file shows the full narrative output — run it with `npx tsx e
 | USDC | `0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8` |
 | RiskRegistry | `0x61962a6c812ee9f57b207e1ea47c19ae70bb7141` |
 
+**Proof of life — live on-chain tx:**
+
+| What | Value |
+|------|-------|
+| Action | `publish_risk_score` → RiskRegistry |
+| Tx Hash | [`0x6a58f636...fdefc`](https://atlantic.pharosscan.xyz/tx/0x6a58f636814458c09304db3d7c4f5f48e764f6439649fbb786cddb32c77fdefc) |
+| Block | `24168297` |
+| Gas Used | `140,187` |
+
 ---
 
 ## Testing

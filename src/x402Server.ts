@@ -39,7 +39,7 @@ loadEnv();
 
 const receiverAddress = (process.env.X402_PAY_TO || process.env.WALLET_ADDRESS || "") as `0x${string}`;
 const facilitatorPrivateKey = process.env.X402_FACILITATOR_PRIVATE_KEY || "";
-const port = parseInt(process.env.X402_SERVER_PORT || process.env.X402_PORT || "4021", 10);
+const port = parseInt(process.env.PORT || process.env.X402_SERVER_PORT || process.env.X402_PORT || "4021", 10);
 const rpcUrl = process.env.PHAROS_RPC_URL || RPC_URL;
 const usdcAddress = X402_PAYMENT_TOKEN_ADDRESS;
 const priceUsdc = process.env.X402_PRICE_USDC || "0.001";

@@ -308,6 +308,16 @@ export const RISK_REGISTRY_ABI = [
     ],
   },
   {
+    name: "setAuthorizedAgent",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agent", type: "address" },
+      { name: "authorized", type: "bool" },
+    ],
+    outputs: [],
+  },
+  {
     anonymous: false,
     name: "RiskPublished",
     type: "event",
