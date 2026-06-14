@@ -7,7 +7,8 @@ import { z } from "zod";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { ok, fail, type ToolResponse } from "../lib/toolResponse.js";
 import { walletStore, encryptKey, usesPersistentWalletStore, getEffectiveEncryptionKey } from "../lib/wallet/index.js";
-import { CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET } from "../lib/constants.js";
+import { CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, RISK_REGISTRY_ADDRESS, RISK_REGISTRY_ABI } from "../lib/constants.js";
+import { createPharosWalletClientFromAccount } from "../lib/pharosClient.js";
 
 export const createAgentWalletSchema = z.object({
   agentId: z
@@ -34,6 +35,8 @@ interface CreateAgentWalletData {
   createdAt: string;
   warning: string;
   instructions: string;
+  riskRegistryAuthorized: boolean;
+  riskRegistryAuthTxHash: string | null;
 }
 
 export async function handleCreateAgentWallet(
@@ -79,6 +82,28 @@ export async function handleCreateAgentWallet(
     createdAt: new Date().toISOString(),
   });
 
+  // Auto-authorize new wallet in RiskRegistry if deployer key is available
+  let riskRegistryAuthorized = false;
+  let riskRegistryAuthTxHash: string | null = null;
+
+  const deployerKey = process.env.PRIVATE_KEY;
+  if (deployerKey && process.env.WRITE_TOOLS_ENABLED === "true") {
+    try {
+      const deployerAccount = privateKeyToAccount(deployerKey as `0x${string}`);
+      const deployerWallet = createPharosWalletClientFromAccount(deployerAccount);
+      const txHash = await deployerWallet.writeContract({
+        address: RISK_REGISTRY_ADDRESS,
+        abi: RISK_REGISTRY_ABI,
+        functionName: "setAuthorizedAgent",
+        args: [account.address, true],
+      });
+      riskRegistryAuthorized = true;
+      riskRegistryAuthTxHash = txHash;
+    } catch {
+      // Authorization failed — wallet still created, just not authorized for publish
+    }
+  }
+
   return ok({
     agentId,
     address: account.address,
@@ -90,5 +115,7 @@ export async function handleCreateAgentWallet(
     warning:
       "This is a TESTNET wallet only. Never use for mainnet funds. Private key is AES-256-GCM encrypted locally — testnet-grade, not KMS/Vault.",
     instructions: `Fund this wallet with testnet PHRS from https://testnet.pharosnetwork.xyz/ before executing write operations. Set WRITE_TOOLS_ENABLED=true to enable transactions.`,
+    riskRegistryAuthorized,
+    riskRegistryAuthTxHash,
   });
 }
