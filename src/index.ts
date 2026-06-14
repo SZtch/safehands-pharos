@@ -154,12 +154,14 @@ if (process.argv[2] === "init") {
 
 // ─── Deterministic Demo CLI ───────────────────────────────────────────
 
-if (process.argv.includes("--demo")) {
+const isDemoMode = process.argv.includes("--demo");
+
+if (isDemoMode) {
   await runDemo();
-  // Brief delay allows libuv handles (express sockets) to close cleanly on Windows
-  setTimeout(() => process.exit(0), 100);
-  // Wait indefinitely so the script doesn't continue down to start the MCP server
-  await new Promise(() => {});
+  // Set exit code and let the event loop drain naturally.
+  // Avoids Windows libuv UV_HANDLE_CLOSING assertion that occurs with process.exit() while
+  // async handles (express close, viem HTTP keep-alive) are still winding down.
+  process.exitCode = 0;
 }
 
 // ─── CLI Help ──────────────────────────────────────────────────────────
@@ -248,6 +250,8 @@ DOCS
 `);
   process.exit(0);
 }
+
+if (!isDemoMode) {
 
 // ─── Startup Validation ────────────────────────────────────────────────
 
@@ -475,3 +479,5 @@ main().catch((error) => {
   console.error("Fatal error:", error);
   process.exit(1);
 });
+
+} // end: !isDemoMode
