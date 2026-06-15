@@ -10,6 +10,12 @@ node_modules/
 coverage/
 .DS_Store
 .safehands/
+.agents/.key
+.agents/wallets.json
+src/
+scripts/
+SAFEHANDS_FINAL_HARDENING_PROMPT.md
 
+!.agents/skill/
 !README.md
 tsconfig.json

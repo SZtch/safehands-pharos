@@ -1,5 +1,5 @@
 name: safehands
-version: 1.4.0
+version: 1.6.0
 description: Transaction Safety Firewall for Pharos agents. 27 tools (17 legacy/core + 3 managed wallet + 7 guardrail) that preflight, assess, simulate, and gate payments, token approvals, swaps, and x402 paid requests before execution.
 author: "SZtch"
 chain: pharos
@@ -23,7 +23,7 @@ SafeHands is not an agent and does not replace Pharos Skill Engine — it is the
 
 | Tool | Description |
 |------|-------------|
-| `assess_risk` | 5-dimension risk score (0–100) for any swap or transfer. Auto-publishes to on-chain RiskRegistry when `autoPublish=true` and SignerProvider is configured. |
+| `assess_risk` | 5-dimension risk score (0–100) for any swap or transfer. Auto-publishes to on-chain RiskRegistry when `autoPublish=true` and signer is configured. |
 | `check_token_security` | Check token contract security (honeypot check, tax checks, mint privileges) via GoPlus Security API. |
 | `simulate_transaction` | Dry run via eth_call — zero gas. Returns expected output, gas estimate, and revert reasons before committing. |
 | `estimate_gas` | Pre-execution gas cost in PHRS and USD. Checks whether the wallet has sufficient funds for gas + value. |
@@ -58,7 +58,7 @@ SafeHands is not an agent and does not replace Pharos Skill Engine — it is the
 | Tool | Description |
 |------|-------------|
 | `publish_risk_score` | Run risk assessment and publish the result to the on-chain RiskRegistry smart contract. |
-| `query_risk_registry` | Read any wallet's published risk score from the registry. Read-only — no SignerProvider signer needed. |
+| `query_risk_registry` | Read any wallet's published risk score from the registry. Read-only — no signer needed. |
 
 ### x402 Payments — Composable micro-payment gating
 
@@ -88,9 +88,9 @@ SafeHands is designed as a **building block**, not a standalone application. Oth
 `check_token_security` · `simulate_transaction` · `estimate_gas` · `get_token_price` · `get_pool_info` · `get_gas_price` · `get_wallet_balance` · `check_allowance` · `get_transaction_status` · `get_execution_history` · `query_risk_registry`
 
 ### Read+Write tool (read without key, auto-publishes with key)
-`assess_risk` — returns risk score without a key; if `autoPublish=true` and SignerProvider is configured, also publishes the result to the on-chain RiskRegistry.
+`assess_risk` — returns risk score without a key; if `autoPublish=true` and signer is configured, also publishes the result to the on-chain RiskRegistry.
 
-### Write tools (require a SignerProvider signer)
+### Write tools (require a signer)
 `execute_swap` · `send_payment` · `approve_token` · `publish_risk_score` · `x402_pay_and_fetch`
 
 ### How Phase 2 agents compose with SafeHands
@@ -128,7 +128,7 @@ Agent: → assess_risk(swap, PHRS, USDC, 100, wallet)
      → Score 12/100, low risk, proceed
      → simulate_transaction(swap, PHRS, USDC, 100)
      → Would succeed, ~166 USDC out
-     → execute_swap(PHRS, USDC, 100, wallet, SignerProvider)
+     → execute_swap(PHRS, USDC, 100, wallet, signer)
      → ✅ TX confirmed
 ```
 
@@ -161,7 +161,7 @@ Agent B: → query_risk_registry(0xsuspicious...)
 
 1. **Risk-first execution** — every write tool (`execute_swap`, `send_payment`) internally calls `assess_risk` before proceeding.
 2. **Automatic blocking** — actions scoring above 80 are prevented. No override without explicit `bypassRiskCheck`.
-3. **Transient keys** — write tools request signatures through SignerProvider; SignerProvider signers are never returned or logged.
+3. **Transient keys** — write tools request signatures through signer; signers are never returned or logged.
 4. **Simulation before commitment** — `simulate_transaction` lets agents verify outcomes at zero cost before committing gas.
 5. **On-chain audit** — all risk scores can be published to the RiskRegistry, creating a permanent, verifiable record.
 
@@ -174,7 +174,7 @@ Agent B: → query_risk_registry(0xsuspicious...)
 
 The RiskRegistry is a Solidity smart contract deployed on Pharos that stores risk assessments on-chain. Any agent can publish. Any agent can query. No API keys, no centralized infrastructure.
 
-When `assess_risk` is called with `autoPublish=true` plus SignerProvider, the result is automatically published — making every risk assessment a permanent, queryable on-chain record that other agents can trust.
+When `assess_risk` is called with `autoPublish=true` plus signer, the result is automatically published — making every risk assessment a permanent, queryable on-chain record that other agents can trust.
 
 ---
 
@@ -187,10 +187,13 @@ SafeHands exposes a paid HTTP REST API server using the Coinbase-designed **x402
 - `GET /assess-risk` (Paid: USDC 0.001) — Gate queries with 5-dimension risk score checks.
 - `GET /check-token-security` (Paid: USDC 0.001) — Verify contract security, honeypots, and token code privileges.
 - `GET /simulate-transaction` (Paid: USDC 0.001) — Perform dry-runs of transfers and swaps.
+- `GET /token-price` (Paid: USDC 0.001) — Real-time token price via DODO/FaroSwap. No DODO API key needed — server handles routing.
+- `GET /pool-info` (Paid: USDC 0.001) — Pool data (price ratio, impact, fees) via DODO. No DODO API key needed.
+- `GET /swap-route` (Paid: USDC 0.001) — Swap route with estimated output via DODO. No DODO API key needed.
 
 ### Flow Architecture
 1. **Challenge:** When a client fetches a gated resource, the server replies with `HTTP 402 Payment Required` and a Base64-encoded `PAYMENT-REQUIRED` header specifying token address, receiver wallet, and pricing details.
-2. **On-Chain Settlement:** The client signs a standard authorization envelope with their SignerProvider signer, transferring the micro-payment directly to the recipient wallet.
+2. **On-Chain Settlement:** The client signs a standard authorization envelope with their signer, transferring the micro-payment directly to the recipient wallet.
 3. **Resubmission:** The client resubmits the request, appending the payload signature in the `PAYMENT-SIGNATURE` header.
 4. **Unlocking Content:** The integrated Facilitator verifies the signature, settles the transfer on-chain, and responds with `HTTP 200 OK` carrying the resource response payload.
 

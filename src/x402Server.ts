@@ -20,6 +20,9 @@ import { handleAssessRisk } from "./tools/assessRisk.js";
 import { handleCheckTokenSecurity } from "./tools/checkTokenSecurity.js";
 import { handleSimulateTransaction } from "./tools/simulateTransaction.js";
 import { handleSafeHandsPreflightCheck } from "./tools/safehandsPreflightCheck.js";
+import { handleGetTokenPrice } from "./tools/getTokenPrice.js";
+import { handleGetPoolInfo } from "./tools/getPoolInfo.js";
+import { getDodoRoute } from "./lib/dodoApi.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, X402_PAYMENT_TOKEN_ADDRESS } from "./lib/constants.js";
 import { fail, ok } from "./lib/toolResponse.js";
 
@@ -168,7 +171,7 @@ app.get("/supported", (_req, res) => {
       asset: usdcAddress,
       priceUsdc,
       freeEndpoints: ["GET /supported", "GET /health"],
-      paidEndpoints: ["GET /assess-risk", "GET /check-token-security", "GET /simulate-transaction"],
+      paidEndpoints: ["GET /assess-risk", "GET /check-token-security", "GET /simulate-transaction", "GET /token-price", "GET /pool-info", "GET /swap-route"],
       configError: {
         code: "X402_SERVER_RECEIVER_CONFIG_MISSING",
         message: "Paid endpoints require receiver/payTo plus facilitator signer config. Free endpoints remain available.",
@@ -225,12 +228,27 @@ if (isPaidConfigured && resourceServer) {
           description: `Simulate EVM execution trace before broadcasting (USDC ${priceUsdc})`,
           mimeType: "application/json",
         },
+        "GET /token-price": {
+          accepts: { scheme: "exact", price: priceUsdc, network: `eip155:${CHAIN_ID}`, payTo: receiverAddress },
+          description: `Real-time token price via DODO/FaroSwap (USDC ${priceUsdc})`,
+          mimeType: "application/json",
+        },
+        "GET /pool-info": {
+          accepts: { scheme: "exact", price: priceUsdc, network: `eip155:${CHAIN_ID}`, payTo: receiverAddress },
+          description: `DODO/FaroSwap pool data — price ratio, impact, fees (USDC ${priceUsdc})`,
+          mimeType: "application/json",
+        },
+        "GET /swap-route": {
+          accepts: { scheme: "exact", price: priceUsdc, network: `eip155:${CHAIN_ID}`, payTo: receiverAddress },
+          description: `Swap route with estimated output via DODO (USDC ${priceUsdc})`,
+          mimeType: "application/json",
+        },
       },
       resourceServer
     )
   );
 } else {
-  app.use(["/assess-risk", "/check-token-security", "/simulate-transaction"], paidConfigError);
+  app.use(["/assess-risk", "/check-token-security", "/simulate-transaction", "/token-price", "/pool-info", "/swap-route"], paidConfigError);
 }
 
 app.get("/assess-risk", async (req, res) => {
@@ -273,6 +291,68 @@ app.get("/simulate-transaction", async (req, res) => {
       walletAddress: walletAddress as string,
     });
     res.json(result);
+  } catch (e: any) {
+    res.status(400).json(fail("BAD_REQUEST", e.message, false, "x402_server"));
+  }
+});
+
+app.get("/token-price", async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json(fail("BAD_REQUEST", "Missing required query parameter: token (PHRS, USDC, or USDT)", false, "x402_server"));
+    }
+    const result = await handleGetTokenPrice({ token: token as any });
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json(fail("BAD_REQUEST", e.message, false, "x402_server"));
+  }
+});
+
+app.get("/pool-info", async (req, res) => {
+  try {
+    const { tokenA, tokenB } = req.query;
+    if (!tokenA || !tokenB || typeof tokenA !== "string" || typeof tokenB !== "string") {
+      return res.status(400).json(fail("BAD_REQUEST", "Missing required query parameters: tokenA and tokenB (PHRS, USDC, or USDT)", false, "x402_server"));
+    }
+    const result = await handleGetPoolInfo({ tokenA: tokenA as any, tokenB: tokenB as any });
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json(fail("BAD_REQUEST", e.message, false, "x402_server"));
+  }
+});
+
+app.get("/swap-route", async (req, res) => {
+  try {
+    const { tokenIn, tokenOut, amount } = req.query;
+    if (!tokenIn || !tokenOut || !amount || typeof tokenIn !== "string" || typeof tokenOut !== "string" || typeof amount !== "string") {
+      return res.status(400).json(fail("BAD_REQUEST", "Missing required query parameters: tokenIn, tokenOut, amount", false, "x402_server"));
+    }
+    const amountNum = Number(amount);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      return res.status(400).json(fail("BAD_REQUEST", "amount must be a positive number", false, "x402_server"));
+    }
+    const quote = await getDodoRoute({
+      fromToken: tokenIn,
+      toToken: tokenOut,
+      amountHuman: amount,
+      walletAddress: "0x0000000000000000000000000000000000000001",
+    });
+    res.json(ok({
+      tokenIn,
+      tokenOut,
+      amountIn: amount,
+      estimatedOutput: quote.routeAvailable ? quote.amountOut : null,
+      priceImpact: quote.priceImpact,
+      routeAvailable: quote.routeAvailable,
+      gasEstimate: quote.gasLimit,
+      wasSubstituted: quote.wasSubstituted,
+      substitutionNote: quote.substitutionNote || null,
+      source: "DODO/FaroSwap route API",
+      chainId: CHAIN_ID,
+      environment: PHAROS_ENVIRONMENT,
+      isMainnet: false,
+    }));
   } catch (e: any) {
     res.status(400).json(fail("BAD_REQUEST", e.message, false, "x402_server"));
   }

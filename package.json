@@ -1,6 +1,6 @@
 {
   "name": "safehands-pharos",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Pharos Skill Engine-compatible transaction safety firewall for AI agents.",
   "type": "module",
   "main": "dist/index.js",
@@ -15,15 +15,19 @@
     "dist",
     "contracts",
     "README.md",
+    "DEMO.md",
     ".env.example",
-    "LICENSE"
+    "LICENSE",
+    ".agents/skill/safehands/SKILL.md"
   ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "x402-server": "tsx src/x402Server.ts",
-    "demo": "tsx src/demo.ts"
+    "demo": "tsx src/index.ts --demo",
+    "test": "node scripts/smoke-test.mjs",
+    "test:all": "npm run build && npm test && npm run demo"
   },
   "keywords": [
     "pharos",

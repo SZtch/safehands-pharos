@@ -9,12 +9,13 @@ import { resolveTokenDecimals, toWei } from "../lib/dodoApi.js";
 import { fail, ok, requireWriteToolsEnabled, classifyExternalError } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { validatePositiveAmount } from "../lib/validation.js";
 
 export const approveTokenSchema = z.object({
   token: z.enum(["USDC", "USDT"]).describe("ERC-20 token to approve"),
   amount: z.string().describe("Human-readable amount to approve, or 'max' for unlimited"),
   agentId: z.string().optional().describe("Managed testnet wallet agentId when WALLET_MODE=managed-testnet"),
-});
+}).strict();
 
 export type ApproveTokenInput = z.input<typeof approveTokenSchema>;
 
@@ -35,7 +36,21 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
     );
   }
 
-  const input = approveTokenSchema.parse(raw);
+  let input: z.infer<typeof approveTokenSchema>;
+  try {
+    input = approveTokenSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `approve_token input validation failed: ${msg}`, false, "approve_token");
+  }
+
+  if (input.amount !== "max") {
+    const amtErr = validatePositiveAmount(input.amount, "amount");
+    if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "approve_token");
+  }
+
   const signer = await getSigner(input.agentId);
   if (isSignerFailure(signer)) {
     return fail(signer.error.code, signer.error.message, false, "approve_token");

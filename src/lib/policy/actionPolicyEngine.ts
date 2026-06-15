@@ -124,9 +124,13 @@ function isSuspiciousUrl(rawUrl: string | undefined): boolean {
     if (!["http:", "https:"].includes(parsed.protocol)) return true;
     if (host === "localhost" || host.endsWith(".localhost")) return true;
     if (host === "127.0.0.1" || host.startsWith("127.") || host === "0.0.0.0") return true;
+    if (/^0\./.test(host)) return true;
     if (host.startsWith("10.") || host.startsWith("192.168.")) return true;
     if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true;
+    if (host.startsWith("169.254.")) return true;
     if (host === "[::1]" || host === "::1") return true;
+    if (host.startsWith("[fc") || host.startsWith("[fd") || host.startsWith("[fe80:")) return true;
+    if (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) return true;
     return false;
   } catch {
     return true;
@@ -177,8 +181,10 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
     pushCheck(checks, "environment", "pass", `Environment is ${PHAROS_ENVIRONMENT}.`);
   }
 
-  if (input.requiresSigner && !input.signerAvailable) {
+  if (input.requiresSigner && input.signerAvailable === false) {
     pushCheck(checks, "signer", "fail", "No signer is available for this write/payment action.", reasons, requiredActions, "No signer available.", "Configure WALLET_MODE=managed-testnet, X402_SIGNER_PRIVATE_KEY, or PRIVATE_KEY for testnet only.");
+  } else if (input.requiresSigner && input.signerAvailable === undefined) {
+    pushCheck(checks, "signer_unknown", "warn", "Signer availability is unknown — a signer will be required for execution.", reasons, requiredActions, undefined, "Ensure a signer is available before executing this write/payment action.");
   }
 
   if (input.actionType === "send_payment") {

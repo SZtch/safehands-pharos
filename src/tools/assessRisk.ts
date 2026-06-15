@@ -8,7 +8,8 @@ import { assessRisk, type RiskAssessment } from "../lib/riskEngine.js";
 import { createPharosWalletClientFromAccount, publicClient, getExplorerUrl } from "../lib/pharosClient.js";
 import { RISK_REGISTRY_ADDRESS, RISK_REGISTRY_ABI } from "../lib/constants.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
-import { requireWriteToolsEnabled } from "../lib/toolResponse.js";
+import { fail, ok, requireWriteToolsEnabled, type ToolResponse } from "../lib/toolResponse.js";
+import { validatePositiveAmount, validateAddress } from "../lib/validation.js";
 
 export const assessRiskSchema = z.object({
   action: z.enum(["swap", "transfer"]),
@@ -20,7 +21,7 @@ export const assessRiskSchema = z.object({
   agentId: z.string().optional().describe("Managed testnet wallet agentId for optional registry publishing"),
   autoPublish: z.boolean().optional().default(false).describe("If true, publish to RiskRegistry through SignerProvider when write tools are enabled"),
   privateKey: z.string().optional().describe("Deprecated and ignored. Use SignerProvider via WALLET_MODE/agentId instead."),
-});
+}).strict();
 
 export type AssessRiskInput = z.input<typeof assessRiskSchema>;
 
@@ -42,13 +43,32 @@ export const assessRiskTool = {
   inputSchema: assessRiskSchema,
 };
 
-export async function handleAssessRisk(raw: AssessRiskInput): Promise<AssessRiskResult> {
-  const input = assessRiskSchema.parse(raw);
-  if (input.action === "swap" && (!input.tokenIn || !input.tokenOut)) {
-    throw new Error("Swap action requires both tokenIn and tokenOut");
+export async function handleAssessRisk(raw: AssessRiskInput): Promise<ToolResponse<AssessRiskResult>> {
+  let input: z.infer<typeof assessRiskSchema>;
+  try {
+    input = assessRiskSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `assess_risk input validation failed: ${msg}`, false, "assess_risk");
   }
-  if (input.action === "transfer" && !input.toAddress) {
-    throw new Error("Transfer action requires toAddress");
+
+  const amtErr = validatePositiveAmount(input.amount, "amount");
+  if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "assess_risk");
+
+  const addrErr = validateAddress(input.walletAddress, "walletAddress");
+  if (addrErr) return fail("VALIDATION_ERROR", addrErr, false, "assess_risk");
+
+  if (input.action === "swap" && (!input.tokenIn || !input.tokenOut)) {
+    return fail("VALIDATION_ERROR", "Swap action requires both tokenIn and tokenOut.", false, "assess_risk");
+  }
+  if (input.action === "transfer") {
+    if (!input.toAddress) {
+      return fail("VALIDATION_ERROR", "Transfer action requires toAddress.", false, "assess_risk");
+    }
+    const toErr = validateAddress(input.toAddress, "toAddress");
+    if (toErr) return fail("VALIDATION_ERROR", toErr, false, "assess_risk");
   }
 
   const assessment = await assessRisk({
@@ -69,19 +89,19 @@ export async function handleAssessRisk(raw: AssessRiskInput): Promise<AssessRisk
         published: false,
         error: "Direct privateKey input is deprecated and ignored. Use WALLET_MODE=managed-testnet with agentId or WALLET_MODE=env through SignerProvider.",
       };
-      return result;
+      return ok(result);
     }
 
     const writeGuard = requireWriteToolsEnabled("assess_risk_auto_publish");
     if (writeGuard) {
       result.registryPublish = { published: false, error: `${writeGuard.error.code}: ${writeGuard.error.message}` };
-      return result;
+      return ok(result);
     }
 
     const signer = await getSigner(input.agentId);
     if (isSignerFailure(signer)) {
       result.registryPublish = { published: false, error: `${signer.error.code}: ${signer.error.message}` };
-      return result;
+      return ok(result);
     }
 
     try {
@@ -124,5 +144,5 @@ export async function handleAssessRisk(raw: AssessRiskInput): Promise<AssessRisk
     }
   }
 
-  return result;
+  return ok(result);
 }

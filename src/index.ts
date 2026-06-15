@@ -42,6 +42,8 @@ import { getAgentWalletSchema, handleGetAgentWallet } from "./tools/getAgentWall
 import { getAgentWalletBalanceSchema, handleGetAgentWalletBalance } from "./tools/getAgentWalletBalance.js";
 import { fail, ok } from "./lib/toolResponse.js";
 import { auditLog } from "./lib/auditLog.js";
+import { walletStore, encryptKey, getEffectiveEncryptionKey } from "./lib/wallet/index.js";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { runSkillCli } from "./cli.js";
 import { runDemo } from "./demo.js";
 import { runInit } from "./init.js";
@@ -259,20 +261,53 @@ DOCS
 
 if (!isDemoMode) {
 
-// ─── Startup Validation ────────────────────────────────────────────────
+// ─── Auto-Wallet Creation ─────────────────────────────────────────────
+// If WALLET_MODE=managed-testnet and no default wallet exists yet,
+// auto-create one so the user just needs to fund it.
+
+const DEFAULT_AGENT_ID = "default";
 
 const walletMode = process.env.WALLET_MODE || "none";
-const hasManagedWalletMode = walletMode === "managed-testnet";
+if (walletMode === "managed-testnet") {
+  const existing = await walletStore.get(DEFAULT_AGENT_ID);
+  if (!existing) {
+    try {
+      const privateKey = generatePrivateKey();
+      const account = privateKeyToAccount(privateKey);
+      const encrypted = encryptKey(privateKey, getEffectiveEncryptionKey());
+      await walletStore.set(DEFAULT_AGENT_ID, {
+        agentId: DEFAULT_AGENT_ID,
+        address: account.address,
+        encryptedKey: encrypted,
+        environment: "atlantic-testnet",
+        chainId: 688689,
+        isMainnet: false,
+        createdAt: new Date().toISOString(),
+      });
+      console.error(`🛡️  SafeHands — auto-created agent wallet: ${account.address}`);
+      console.error(`   Fund it with testnet PHRS: https://testnet.pharosnetwork.xyz/`);
+      console.error("");
+    } catch {
+      console.error("⚠️  SafeHands — failed to auto-create wallet. Use create_agent_wallet manually.");
+      console.error("");
+    }
+  } else {
+    console.error(`🛡️  SafeHands — agent wallet ready: ${existing.address}`);
+    console.error("");
+  }
+}
+
+// ─── Startup Validation ────────────────────────────────────────────────
+
 const hasExplicitSignerMode = walletMode === "managed-testnet" || walletMode === "env";
 
 if (process.env.WRITE_TOOLS_ENABLED !== "true") {
-  console.error("⚠️  SafeHands — write tools are disabled by default.");
-  console.error("   Preflight, risk report, token registry, read-only, and x402 free endpoint checks remain available.");
-  console.error("   To execute trusted testnet actions, set WRITE_TOOLS_ENABLED=true and configure a signer via WALLET_MODE=managed-testnet or WALLET_MODE=env.");
+  console.error("⚠️  SafeHands — write tools are disabled. Read-only tools remain available.");
+  console.error("   To enable writes, set WRITE_TOOLS_ENABLED=true in your .env or MCP config.");
   console.error("");
 } else if (!hasExplicitSignerMode) {
   console.error("⚠️  SafeHands — write tools enabled but no signer mode detected.");
-  console.error("   Use WALLET_MODE=managed-testnet with create_agent_wallet, or WALLET_MODE=env for testnet developer mode.");
+  console.error("   Set WALLET_MODE=managed-testnet or WALLET_MODE=env.");
   console.error("");
 }
 
@@ -338,7 +373,10 @@ server.tool(
   "assess_risk",
   "Evaluate the risk of a planned on-chain action (swap or transfer). Returns 0-100 risk score with 5-dimension breakdown.",
   assessRiskSchema.shape,
-  async (params) => mcpText(await invokeTool(handleAssessRisk, params, "assess_risk"))
+  async (params) => {
+    const result = await handleAssessRisk(params as any);
+    return mcpText(result);
+  }
 );
 
 server.tool(

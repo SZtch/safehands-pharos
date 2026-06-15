@@ -6,11 +6,12 @@
 import { z } from "zod";
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { registerExactEvmScheme } from "@x402/evm/exact/client";
-import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, MAX_X402_PAYMENT_USDC, X402_PAYMENT_TOKEN_ADDRESS } from "../lib/constants.js";
+import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, MAX_X402_PAYMENT_USDC, X402_PAYMENT_TOKEN_ADDRESS, USDC_ADDRESS, TEST_USDC_ADDRESS } from "../lib/constants.js";
 import { assertSafeFetchUrl, fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { fail, ok, requireWriteToolsEnabled } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { validatePositiveAmount } from "../lib/validation.js";
 
 export const x402PayAndFetchSchema = z.object({
   url: z.string().describe("Target URL of the protected resource requiring x402 payment"),
@@ -19,7 +20,7 @@ export const x402PayAndFetchSchema = z.object({
   rpcUrl: z.string().optional().describe("Custom RPC URL for payment verification (defaults to Atlantic Testnet RPC)"),
   agentId: z.string().optional().describe("Managed testnet wallet agentId when WALLET_MODE=managed-testnet"),
   maxPaymentUsdc: z.string().optional().default(MAX_X402_PAYMENT_USDC),
-});
+}).strict();
 
 export type X402PayAndFetchInput = z.input<typeof x402PayAndFetchSchema>;
 
@@ -55,8 +56,58 @@ function buildFetchOptions(input: z.infer<typeof x402PayAndFetchSchema>): Reques
   return fetchOptions;
 }
 
+const X402_ALLOWED_TOKENS = new Set([
+  USDC_ADDRESS.toLowerCase(),
+  TEST_USDC_ADDRESS.toLowerCase(),
+]);
+
+function validateX402Challenge(challengeHeader: string | null, maxPaymentUsdc: string): string | null {
+  if (!challengeHeader) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(challengeHeader, "base64").toString("utf-8"));
+
+    if (decoded.maxAmountRequired) {
+      const challengeAmount = Number(decoded.maxAmountRequired) / 1e6;
+      if (challengeAmount > Number(maxPaymentUsdc)) {
+        return `x402 challenge amount (${challengeAmount} USDC) exceeds maxPaymentUsdc (${maxPaymentUsdc}).`;
+      }
+    }
+
+    if (decoded.network) {
+      const parts = String(decoded.network).split(":");
+      const challengeChainId = parts.length === 2 ? Number(parts[1]) : Number(decoded.network);
+      if (Number.isFinite(challengeChainId) && challengeChainId !== CHAIN_ID) {
+        return `x402 challenge targets chain ${challengeChainId}, expected Pharos Atlantic ${CHAIN_ID}.`;
+      }
+    }
+
+    if (decoded.asset) {
+      const asset = String(decoded.asset).toLowerCase();
+      if (!X402_ALLOWED_TOKENS.has(asset)) {
+        return `x402 challenge requests payment in unrecognized token ${decoded.asset}.`;
+      }
+    }
+  } catch {
+    // Challenge header not parseable — proceed with caution but don't block
+  }
+  return null;
+}
+
 export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
-  const input = x402PayAndFetchSchema.parse(raw);
+  let input: z.infer<typeof x402PayAndFetchSchema>;
+  try {
+    input = x402PayAndFetchSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `x402_pay_and_fetch input validation failed: ${msg}`, false, "x402_pay_and_fetch");
+  }
+
+  if (input.maxPaymentUsdc) {
+    const amtErr = validatePositiveAmount(input.maxPaymentUsdc, "maxPaymentUsdc");
+    if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "x402_pay_and_fetch");
+  }
 
   try {
     await assertSafeFetchUrl(input.url);
@@ -87,10 +138,22 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
   try {
     const initial = await fetchWithTimeoutAndRetry(input.url, {
       ...fetchOptions,
+      redirect: "manual" as RequestRedirect,
       timeoutMs: 10_000,
       retries: 1,
       retryDelayMs: 250,
     });
+
+    if (initial.status >= 300 && initial.status < 400) {
+      const location = initial.headers.get("location");
+      if (location) {
+        try {
+          await assertSafeFetchUrl(new URL(location, input.url).href);
+        } catch {
+          return fail("SSRF_BLOCKED", `Redirect to ${location} blocked by SSRF policy.`, false, "x402_pay_and_fetch");
+        }
+      }
+    }
 
     if (initial.status !== 402) {
       const data = await readResponseBody(initial);
@@ -106,6 +169,12 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
         policy: staticPolicy,
         source: "x402_fetch",
       });
+    }
+
+    const challengeHeader = initial.headers.get("PAYMENT-REQUIRED");
+    const challengeError = validateX402Challenge(challengeHeader, input.maxPaymentUsdc);
+    if (challengeError) {
+      return fail("X402_CHALLENGE_INVALID", challengeError, false, "x402_pay_and_fetch");
     }
 
     const writeGuard = requireWriteToolsEnabled("x402_pay_and_fetch");

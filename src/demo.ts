@@ -108,6 +108,7 @@ export async function runDemo() {
       chainId: CHAIN_ID,
       isMainnet: false,
       approvalAmount: "max",
+      approvalToken: "USDC",
       spender: RECIPIENT,
     });
     print("safehands_preflight_check", blockedApproval);
