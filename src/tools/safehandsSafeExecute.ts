@@ -16,7 +16,7 @@ export const safehandsSafeExecuteSchema = z.object({
   execute: z.boolean().optional().default(false).describe("Must be true to execute. false returns dry-run guarded report only."),
   confirmExecution: z.boolean().optional().default(false).describe("Additional explicit runtime confirmation."),
   action: z.record(z.any()).describe("Underlying tool input object"),
-});
+}).strict();
 
 export type SafeHandsSafeExecuteInput = z.input<typeof safehandsSafeExecuteSchema>;
 
@@ -25,7 +25,7 @@ function toPreflight(path: string, action: Record<string, unknown>, signerAvaila
     return { actionType: "send_payment" as const, amount: String(action.amount || ""), amountUnit: "PHRS" as const, recipient: String(action.toAddress || ""), recipientVerified: false, requiresSigner: true, signerAvailable };
   }
   if (path === "safe_execute_approve_token") {
-    return { actionType: "approve_token" as const, approvalAmount: String(action.amount || ""), approvalToken: String(action.token || ""), approvalUnlimited: action.amount === "max", requiresSigner: true, signerAvailable };
+    return { actionType: "approve_token" as const, approvalAmount: String(action.amount || ""), approvalToken: String(action.token || ""), approvalUnlimited: action.amount === "max", spender: String(action.spender || ""), requiresSigner: true, signerAvailable };
   }
   if (path === "safe_execute_swap") {
     return { actionType: "execute_swap" as const, amount: String(action.amountIn || ""), tokenIn: String(action.tokenIn || ""), tokenOut: String(action.tokenOut || ""), requiresSigner: true, signerAvailable };
@@ -34,11 +34,19 @@ function toPreflight(path: string, action: Record<string, unknown>, signerAvaila
 }
 
 export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput): Promise<ToolResponse<unknown>> {
-  const input = safehandsSafeExecuteSchema.parse(raw);
+  let input: z.infer<typeof safehandsSafeExecuteSchema>;
+  try {
+    input = safehandsSafeExecuteSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `safe_execute input validation failed: ${msg}`, false, "safehands_safe_execute");
+  }
+
   const writeGuard = requireWriteToolsEnabled("safehands_safe_execute");
   if (writeGuard) return writeGuard;
 
-  // Resolve actual signer availability so the preflight report is truthful
   const purpose = input.path === "safe_x402_pay_and_fetch" ? "x402" : "write";
   const agentId = typeof input.action.agentId === "string" ? input.action.agentId : undefined;
   const signerResult = await getSigner(agentId, { purpose });
@@ -83,6 +91,22 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
   else if (input.path === "safe_execute_approve_token") executionResult = await handleApproveToken(input.action as any);
   else if (input.path === "safe_execute_swap") executionResult = await handleExecuteSwap(input.action as any);
   else executionResult = await handleX402PayAndFetch(input.action as any);
+
+  const execFailed =
+    executionResult &&
+    typeof executionResult === "object" &&
+    "success" in executionResult &&
+    (executionResult as { success: unknown }).success === false;
+
+  if (execFailed) {
+    const execErr = executionResult as { error?: { code?: string; message?: string } };
+    return fail(
+      execErr.error?.code || "EXECUTION_FAILED",
+      execErr.error?.message || "Underlying execution returned success:false.",
+      false,
+      "safehands_safe_execute"
+    );
+  }
 
   return ok({
     executed: true,

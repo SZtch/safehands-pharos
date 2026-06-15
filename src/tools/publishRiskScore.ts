@@ -9,6 +9,7 @@ import { assessRisk } from "../lib/riskEngine.js";
 import { fail, ok, requireWriteToolsEnabled, classifyExternalError } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { validatePositiveAmount } from "../lib/validation.js";
 
 export const publishRiskScoreSchema = z.object({
   action: z.enum(["swap", "transfer"]).describe("Type of on-chain action to assess"),
@@ -17,7 +18,7 @@ export const publishRiskScoreSchema = z.object({
   amount: z.string().describe("Human-readable amount"),
   toAddress: z.string().optional().describe("Recipient address (for transfers)"),
   agentId: z.string().optional().describe("Managed testnet wallet agentId when WALLET_MODE=managed-testnet"),
-});
+}).strict();
 
 export type PublishRiskScoreInput = z.input<typeof publishRiskScoreSchema>;
 
@@ -39,7 +40,26 @@ export async function handlePublishRiskScore(raw: PublishRiskScoreInput) {
     );
   }
 
-  const input = publishRiskScoreSchema.parse(raw);
+  let input: z.infer<typeof publishRiskScoreSchema>;
+  try {
+    input = publishRiskScoreSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `publish_risk_score input validation failed: ${msg}`, false, "publish_risk_score");
+  }
+
+  const amtErr = validatePositiveAmount(input.amount, "amount");
+  if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "publish_risk_score");
+
+  if (input.action === "swap" && (!input.tokenIn || !input.tokenOut)) {
+    return fail("VALIDATION_ERROR", "Swap action requires both tokenIn and tokenOut.", false, "publish_risk_score");
+  }
+  if (input.action === "transfer" && !input.toAddress) {
+    return fail("VALIDATION_ERROR", "Transfer action requires toAddress.", false, "publish_risk_score");
+  }
+
   const signer = await getSigner(input.agentId);
   if (isSignerFailure(signer)) {
     return fail(signer.error.code, signer.error.message, false, "publish_risk_score");
@@ -66,6 +86,10 @@ export async function handlePublishRiskScore(raw: PublishRiskScoreInput) {
     toAddress: input.toAddress,
     walletAddress,
   });
+
+  if (assessment.riskScore < 0 || assessment.riskScore > 100) {
+    return fail("VALIDATION_ERROR", `Risk score ${assessment.riskScore} is out of valid range 0-100.`, false, "publish_risk_score");
+  }
 
   try {
     const wallet = createPharosWalletClientFromAccount(signer.account);

@@ -3,10 +3,16 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import { z } from "zod";
-import { ok, type ToolResponse } from "../lib/toolResponse.js";
+import { fail, ok, type ToolResponse } from "../lib/toolResponse.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, X402_PAYMENT_TOKEN_ADDRESS } from "../lib/constants.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { classifyTokenRegistryStatus } from "./tokenRegistryStatus.js";
+import { validatePositiveAmount, validateNonZeroAddress, validateAddress, collectErrors } from "../lib/validation.js";
+
+const WRITE_ACTION_TYPES = new Set([
+  "send_payment", "approve_token", "execute_swap",
+  "x402_pay_and_fetch", "publish_risk_score", "custom_contract_call",
+]);
 
 export const safehandsPreflightCheckSchema = z.object({
   actionType: z.enum(["send_payment", "approve_token", "execute_swap", "x402_pay_and_fetch", "publish_risk_score", "custom_contract_call"]),
@@ -32,17 +38,108 @@ export const safehandsPreflightCheckSchema = z.object({
   recipientVerified: z.boolean().optional(),
   spenderVerified: z.boolean().optional(),
   requiresSigner: z.boolean().optional(),
-});
+  walletAddress: z.string().optional(),
+  score: z.number().optional(),
+  targetContract: z.string().optional(),
+  data: z.string().optional(),
+}).strict();
 
 export type SafeHandsPreflightCheckInput = z.input<typeof safehandsPreflightCheckSchema>;
 
+function validateActionFields(input: z.infer<typeof safehandsPreflightCheckSchema>): string[] {
+  const errors: (string | null)[] = [];
+
+  switch (input.actionType) {
+    case "send_payment":
+      errors.push(validatePositiveAmount(input.amount, "amount"));
+      errors.push(validateNonZeroAddress(input.recipient, "recipient"));
+      break;
+
+    case "approve_token":
+      if (!input.approvalAmount && !input.amount) {
+        errors.push("approvalAmount (or amount) is required for approve_token.");
+      }
+      if (!input.spender) {
+        errors.push("spender is required for approve_token.");
+      } else {
+        errors.push(validateAddress(input.spender, "spender"));
+      }
+      if (!input.approvalToken && !input.tokenAddress && !input.token) {
+        errors.push("approvalToken (or tokenAddress/token) is required for approve_token.");
+      }
+      break;
+
+    case "execute_swap":
+      errors.push(validatePositiveAmount(input.amount, "amount"));
+      if (!input.tokenIn) errors.push("tokenIn is required for execute_swap.");
+      if (!input.tokenOut) errors.push("tokenOut is required for execute_swap.");
+      break;
+
+    case "x402_pay_and_fetch":
+      if (!input.url) {
+        errors.push("url is required for x402_pay_and_fetch.");
+      }
+      if (input.paymentAmountUsdc) {
+        errors.push(validatePositiveAmount(input.paymentAmountUsdc, "paymentAmountUsdc"));
+      }
+      break;
+
+    case "publish_risk_score":
+      if (input.walletAddress) {
+        errors.push(validateNonZeroAddress(input.walletAddress, "walletAddress"));
+      }
+      if (input.score !== undefined && input.score !== null) {
+        if (!Number.isFinite(input.score) || input.score < 0 || input.score > 100) {
+          errors.push("score must be between 0 and 100.");
+        }
+      }
+      break;
+
+    case "custom_contract_call":
+      if (!input.targetContract) {
+        errors.push("targetContract is required for custom_contract_call.");
+      } else {
+        errors.push(validateAddress(input.targetContract, "targetContract"));
+      }
+      if (!input.data) {
+        errors.push("data is required for custom_contract_call.");
+      }
+      break;
+  }
+
+  return collectErrors(errors);
+}
+
 export async function handleSafeHandsPreflightCheck(raw: SafeHandsPreflightCheckInput): Promise<ToolResponse<unknown>> {
-  const input = safehandsPreflightCheckSchema.parse(raw);
+  let input: z.infer<typeof safehandsPreflightCheckSchema>;
+  try {
+    input = safehandsPreflightCheckSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `Preflight input validation failed: ${msg}`, false, "safehands_preflight_check");
+  }
+
+  const fieldErrors = validateActionFields(input);
+  if (fieldErrors.length > 0) {
+    return fail(
+      "VALIDATION_ERROR",
+      `Missing or invalid required fields for ${input.actionType}: ${fieldErrors.join(" ")}`,
+      false,
+      "safehands_preflight_check"
+    );
+  }
+
+  const isWriteAction = WRITE_ACTION_TYPES.has(input.actionType);
+  const effectiveRequiresSigner = input.requiresSigner ?? (isWriteAction && input.signerAvailable !== undefined ? true : input.requiresSigner);
+
   const tokenForRegistry = input.tokenAddress || input.token || input.tokenOut || input.tokenIn;
   const registry = tokenForRegistry ? classifyTokenRegistryStatus(tokenForRegistry) : null;
 
   const policy = evaluateActionPolicy({
     ...input,
+    requiresSigner: effectiveRequiresSigner,
     tokenRegistryStatus: registry?.status,
   });
 

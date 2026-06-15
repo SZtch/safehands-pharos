@@ -136,6 +136,10 @@ export async function assertSafeFetchUrl(rawUrl: string): Promise<void> {
     throw new Error(`SSRF_BLOCKED: blocked IP range (${host})`);
   }
 
+  if (/^\d+$/.test(host) || host.includes("%") || host.includes("\\")) {
+    throw new Error("SSRF_BLOCKED: suspicious hostname format");
+  }
+
   const lookupResults = await dns.lookup(host, { all: true });
   for (const result of lookupResults) {
     if (isBlockedIp(result.address)) {

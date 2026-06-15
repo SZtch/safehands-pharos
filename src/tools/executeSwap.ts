@@ -8,6 +8,7 @@ import { DODO_APPROVE_ADDRESS, ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PH
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
+import { validatePositiveAmount } from "../lib/validation.js";
 
 export const executeSwapSchema = z.object({
   tokenIn: z.string(),
@@ -15,7 +16,7 @@ export const executeSwapSchema = z.object({
   amountIn: z.string(),
   slippageTolerance: z.number().optional().default(3.225),
   agentId: z.string().optional().describe("Managed testnet wallet agentId when WALLET_MODE=managed-testnet"),
-});
+}).strict();
 
 export type ExecuteSwapInput = z.input<typeof executeSwapSchema>;
 
@@ -35,7 +36,19 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     );
   }
 
-  const input = executeSwapSchema.parse(raw);
+  let input: z.infer<typeof executeSwapSchema>;
+  try {
+    input = executeSwapSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `execute_swap input validation failed: ${msg}`, false, "execute_swap");
+  }
+
+  const amtErr = validatePositiveAmount(input.amountIn, "amountIn");
+  if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "execute_swap");
+
   const signer = await getSigner(input.agentId);
   if (isSignerFailure(signer)) {
     return fail(signer.error.code, signer.error.message, false, "execute_swap");

@@ -26,9 +26,18 @@ const ERC20_ABI = [
 ] as const;
 
 export async function handleGetAgentWalletBalance(
-  params: GetAgentWalletBalanceParams
+  params: unknown
 ): Promise<ToolResponse<unknown>> {
-  const { agentId } = params;
+  let parsed: GetAgentWalletBalanceParams;
+  try {
+    parsed = getAgentWalletBalanceSchema.parse(params);
+  } catch (err) {
+    const msg = err instanceof Error && "issues" in err
+      ? (err as any).issues.map((i: any) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `get_agent_wallet_balance input validation failed: ${msg}`, false, "get_agent_wallet_balance");
+  }
+  const { agentId } = parsed;
 
   const wallet = await walletStore.get(agentId);
   if (!wallet) {

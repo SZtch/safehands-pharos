@@ -61,18 +61,20 @@ Agent wants to act
      ┌──────┴──────┐
      │  Policy Engine│  checks: chain ID, mainnet guard,
      │               │  approval limits, SSRF, spend caps,
-     │               │  token registry, x402 URL safety
+     │               │  token registry, x402 URL safety,
+     │               │  signer availability, field validation
      └──────┬────────┘
             │
-    ┌───────┴────────┐
-    │                │
-  ALLOW            BLOCK / WARN
-    │                │
-  Agent acts      Agent stops
-                  (plain-English reason returned)
+    ┌───────┼────────────────┐
+    │       │                │
+  ALLOW   REQUIRE_         BLOCK / WARN
+    │     CONFIRMATION       │
+  Agent     │             Agent stops
+  acts    Agent asks      (plain-English reason returned)
+          user first
 ```
 
-SafeHands is a **Pharos Skill Engine-compatible MCP package** — a composable guardrail layer that any agent can add in front of any action, without modifying existing skill logic.
+SafeHands is both an **MCP server** (Model Context Protocol, for AI assistants like Claude) and a **Pharos Skill Engine skill** — a composable guardrail layer that any agent can add in front of any action, without modifying existing skill logic.
 
 ---
 
@@ -82,10 +84,31 @@ SafeHands is a **Pharos Skill Engine-compatible MCP package** — a composable g
 |------|------------------|----------------|
 | Unlimited token approval | Agent approves malicious spender forever | **BLOCK** — unlimited approval disabled by default |
 | Wrong chain | Agent signs on mainnet by mistake | **BLOCK** — mainnet guard active |
-| Suspicious x402 URL | Agent pays a localhost / private IP resource | **BLOCK** — SSRF guard |
+| Suspicious x402 URL | Agent pays a localhost / private IP resource | **BLOCK** — SSRF guard (localhost, private IPs, metadata IPs, IPv6 local) |
 | Overspending | Agent drains wallet in one session | **BLOCK** — daily cap enforced |
 | Unknown token | Agent swaps unverified contract | **WARN** — requires review |
+| Custom contract call | Agent calls arbitrary contract | **REQUIRE_CONFIRMATION** — must explicitly confirm |
 | Missing signer | Agent attempts write without wallet | Structured error, no crash |
+| Invalid amount/address | Agent passes `-1` or zero address | **VALIDATION_ERROR** — strict input checking |
+
+---
+
+## Two Ways to Use SafeHands
+
+| | Local (MCP / CLI) | x402 API (live server) |
+|---|---|---|
+| **How** | `npx safehands-pharos` or Claude Desktop | HTTP calls to `safehands-pharos-production.up.railway.app` |
+| **Cost** | Free | 0.001 USDC per paid request |
+| **DODO API key** | Needed for price/swap tools | **Not needed** — server has the key |
+| **USDC balance** | Not needed | Needed for paid endpoints |
+| **Private key** | Needed for write tools only | Not needed for data queries |
+| **Best for** | Full agent integration, write operations | Quick data queries, no setup |
+
+**Don't have USDC or DODO key?** Use `npx safehands-pharos --demo` — runs 10 safety checks with zero config, zero cost.
+
+**Just want price/pool/route data without setting up a DODO key?** Use the x402 API — pay 0.001 USDC per query, server handles DODO routing for you.
+
+**Building a full agent with swaps?** Use local mode with your own `DODO_API_KEY` and `PRIVATE_KEY`.
 
 ---
 
@@ -107,18 +130,30 @@ Add to `claude_desktop_config.json`, then restart Claude Desktop:
   "mcpServers": {
     "safehands": {
       "command": "npx",
-      "args": ["safehands-pharos"]
+      "args": ["safehands-pharos"],
+      "env": {
+        "WALLET_MODE": "managed-testnet",
+        "WRITE_TOOLS_ENABLED": "true"
+      }
     }
   }
 }
 ```
 
-All 27 SafeHands tools appear automatically in every Claude conversation.
+On first connection, SafeHands **auto-creates an encrypted agent wallet** — no manual setup needed. Ask Claude: *"Check my SafeHands wallet health"* to see your wallet address, then fund it from the [Pharos faucet](https://testnet.pharosnetwork.xyz/).
 
-### Option B — Anvita Flow
+> **Read-only mode:** Omit the `env` block to run without a wallet. All safety, analysis, and market tools still work.
+
+### Option B — Pharos Skill Engine / Anvita Flow
+
+Register SafeHands as a skill with auto-wallet:
 
 ```json
-{ "command": "npx", "args": ["safehands-pharos"] }
+{
+  "command": "npx",
+  "args": ["safehands-pharos"],
+  "env": { "WALLET_MODE": "managed-testnet", "WRITE_TOOLS_ENABLED": "true" }
+}
 ```
 
 ### Option C — Terminal / CLI
@@ -126,7 +161,7 @@ All 27 SafeHands tools appear automatically in every Claude conversation.
 ```bash
 # Preflight check before approving a token
 npx safehands-pharos skill safehands_preflight_check \
-  '{"actionType":"approve_token","chainId":688689,"tokenAddress":"0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8","spenderAddress":"0x000000000000000000000000000000000000dEaD","approvalAmount":"max"}'
+  '{"actionType":"approve_token","chainId":688689,"approvalToken":"USDC","spender":"0x000000000000000000000000000000000000dEaD","approvalAmount":"max"}'
 ```
 
 **Response:**
@@ -142,6 +177,65 @@ npx safehands-pharos skill safehands_preflight_check \
   }
 }
 ```
+
+---
+
+## Agent Integration Quick Start
+
+Your agent wants to swap 100 PHRS → USDC. Here's the full safety flow, step by step:
+
+```
+Step 1 — Preflight (is this action allowed?)
+─────────────────────────────────────────────
+Agent calls: safehands_preflight_check
+  { "actionType": "execute_swap", "chainId": 688689, "amount": "100" }
+
+Response:  { "decision": "ALLOW", "safeToExecute": true }
+  → If BLOCK or REQUIRE_CONFIRMATION → stop or ask user. Don't execute.
+
+Step 2 — Risk score (how risky is it?)
+──────────────────────────────────────
+Agent calls: assess_risk
+  { "action": "swap", "amount": "100", "walletAddress": "0xYOUR...", "toAddress": "0xPOOL..." }
+
+Response:  { "score": 12, "riskLevel": "LOW" }
+  → Score > 80 = auto-blocked. Score < 50 = safe to proceed.
+
+Step 3 — Simulate (will it succeed?)
+─────────────────────────────────────
+Agent calls: simulate_transaction
+  { "action": "swap", "amount": "100", "walletAddress": "0xYOUR...", "toAddress": "0xPOOL..." }
+
+Response:  { "wouldSucceed": true, "estimatedOutput": "166.5 USDC" }
+  → If wouldSucceed=false → stop. Show revert reason to user.
+
+Step 4 — Execute (do it)
+────────────────────────
+Agent calls: execute_swap
+  { "tokenIn": "PHRS", "tokenOut": "USDC", "amountIn": "100" }
+
+Response:  { "txHash": "0xabc...", "status": "confirmed" }
+
+Step 5 — Verify (confirm on-chain)
+───────────────────────────────────
+Agent calls: get_transaction_status
+  { "txHash": "0xabc..." }
+
+Response:  { "status": "success", "blockNumber": 24168300 }
+```
+
+**Key rule:** Always check `decision` before executing. If it's not `ALLOW`, don't call write tools.
+
+| Decision | What your agent should do |
+|----------|--------------------------|
+| `ALLOW` | Safe to execute |
+| `WARN` | Execute, but inform the user |
+| `BLOCK` | Do **not** execute — show `reasons` to user |
+| `REQUIRE_CONFIRMATION` | Ask user for explicit yes/no before executing |
+| `REQUIRE_FUNDING` | Tell user to fund wallet first |
+| `REQUIRE_TOKEN_REVIEW` | Tell user to verify the token manually |
+
+> **Read-only tools need zero setup.** Steps 1–3 work immediately with `npx safehands-pharos` — no wallet, no `.env`, no config. Only Step 4 (write) requires the setup below.
 
 ---
 
@@ -165,6 +259,10 @@ MAX_TX_AMOUNT_PHRS=0.1      # per-transaction cap
 MAX_DAILY_SPEND_USD=10      # daily spend cap
 ```
 
+> **Note:** Both `WRITE_TOOLS_ENABLED=true` **and** a valid signer (`WALLET_MODE=env` with `PRIVATE_KEY`, or `WALLET_MODE=managed-testnet` with a created wallet) are required. Setting only one will not enable writes.
+>
+> For managed wallets that persist across restarts, also set `WALLET_STORE_PATH=./.agents/wallets.json` and `WALLET_ENCRYPTION_KEY=<your-secret>`.
+
 ---
 
 ## All 27 Tools
@@ -181,20 +279,31 @@ On failure: `success: false`, `data: null`, `error: { code, message, retryable }
 
 | Tool | What it does |
 |------|-------------|
-| `safehands_preflight_check` | ALLOW / WARN / BLOCK before any action |
-| `safehands_safe_execute` | Preflight + execute in one call |
+| `safehands_preflight_check` | Policy preflight — returns one of the decisions below |
+| `safehands_safe_execute` | Preflight + execute in one call (blocks if not ALLOW) |
 | `safehands_wallet_health` | Wallet, signer, gas, x402 readiness |
 | `safehands_x402_preflight` | URL safety + payment check before x402 |
 | `safehands_risk_report` | Human-readable risk summary |
-| `explain_risk` | Translate ALLOW/WARN/BLOCK into plain English |
+| `explain_risk` | Translate decisions into plain English |
 | `token_registry_status` | Canonical / custom / unknown token check |
+
+**Policy decisions returned by `safehands_preflight_check`:**
+
+| Decision | Meaning |
+|----------|---------|
+| `ALLOW` | Safe to execute |
+| `WARN` | Proceed with caution — non-critical issue detected |
+| `BLOCK` | Action is unsafe — do not execute |
+| `REQUIRE_CONFIRMATION` | Action needs explicit user confirmation (e.g. custom contract calls) |
+| `REQUIRE_FUNDING` | Wallet has insufficient balance for gas or value |
+| `REQUIRE_TOKEN_REVIEW` | Token is unknown or unverified — manual review needed |
 
 ### Safety & Analysis
 
 | Tool | What it does |
 |------|-------------|
-| `assess_risk` | 5-dimension risk score (0–100) |
-| `check_token_security` | Token security profile |
+| `assess_risk` | 5-dimension risk score (0–100): liquidity, slippage, counterparty, balance, market conditions |
+| `check_token_security` | Token security profile via GoPlus API (note: GoPlus does not support Pharos chain 688689 — returns a clear error on testnet tokens) |
 | `simulate_transaction` | Dry-run before broadcasting |
 | `estimate_gas` | Gas estimate + sufficiency check |
 | `check_allowance` | ERC-20 allowance check |
@@ -204,9 +313,9 @@ On failure: `success: false`, `data: null`, `error: { code, message, retryable }
 | Tool | What it does |
 |------|-------------|
 | `get_wallet_balance` | PHRS / USDC / USDT balances |
-| `get_token_price` | Token price via DODO |
+| `get_token_price` | Token price via DODO (needs `DODO_API_KEY` locally, or use `/token-price` x402 endpoint) |
 | `get_gas_price` | Current network gas price |
-| `get_pool_info` | FaroSwap / DODO pool info |
+| `get_pool_info` | Pool info via DODO (needs `DODO_API_KEY` locally, or use `/pool-info` x402 endpoint) |
 | `get_transaction_status` | TX status by hash |
 | `get_execution_history` | Wallet transfer history |
 
@@ -250,14 +359,19 @@ SafeHands acts as both an **x402 client** and **x402 server**.
 https://safehands-pharos-production.up.railway.app
 ```
 
-| Endpoint | Access | Price |
-|----------|--------|-------|
-| `GET /health` | Free | — |
-| `GET /preflight` | Free | — |
-| `GET /risk` | Free | — |
-| `GET /assess-risk` | Paid | 0.001 USDC |
-| `GET /check-token-security` | Paid | 0.001 USDC |
-| `GET /simulate-transaction` | Paid | 0.001 USDC |
+| Endpoint | Access | Price | DODO key needed? |
+|----------|--------|-------|-----------------|
+| `GET /health` | Free | — | No |
+| `GET /preflight` | Free | — | No |
+| `GET /risk` | Free | — | No |
+| `GET /assess-risk` | Paid | 0.001 USDC | No |
+| `GET /check-token-security` | Paid | 0.001 USDC | No |
+| `GET /simulate-transaction` | Paid | 0.001 USDC | No |
+| `GET /token-price` | Paid | 0.001 USDC | No — server has key |
+| `GET /pool-info` | Paid | 0.001 USDC | No — server has key |
+| `GET /swap-route` | Paid | 0.001 USDC | No — server has key |
+
+> **No USDC?** All paid endpoints have local equivalents (`get_token_price`, `get_pool_info`, `assess_risk`, etc.) that run free via MCP or CLI — you just need your own `DODO_API_KEY` for price/pool tools. Free endpoints (`/health`, `/preflight`, `/risk`) work without any payment.
 
 ---
 
@@ -339,19 +453,25 @@ Managed wallets are AES-256-GCM encrypted on disk. The `.agents/` folder is giti
 
 ```bash
 npm run build    # compile TypeScript
+npm test         # 44 deterministic smoke tests (no wallet/RPC needed)
 npm run demo     # 10 live safety checks in terminal (no wallet needed)
+npm run test:all # build + test + demo in one command
 npm run dev      # MCP server in dev mode
 ```
+
+The smoke tests cover: amount validation, address validation, mainnet blocking, SSRF blocking (localhost, 169.254, IPv6), unlimited approval blocking, strict schema rejection, wallet creation validation, and all required ALLOW/BLOCK policy decisions.
 
 Manual CLI testing after build:
 
 ```bash
 npm run build
 node dist/index.js skill safehands_preflight_check \
-  '{"actionType":"approve_token","chainId":688689,"approvalAmount":"max"}'
+  '{"actionType":"approve_token","chainId":688689,"approvalAmount":"max","approvalToken":"USDC","spender":"0x0000000000000000000000000000000000000001"}'
 ```
 
 Live preflight examples with real outputs: [DEMO.md](DEMO.md)
+
+> **CLI vs MCP:** All 27 tools are available over MCP (Claude Desktop, Anvita Flow). The `skill` CLI exposes 19 tools suitable for terminal use — write-heavy tools like `execute_swap`, `send_payment`, `approve_token` are MCP-only to prevent accidental execution from the command line.
 
 ---
 
@@ -359,7 +479,7 @@ Live preflight examples with real outputs: [DEMO.md](DEMO.md)
 
 - Testnet-only — not audited for mainnet use
 - Managed wallet encryption is AES-256-GCM, not KMS/Vault grade
-- `get_token_price` and swap routing require a DODO API key
+- `get_token_price`, `get_pool_info`, and swap routing require a DODO API key when running locally (or use the x402 `/token-price`, `/pool-info`, `/swap-route` endpoints — no key needed)
 - GoPlus token security does not support Pharos testnet (Chain 688689) — returns a clear error
 - DODO reverse routes (e.g. USDT → PHRS) have no liquidity on testnet
 - x402 client/server verified against SafeHands's own server; not yet tested against live third-party x402 endpoints on Pharos

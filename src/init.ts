@@ -1,6 +1,9 @@
 import * as readline from "readline/promises";
-import { writeFileSync, existsSync, readFileSync } from "fs";
-import { resolve } from "path";
+import { writeFileSync, existsSync, readFileSync, mkdirSync } from "fs";
+import { resolve, join, dirname } from "path";
+import { randomBytes } from "crypto";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { encryptKey } from "./lib/wallet/index.js";
 
 export async function runInit() {
   console.log("\n🛡️  Welcome to SafeHands-Pharos Setup Wizard\n");
@@ -71,10 +74,65 @@ export async function runInit() {
   writeFileSync(envPath, finalContent.trim() + "\n");
 
   console.log("\n✅ Configuration saved to .env!");
+
   if (!pk.trim() && enableWrite) {
-    console.log("   Since you enabled write tools without providing a Private Key,");
-    console.log("   SafeHands will use 'managed-testnet' mode.");
-    console.log("   Run 'npx safehands-pharos skill create_agent_wallet --input-json \"{}\"' to generate one.");
+    // Auto-create wallet + encryption key + store path
+    const storePath = resolve(process.cwd(), "./.agents/wallets.json");
+    const keyPath = join(dirname(storePath), ".key");
+
+    // Ensure .agents/ directory exists
+    mkdirSync(dirname(storePath), { recursive: true });
+
+    // Generate or load encryption key
+    let encKey: string;
+    if (existsSync(keyPath)) {
+      encKey = readFileSync(keyPath, "utf-8").trim();
+    } else {
+      encKey = randomBytes(32).toString("hex");
+      writeFileSync(keyPath, encKey, { mode: 0o600 });
+    }
+
+    // Auto-create wallet
+    const privateKey = generatePrivateKey();
+    const account = privateKeyToAccount(privateKey);
+    const encrypted = encryptKey(privateKey, encKey);
+
+    const walletData: Record<string, unknown> = {};
+    if (existsSync(storePath)) {
+      try { Object.assign(walletData, JSON.parse(readFileSync(storePath, "utf-8"))); } catch {}
+    }
+    walletData["default"] = {
+      agentId: "default",
+      address: account.address,
+      encryptedKey: encrypted,
+      environment: "atlantic-testnet",
+      chainId: 688689,
+      isMainnet: false,
+      createdAt: new Date().toISOString(),
+    };
+    writeFileSync(storePath, JSON.stringify(walletData, null, 2), "utf-8");
+
+    // Append auto-generated config to .env
+    const appendLines = [
+      `WALLET_STORE_PATH=./.agents/wallets.json`,
+    ];
+    const currentEnv = readFileSync(envPath, "utf-8");
+    if (!currentEnv.includes("WALLET_STORE_PATH")) {
+      writeFileSync(envPath, currentEnv.trimEnd() + "\n" + appendLines.join("\n") + "\n");
+    }
+
+    console.log("");
+    console.log(`   🛡️  Agent wallet created automatically!`);
+    console.log(`   Address: ${account.address}`);
+    console.log("");
+    console.log(`   Next step — fund your wallet with testnet PHRS:`);
+    console.log(`   https://testnet.pharosnetwork.xyz/`);
+    console.log("");
+    console.log(`   Wallet is encrypted (AES-256-GCM) and stored at .agents/wallets.json`);
+    console.log(`   Encryption key saved to .agents/.key — do not share or delete this file.`);
+  } else if (pk.trim() && enableWrite) {
+    console.log("   Wallet mode: env (using your private key)");
   }
-  console.log("🚀 SafeHands is ready to protect your AI Agent!\n");
+
+  console.log("\n🚀 SafeHands is ready to protect your AI Agent!\n");
 }

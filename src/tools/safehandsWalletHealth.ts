@@ -19,8 +19,9 @@ export type SafeHandsWalletHealthInput = z.input<typeof safehandsWalletHealthSch
 
 export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInput): Promise<ToolResponse<unknown>> {
   const input = safehandsWalletHealthSchema.parse(raw);
-  const managedWallet = input.agentId ? await walletStore.get(input.agentId) : null;
-  const signer = await getSigner(input.agentId);
+  const effectiveAgentId = input.agentId || (process.env.WALLET_MODE === "managed-testnet" ? "default" : undefined);
+  const managedWallet = effectiveAgentId ? await walletStore.get(effectiveAgentId) : null;
+  const signer = await getSigner(effectiveAgentId);
   const signerAvailable = !isSignerFailure(signer);
   const address = signerAvailable ? signer.address : (input.walletAddress || managedWallet?.address);
 
@@ -47,7 +48,10 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
         canPayX402: false,
         canExecuteWrites: false,
       },
-      requiredActions: ["Create a managed testnet wallet or provide WALLET_MODE=env with a testnet PRIVATE_KEY."],
+      requiredActions: [
+        "Create a managed testnet wallet (set WALLET_MODE=managed-testnet — auto-creates on next startup) or provide WALLET_MODE=env with a testnet PRIVATE_KEY.",
+        "Fund your wallet at https://testnet.pharosnetwork.xyz/",
+      ],
       source: "safehands_wallet_health",
     });
   }
@@ -87,7 +91,7 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
         note: "Daily spend accounting is config-ready but not persisted in this MVP.",
       },
       requiredActions: [
-        ...(canPayGas ? [] : ["Fund wallet with testnet PHRS for gas."]),
+        ...(canPayGas ? [] : ["Fund wallet with testnet PHRS for gas: https://testnet.pharosnetwork.xyz/"]),
         ...(canPayX402 ? [] : [`Fund wallet with at least ${MAX_X402_PAYMENT_USDC} testnet USDC for x402 payments.`]),
         ...(process.env.WRITE_TOOLS_ENABLED === "true" ? [] : ["Set WRITE_TOOLS_ENABLED=true only when intentionally executing trusted testnet actions."]),
       ],

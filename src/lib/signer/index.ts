@@ -94,6 +94,11 @@ export async function getSigner(
   const managed = await accountFromManagedWallet(agentId);
   if (managed) return managed;
 
+  if (!agentId && (process.env.WALLET_MODE === "managed-testnet")) {
+    const defaultManaged = await accountFromManagedWallet("default");
+    if (defaultManaged) return defaultManaged;
+  }
+
   if (purpose === "x402") {
     const x402Env = accountFromEnvKey("X402_SIGNER_PRIVATE_KEY", "x402-env");
     if (x402Env) return x402Env;

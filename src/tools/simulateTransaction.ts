@@ -4,6 +4,7 @@ import { publicClient } from "../lib/pharosClient.js";
 import { getDodoRoute, isNativeToken, resolveTokenDecimals, fromWei } from "../lib/dodoApi.js";
 import { parseEther, formatEther } from "viem";
 import { ok, fail } from "../lib/toolResponse.js";
+import { validatePositiveAmount, validateAddress } from "../lib/validation.js";
 
 export const simulateTransactionSchema = z.object({
   action: z.enum(["swap", "transfer"]),
@@ -12,7 +13,7 @@ export const simulateTransactionSchema = z.object({
   amount: z.string(),
   toAddress: z.string().optional(),
   walletAddress: z.string(),
-});
+}).strict();
 
 export type SimulateTransactionInput = z.infer<typeof simulateTransactionSchema>;
 
@@ -22,14 +23,30 @@ export const simulateTransactionTool = {
   inputSchema: simulateTransactionSchema,
 };
 
-export async function handleSimulateTransaction(input: SimulateTransactionInput) {
+export async function handleSimulateTransaction(raw: SimulateTransactionInput) {
+  let input: z.infer<typeof simulateTransactionSchema>;
+  try {
+    input = simulateTransactionSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `simulate_transaction input validation failed: ${msg}`, false, "simulate_transaction");
+  }
+
+  const amtErr = validatePositiveAmount(input.amount, "amount");
+  if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "simulate_transaction");
+
+  const walletErr = validateAddress(input.walletAddress, "walletAddress");
+  if (walletErr) return fail("VALIDATION_ERROR", walletErr, false, "simulate_transaction");
+
   const warnings: string[] = [];
   const balanceChanges: Array<{ token: string; delta: string }> = [];
 
   try {
     if (input.action === "swap") {
       if (!input.tokenIn || !input.tokenOut) {
-        return fail("INVALID_INPUT", "tokenIn and tokenOut required for swap simulation", false, "simulate_transaction");
+        return fail("VALIDATION_ERROR", "tokenIn and tokenOut required for swap simulation", false, "simulate_transaction");
       }
 
       const quote = await getDodoRoute({
@@ -67,8 +84,10 @@ export async function handleSimulateTransaction(input: SimulateTransactionInput)
 
     // Transfer simulation
     if (!input.toAddress) {
-      return fail("INVALID_INPUT", "toAddress required for transfer simulation", false, "simulate_transaction");
+      return fail("VALIDATION_ERROR", "toAddress required for transfer simulation", false, "simulate_transaction");
     }
+    const toErr = validateAddress(input.toAddress, "toAddress");
+    if (toErr) return fail("VALIDATION_ERROR", toErr, false, "simulate_transaction");
 
     const amountWei = parseEther(input.amount);
     const balance = await publicClient.getBalance({ address: input.walletAddress as `0x${string}` });

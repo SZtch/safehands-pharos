@@ -8,13 +8,14 @@ import { MAX_BALANCE_USAGE_PCT, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PHRS, CHAIN_
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
+import { validatePositiveAmount, validateNonZeroAddress, collectErrors } from "../lib/validation.js";
 
 export const sendPaymentSchema = z.object({
   toAddress: z.string(),
   amount: z.string(),
   memo: z.string().optional(),
   agentId: z.string().optional().describe("Managed testnet wallet agentId when WALLET_MODE=managed-testnet"),
-});
+}).strict();
 
 export type SendPaymentInput = z.input<typeof sendPaymentSchema>;
 
@@ -34,7 +35,24 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     );
   }
 
-  const input = sendPaymentSchema.parse(raw);
+  let input: z.infer<typeof sendPaymentSchema>;
+  try {
+    input = sendPaymentSchema.parse(raw);
+  } catch (err) {
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `send_payment input validation failed: ${msg}`, false, "send_payment");
+  }
+
+  const fieldErrors = collectErrors([
+    validatePositiveAmount(input.amount, "amount"),
+    validateNonZeroAddress(input.toAddress, "toAddress"),
+  ]);
+  if (fieldErrors.length > 0) {
+    return fail("VALIDATION_ERROR", fieldErrors.join(" "), false, "send_payment");
+  }
+
   const signer = await getSigner(input.agentId);
   if (isSignerFailure(signer)) {
     return fail(signer.error.code, signer.error.message, false, "send_payment");

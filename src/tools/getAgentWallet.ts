@@ -24,9 +24,18 @@ interface GetAgentWalletData {
 }
 
 export async function handleGetAgentWallet(
-  params: GetAgentWalletParams
+  params: unknown
 ): Promise<ToolResponse<GetAgentWalletData>> {
-  const { agentId } = params;
+  let parsed: GetAgentWalletParams;
+  try {
+    parsed = getAgentWalletSchema.parse(params);
+  } catch (err) {
+    const msg = err instanceof Error && "issues" in err
+      ? (err as any).issues.map((i: any) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `get_agent_wallet input validation failed: ${msg}`, false, "get_agent_wallet");
+  }
+  const { agentId } = parsed;
 
   const wallet = await walletStore.get(agentId);
   if (!wallet) {

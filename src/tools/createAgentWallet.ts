@@ -40,9 +40,18 @@ interface CreateAgentWalletData {
 }
 
 export async function handleCreateAgentWallet(
-  params: CreateAgentWalletParams
+  params: unknown
 ): Promise<ToolResponse<CreateAgentWalletData>> {
-  const { agentId, overwrite } = params;
+  let parsed: CreateAgentWalletParams;
+  try {
+    parsed = createAgentWalletSchema.parse(params);
+  } catch (err) {
+    const msg = err instanceof Error && "issues" in err
+      ? (err as any).issues.map((i: any) => `${i.path.join(".")}: ${i.message}`).join("; ")
+      : String(err);
+    return fail("VALIDATION_ERROR", `create_agent_wallet input validation failed: ${msg}`, false, "create_agent_wallet");
+  }
+  const { agentId, overwrite } = parsed;
 
   // Check if wallet already exists
   const existing = await walletStore.get(agentId);
