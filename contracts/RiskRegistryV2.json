@@ -1,0 +1,688 @@
+{
+  "contractName": "RiskRegistryV2",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AlreadyRevoked",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "EmptyArray",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "EmptyString",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidActionHash",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidExpiry",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidScore",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RecordNotFound",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "UnauthorizedPublisher",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "agent",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "authorized",
+          "type": "bool"
+        }
+      ],
+      "name": "AgentAuthorizationUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "agent",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "actionHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "score",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "riskLevel",
+          "type": "string"
+        }
+      ],
+      "name": "RiskRecordPublished",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        }
+      ],
+      "name": "RiskRecordRevoked",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "actionRecord",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "authorizedAgents",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "agents",
+          "type": "address[]"
+        },
+        {
+          "internalType": "bool",
+          "name": "authorized",
+          "type": "bool"
+        }
+      ],
+      "name": "batchSetAuthorizedAgents",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        }
+      ],
+      "name": "getLatestRiskRecordForWallet",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "recordId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "wallet",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "agent",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "actionHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint8",
+              "name": "score",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "riskLevel",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "recommendation",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "policyVersion",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceURI",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "createdAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiresAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "revoked",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct RiskRegistryV2.RiskRecord",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getRiskRecord",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "recordId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "wallet",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "agent",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "actionHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint8",
+              "name": "score",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "riskLevel",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "recommendation",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "policyVersion",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceURI",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "createdAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiresAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "revoked",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct RiskRegistryV2.RiskRecord",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "actionHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getRiskRecordByActionHash",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "recordId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "wallet",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "agent",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "actionHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint8",
+              "name": "score",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "riskLevel",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "recommendation",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "policyVersion",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "evidenceURI",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "createdAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiresAt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "revoked",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct RiskRegistryV2.RiskRecord",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        }
+      ],
+      "name": "getRiskRecordsForWallet",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "agent",
+          "type": "address"
+        }
+      ],
+      "name": "isAuthorizedAgent",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        }
+      ],
+      "name": "isRiskRecordValid",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "agent",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "actionHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint8",
+          "name": "score",
+          "type": "uint8"
+        },
+        {
+          "internalType": "string",
+          "name": "riskLevel",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "recommendation",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "policyVersion",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "evidenceURI",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "expiresAt",
+          "type": "uint256"
+        }
+      ],
+      "name": "publishRiskRecord",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        }
+      ],
+      "name": "revokeRiskRecord",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "riskRecords",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "recordId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "agent",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "actionHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint8",
+          "name": "score",
+          "type": "uint8"
+        },
+        {
+          "internalType": "string",
+          "name": "riskLevel",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "recommendation",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "policyVersion",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "evidenceURI",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "createdAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "expiresAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "revoked",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "agent",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "authorized",
+          "type": "bool"
+        }
+      ],
+      "name": "setAuthorizedAgent",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "walletRecords",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080806040523461002b575f80546001600160a01b03191633179055600180556114ed90816100308239f35b5f80fdfe60806040526004361015610011575f80fd5b5f3560e01c8062ac73e714611045578063032809a314610f975780630e27381114610f0557806318ead16c14610edd5780631ef453dd1461066f5780631f5e03711461059f57806320106b8614610551578063330fcfde146105275780633ac69c89146103e95780633d26a759146102de5780636707ed96146101dd5780636bf722ab146100bd5780638da5cb5b146101b6578063dad3aa5a146100fe5763efd76065146100bd575f80fd5b346100fa5760203660031901126100fa576001600160a01b036100de61109c565b165f526002602052602060ff60405f2054166040519015158152f35b5f80fd5b346100fa5760203660031901126100fa5760043561012660018060a01b035f5416331461133a565b805f526003602052600960405f200154156101a457805f52600360205260ff600b60405f2001541661019257805f526003602052600b60405f2001600160ff198254161790557f83c396ddd9e05d371422cd3457c6dabcd7a8beca3ea8d131209744074095ad2c5f80a2005b60405163905e710760e01b8152600490fd5b604051633e07f1a160e01b8152600490fd5b346100fa575f3660031901126100fa575f546040516001600160a01b039091168152602090f35b346100fa5760203660031901126100fa576004356101f961140d565b50805f526003602052600960405f200154156101a4575f5260036020526102da60405f2060ff600b6040519261022e8461125c565b8054845260018101546001600160a01b03908116602086015260028201541660408501526003810154606085015260048101548316608085015261027460058201611299565b60a085015261028560068201611299565b60c085015261029660078201611299565b60e08501526102a760088201611299565b6101008501526009810154610120850152600a810154610140850152015416151561016082015260405191829182611155565b0390f35b346100fa5760203660031901126100fa576004355f52600360205260405f208054600160a01b60019003918260018201541692600282015416600382015491600481015460ff166005820161033290611299565b61033e60068401611299565b61034a60078501611299565b9161035760088601611299565b93600986015497600a87015496600b015460ff16976040519b8c9b8c5260208c015260408b015260608a015260808901526101808060a08a0152880161039c91611117565b87810360c08901526103ad91611117565b86810360e08801526103be91611117565b8581036101008701526103d091611117565b9261012085015261014084015215156101608301520390f35b346100fa5760403660031901126100fa576004356001600160401b038082116100fa57366023830112156100fa5781600401359081116100fa576024820191602436918360051b0101116100fa5761043f6110db565b5f5490916001600160a01b0391610459908316331461133a565b801561051557909180151591905f5b82811061047157005b8461048561048083868a6113a4565b6113b4565b161561050357808561049e6104806104fe94878b6113a4565b165f526020600281526104c08460405f209060ff801983541691151516179055565b7f8b411aa2c492b8d7eef960d41180bf2adc9c1bc7ac5986d04da1c58a909d821a876104f061048085898d6113a4565b1691604051888152a2611396565b610468565b60405163d92e233d60e01b8152600490fd5b60405163521299a960e01b8152600490fd5b346100fa5760203660031901126100fa576004355f526005602052602060405f2054604051908152f35b346100fa5760203660031901126100fa5761056a61140d565b506004355f52600560205260405f205480156101a4575f5260036020526102da60405f2060ff600b6040519261022e8461125c565b346100fa5760203660031901126100fa576105b861109c565b6105c061140d565b506001600160a01b039081165f9081526004602052604090208054919082156101a4575f19830192831161065b576102da926105fb916110b2565b90549060031b1c5f52600360205260ff600b60405f206040519361061e8561125c565b8154855280600183015416602086015260028201541660408501526003810154606085015282600482015416608085015261027460058201611299565b634e487b7160e01b5f52601160045260245ffd5b346100fa576101203660031901126100fa5761068961109c565b6024356001600160a01b03811681036100fa576064359160ff831683036100fa576084356001600160401b0381116100fa576106c99036906004016110ea565b909260a4356001600160401b0381116100fa576106ea9036906004016110ea565b60c4959195356001600160401b0381116100fa5761070c9036906004016110ea565b9060e4356001600160401b0381116100fa5761072c9036906004016110ea565b91909260018060a01b035f541633141580610ec6575b610eb4576001600160a01b03891615610503576001600160a01b038716156105035760443515610ea257606460ff8c1611610e90578715610e7e578415610e7e578015610e7e5761010435151580610e71575b610e6057600154996107a68b611396565b600155604051956107b68761125c565b8b87526001600160a01b038b8116602089015289166040880152604435606088015260ff8d1660808801526107ec368b8a6113c8565b60a088015236906107fc926113c8565b60c0860152369061080c926113c8565b60e0840152369061081c926113c8565b610100820152426101208201526101043561014082015261016081015f9052855f52600360205260405f20908051825560018201600160a01b60019003602083015116906bffffffffffffffffffffffff60a01b91828254161790556002830190600160a01b60019003604084015116908254161790556060810151600383015560048201608082015160ff1660ff1982541617905560a08101518051906001600160401b038211610b2e5781906108d76005860154611224565b601f8111610e10575b50602090601f8311600114610da2575f92610d97575b50508160011b915f199060031b1c19161760058301555b60c08101518051906001600160401b038211610b2e5781906109326006860154611224565b601f8111610d47575b50602090601f8311600114610cd9575f92610cce575b50508160011b915f199060031b1c19161760068301555b60e08101518051906001600160401b038211610b2e57819061098d6007860154611224565b601f8111610c7e575b50602090601f8311600114610c10575f92610c05575b50508160011b915f199060031b1c19161760078301555b6101008101518051906001600160401b038211610b2e576109e76008850154611224565b601f8111610bc1575b50602090601f8311600114610b4d579282600b9361016093610a5897965f92610b42575b50508160011b915f199060031b1c19161760088501555b6101208101516009850155610140810151600a8501550151151591019060ff801983541691151516179055565b6001600160a01b0384165f9081526004602052604090208054919068010000000000000000831015610b2e5760209787948660ff94610ac08760809660017fea9e29bcf5b9fe26750b1c81834ef0fff95901a20b445a5b8203d3adbbf4f3c59a0181556110b2565b81549060031b908a821b915f19901b19161790556044355f5260058c528760405f20556040519586946044358652168c85015260606040850152816060850152848401375f8288018401526001600160a01b03908116971695601f01601f19168101030190a4604051908152f35b634e487b7160e01b5f52604160045260245ffd5b015190508d80610a14565b90601f19831691600886015f5260205f20925f5b818110610ba957509361016093610a5897969360019383600b9810610b91575b505050811b016008850155610a2b565b01515f1960f88460031b161c191690558d8080610b81565b92936020600181928786015181550195019301610b61565b600885015f5260205f20601f840160051c810160208510610bfe575b601f830160051c82018110610bf35750506109f0565b5f8155600101610bdd565b5080610bdd565b015190508a806109ac565b9250600785015f5260205f20905f935b601f1984168510610c63576001945083601f19811610610c4b575b505050811b0160078301556109c3565b01515f1960f88460031b161c191690558a8080610c3b565b81810151835560209485019460019093019290910190610c20565b909150600785015f5260205f20601f840160051c810160208510610cc7575b90849392915b601f830160051c82018110610cb9575050610996565b5f8155859450600101610ca3565b5080610c9d565b015190508a80610951565b9250600685015f5260205f20905f935b601f1984168510610d2c576001945083601f19811610610d14575b505050811b016006830155610968565b01515f1960f88460031b161c191690558a8080610d04565b81810151835560209485019460019093019290910190610ce9565b909150600685015f5260205f20601f840160051c810160208510610d90575b90849392915b601f830160051c82018110610d8257505061093b565b5f8155859450600101610d6c565b5080610d66565b015190508a806108f6565b9250600585015f5260205f20905f935b601f1984168510610df5576001945083601f19811610610ddd575b505050811b01600583015561090d565b01515f1960f88460031b161c191690558a8080610dcd565b81810151835560209485019460019093019290910190610db2565b909150600585015f5260205f20601f840160051c810160208510610e59575b90849392915b601f830160051c82018110610e4b5750506108e0565b5f8155859450600101610e35565b5080610e2f565b60405162d36c8560e81b8152600490fd5b5042610104351115610795565b60405163ecd7b0d160e01b8152600490fd5b604051631556136560e01b8152600490fd5b60405163c001161960e01b8152600490fd5b60405163988033d960e01b8152600490fd5b50335f52600260205260ff60405f20541615610742565b346100fa5760203660031901126100fa576020610efb60043561146a565b6040519015158152f35b346100fa5760403660031901126100fa57610f1e61109c565b610f266110db565b5f5490916001600160a01b0391610f40908316331461133a565b169081156105035760207f8b411aa2c492b8d7eef960d41180bf2adc9c1bc7ac5986d04da1c58a909d821a91835f5260028252610f8c8160405f209060ff801983541691151516179055565b6040519015158152a2005b346100fa576020806003193601126100fa576001600160a01b03610fb961109c565b165f526004815260405f20604051908183825491828152019081925f52845f20905f5b86828210611031578686610ff282880383611278565b60405192839281840190828552518091526040840192915f5b82811061101a57505050500390f35b83518552869550938101939281019260010161100b565b835485529093019260019283019201610fdc565b346100fa5760403660031901126100fa5761105e61109c565b6001600160a01b03165f908152600460205260409020805460243591908210156100fa5760209161108e916110b2565b90546040519160031b1c8152f35b600435906001600160a01b03821682036100fa57565b80548210156110c7575f5260205f2001905f90565b634e487b7160e01b5f52603260045260245ffd5b6024359081151582036100fa57565b9181601f840112156100fa578235916001600160401b0383116100fa57602083818601950101116100fa57565b91908251928382525f5b848110611141575050825f602080949584010152601f8019910116010190565b602081830181015184830182015201611121565b602081528151602082015260018060a01b0380602084015116604083015260408301511660608201526060820151608082015260ff60808301511660a082015260a08201516111b2610180918260c08501526101a0840190611117565b926112026111d260c083015195601f1996878783030160e0880152611117565b6111ed60e08401519161010092888883030184890152611117565b90830151610120968683030187870152611117565b9381015161014090818501528101519061016091828501520151151591015290565b90600182811c92168015611252575b602083101461123e57565b634e487b7160e01b5f52602260045260245ffd5b91607f1691611233565b61018081019081106001600160401b03821117610b2e57604052565b90601f801991011681019081106001600160401b03821117610b2e57604052565b9060405191825f8254926112ac84611224565b9081845260019485811690815f1461131757506001146112d7575b50506112d592500383611278565b565b909391505f52602090815f20935f915b8183106112ff5750506112d593508201015f806112c7565b855488840185015294850194879450918301916112e7565b9150506112d594506020925060ff191682840152151560051b8201015f806112c7565b1561134157565b60405162461bcd60e51b815260206004820152602760248201527f5269736b526567697374727956323a2063616c6c6572206973206e6f74207468604482015266329037bbb732b960c91b6064820152608490fd5b5f19811461065b5760010190565b91908110156110c75760051b0190565b356001600160a01b03811681036100fa5790565b9291926001600160401b038211610b2e57604051916113f1601f8201601f191660200184611278565b8294818452818301116100fa578281602093845f960137010152565b6040519061141a8261125c565b816101605f91828152826020820152826040820152826060820152826080820152606060a0820152606060c0820152606060e0820152606061010082015282610120820152826101408201520152565b5f52600360205260405f206009810154156114b25760ff600b820154166114b257600a015480151590816114a7575b506114a357600190565b5f90565b90504210155f611499565b505f9056fea264697066735822122071b3c1dee8a766ac43e125b3e1acb8d4762618d131d79b721c2170e01ccce31664736f6c63430008140033"
+}
