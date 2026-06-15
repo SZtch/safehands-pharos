@@ -27,7 +27,8 @@
     "x402-server": "tsx src/x402Server.ts",
     "demo": "tsx src/index.ts --demo",
     "test": "node scripts/smoke-test.mjs",
-    "test:all": "npm run build && npm test && npm run demo"
+    "test:contracts": "npx hardhat test",
+    "test:all": "npm run build && npm test && npm run demo && npm run test:contracts"
   },
   "keywords": [
     "pharos",
@@ -69,8 +70,11 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
     "@types/express": "^5.0.6",
     "@types/node": "^22.15.0",
+    "hardhat": "^3.9.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
