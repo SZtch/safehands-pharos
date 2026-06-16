@@ -376,32 +376,37 @@ See [.env.example](.env.example) for full reference.
 
 ## Roadmap
 
-SafeHands' direction is to be the safety layer autonomous agents call *before* they act on Pharos.
+**Vision:** SafeHands becomes the universal safety layer every AI agent calls *before* it acts on-chain — smarter risk intelligence, stronger on-chain enforcement, across many chains. One rule holds at every phase: **the ALLOW / BLOCK decision stays deterministic — AI advises, the policy engine decides.**
 
-### Shipped
+### ✅ Shipped — v1.7.0 (Pharos Atlantic Testnet)
 
-- 29-tool MCP package (preflight, risk, market/chain data, gated execution, agent policy, managed wallet)
+- 29-tool MCP Skill: preflight, risk scoring, market/chain data, gated execution, agent policy, managed wallet
 - Deterministic policy engine: mainnet guard, approval limits, SSRF guard, spend caps, per-agent policy
-- RiskRegistry V2 on Pharos Atlantic Testnet — authorized-agent registry + on-chain risk attestation
-- Managed execution gated by RiskRegistry V2 authorization, funding, and policy
+- RiskRegistry V2 on-chain — authorized-agent registry + risk attestations (live & verifiable on explorer)
+- Managed execution gated by V2 authorization + funding + policy
 - x402 preflight + gated `pay_and_fetch` with SSRF/redirect protection
-- AES-256-GCM managed testnet wallet store
 
-### Next — agent safety depth
+### 🔜 Phase 1 — Smarter & stronger (testnet)
 
-- **Agent safety memory** — persist prior decisions and outcomes per agent to inform future preflights
-- **Agent role policies** — richer per-role limits beyond the current profile model
-- **x402 payment safety for autonomous agents** — full paymentId/requestHash replay cache and idempotency
-- **Swap & approval risk before execution** — deeper pre-trade simulation and spender reputation
+- **Richer risk intelligence** — address reputation / sanctions feeds, price oracles (Pyth / Chainlink) for accurate USD & slippage, deeper transaction simulation
+- **On-chain enforcement via ERC-4337** — translate per-agent policy into smart-account session-key limits, so caps hold even if preflight is skipped
+- **AI advisory layer** — LLM-assisted risk explanation, intent verification (*"does this tx match what the user asked?"*) and anomaly detection — as input signals, **never** as the gatekeeper
+- **Interoperable attestations** — align RiskRegistry records with the EAS standard so other agents and tools can consume them
+- **Agent safety memory** — persist prior decisions and outcomes per agent
 
-### Later — builder surface
+### 🌐 Phase 2 — Multi-chain (testnet first)
 
-- **Hosted preflight endpoint** — let any builder call SafeHands preflight over HTTP without local setup
-- **SafeHands Guardian Agent** — a reference safety agent for Agent Arena
+- Generalize the chain registry + pluggable DEX adapters (beyond DODO / FaroSwap)
+- Deploy + verify RiskRegistry on additional testnets, with per-chain token registries and gas models
+- **Goal:** a chain-agnostic guardrail any agent can call, on any supported network
 
-### Research only (not supported today)
+### 🚀 Phase 3 — Mainnet (only after hardening)
 
-- **Cross-chain safety research** — long-term research direction. SafeHands does **not** support mainnet, Pacific, or cross-chain execution in the current release.
+- Third-party security audit of contracts and code
+- Custody-grade key management (KMS / HSM / Vault) replacing local testnet encryption
+- Staged rollout — preflight / read-only first, execution later — with circuit breakers, monitoring, and incident response
+
+> **Honest scope today:** v1.7.0 is **Pharos Atlantic Testnet only** and **not audited for mainnet custody**. Mainnet, Pacific, and cross-chain execution are **not supported in the current release** — they are planned, staged milestones above, not current claims.
 
 ---
 
