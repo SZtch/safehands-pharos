@@ -378,7 +378,7 @@ See [.env.example](.env.example) for full reference.
 
 **Vision:** SafeHands becomes the universal safety layer every AI agent calls *before* it acts on-chain — smarter risk intelligence, stronger on-chain enforcement, across many chains. One rule holds at every phase: **the ALLOW / BLOCK decision stays deterministic — AI advises, the policy engine decides.**
 
-### ✅ Shipped — v1.7.0 (Pharos Atlantic Testnet)
+### Shipped — v1.7.0 (Pharos Atlantic Testnet)
 
 - 29-tool MCP Skill: preflight, risk scoring, market/chain data, gated execution, agent policy, managed wallet
 - Deterministic policy engine: mainnet guard, approval limits, SSRF guard, spend caps, per-agent policy
@@ -386,7 +386,7 @@ See [.env.example](.env.example) for full reference.
 - Managed execution gated by V2 authorization + funding + policy
 - x402 preflight + gated `pay_and_fetch` with SSRF/redirect protection
 
-### 🔜 Phase 1 — Smarter & stronger (testnet)
+### Phase 1 — Smarter & stronger (testnet)
 
 - **Richer risk intelligence** — address reputation / sanctions feeds, price oracles (Pyth / Chainlink) for accurate USD & slippage, deeper transaction simulation
 - **On-chain enforcement via ERC-4337** — translate per-agent policy into smart-account session-key limits, so caps hold even if preflight is skipped
@@ -394,13 +394,13 @@ See [.env.example](.env.example) for full reference.
 - **Interoperable attestations** — align RiskRegistry records with the EAS standard so other agents and tools can consume them
 - **Agent safety memory** — persist prior decisions and outcomes per agent
 
-### 🌐 Phase 2 — Multi-chain (testnet first)
+### Phase 2 — Multi-chain (testnet first)
 
 - Generalize the chain registry + pluggable DEX adapters (beyond DODO / FaroSwap)
 - Deploy + verify RiskRegistry on additional testnets, with per-chain token registries and gas models
 - **Goal:** a chain-agnostic guardrail any agent can call, on any supported network
 
-### 🚀 Phase 3 — Mainnet (only after hardening)
+### Phase 3 — Mainnet (only after hardening)
 
 - Third-party security audit of contracts and code
 - Custody-grade key management (KMS / HSM / Vault) replacing local testnet encryption
