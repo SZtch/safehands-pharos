@@ -8,6 +8,7 @@ coverage/
 # Internal docs
 safehands-prd.md
 *.prd.md
+SAFEHANDS_PHASE*_PROMPT.md
 !docs/reports/
 
 # Environment and local secrets
