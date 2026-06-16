@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { formatEther, formatUnits } from "viem";
 import { publicClient } from "../lib/pharosClient.js";
-import { ERC20_ABI, USDC_ADDRESS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, MAX_X402_PAYMENT_USDC, RISK_REGISTRY_V2_ADDRESS } from "../lib/constants.js";
+import { ERC20_ABI, USDC_ADDRESS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, MAX_X402_PAYMENT_USDC, RISK_REGISTRY_V2_ADDRESS, REQUIRE_AUTHORIZED_AGENT_FOR_WRITE } from "../lib/constants.js";
 import { fail, ok, classifyExternalError, type ToolResponse } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { walletStore } from "../lib/wallet/index.js";
@@ -72,7 +72,7 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
     const usdc = formatUnits(usdcRaw, 6);
     const canPayGas = parseFloat(phrs) > 0.001;
     const canPayX402 = parseFloat(usdc) >= Number(MAX_X402_PAYMENT_USDC);
-    const canExecuteWrites = signerAvailable && canPayGas && process.env.WRITE_TOOLS_ENABLED === "true";
+    const writeToolsEnabled = process.env.WRITE_TOOLS_ENABLED === "true";
 
     let riskRegistryV2: { authorized: boolean; address: string; error?: string } | undefined;
     try {
@@ -82,9 +82,32 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
       riskRegistryV2 = { authorized: false, address: RISK_REGISTRY_V2_ADDRESS, error: "RiskRegistry V2 query failed" };
     }
 
+    // Managed-testnet wallets must be authorized in RiskRegistry V2 before they
+    // can execute writes. env-mode wallets do not require registry authorization.
+    const authorizationRequired =
+      signerAvailable && signer.mode === "managed-testnet" && REQUIRE_AUTHORIZED_AGENT_FOR_WRITE;
+    const riskRegistryAuthorized = riskRegistryV2.authorized === true;
+    const authorizationSatisfied = !authorizationRequired || riskRegistryAuthorized;
+
+    const canExecuteWrites =
+      signerAvailable && canPayGas && writeToolsEnabled && authorizationSatisfied;
+
+    // REQUIRE_AUTHORIZATION surfaces the one remaining blocker when a funded,
+    // write-enabled managed wallet is simply not yet authorized in RiskRegistry V2.
+    const needsAuthorizationOnly =
+      signerAvailable && writeToolsEnabled && canPayGas && authorizationRequired && !riskRegistryAuthorized;
+
+    const status = canExecuteWrites
+      ? "READY"
+      : needsAuthorizationOnly
+        ? "REQUIRE_AUTHORIZATION"
+        : signerAvailable
+          ? "DEGRADED"
+          : "NOT_READY";
+
     return ok({
       ...base,
-      status: canExecuteWrites ? "READY" : signerAvailable ? "DEGRADED" : "NOT_READY",
+      status,
       balances: {
         PHRS: { value: phrs, unit: "PHRS", decimals: 18 },
         USDC: { value: usdc, unit: "USDC", decimals: 6, tokenAddress: USDC_ADDRESS },
@@ -94,6 +117,8 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
         canPayGas,
         canPayX402,
         canExecuteWrites,
+        authorizationRequired,
+        riskRegistryAuthorized,
       },
       riskRegistryV2,
       dailySpendStatus: {
@@ -103,7 +128,10 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
       requiredActions: [
         ...(canPayGas ? [] : ["Fund wallet with testnet PHRS for gas: https://testnet.pharosnetwork.xyz/"]),
         ...(canPayX402 ? [] : [`Fund wallet with at least ${MAX_X402_PAYMENT_USDC} testnet USDC for x402 payments.`]),
-        ...(process.env.WRITE_TOOLS_ENABLED === "true" ? [] : ["Set WRITE_TOOLS_ENABLED=true only when intentionally executing trusted testnet actions."]),
+        ...(writeToolsEnabled ? [] : ["Set WRITE_TOOLS_ENABLED=true only when intentionally executing trusted testnet actions."]),
+        ...(authorizationRequired && !riskRegistryAuthorized
+          ? [`Authorize this managed wallet in RiskRegistry V2: the contract owner must call setAuthorizedAgent(${address}, true), or set AUTO_AUTHORIZE_AGENT_WALLET=true with RISK_REGISTRY_OWNER_PRIVATE_KEY.`]
+          : []),
       ],
       source: "safehands_wallet_health",
     });

@@ -19,25 +19,30 @@ try {
   // No .env file — environment vars must be set externally (CI, shell, MCP host)
 }
 
-// 2. Auto-resolve wallet persistence so managed wallets survive restarts
-//    without requiring explicit config from the user.
-if (!process.env.WALLET_STORE_PATH) {
-  process.env.WALLET_STORE_PATH = "./.agents/wallets.json";
-}
+// 2. Auto-resolve wallet persistence ONLY for managed-testnet mode, so managed
+//    wallets survive restarts without explicit config. Read-only / preflight /
+//    env-key modes must never create .agents/wallets.json or .agents/.key just
+//    by importing modules or running no-wallet checks (no key material on disk
+//    until managed wallets are actually in use).
+if ((process.env.WALLET_MODE || "none") === "managed-testnet") {
+  if (!process.env.WALLET_STORE_PATH) {
+    process.env.WALLET_STORE_PATH = "./.agents/wallets.json";
+  }
 
-if (!process.env.WALLET_ENCRYPTION_KEY) {
-  const storePath = resolve(process.cwd(), process.env.WALLET_STORE_PATH);
-  const keyPath = join(dirname(storePath), ".key");
-  try {
-    if (existsSync(keyPath)) {
-      process.env.WALLET_ENCRYPTION_KEY = readFileSync(keyPath, "utf-8").trim();
-    } else {
-      mkdirSync(dirname(keyPath), { recursive: true });
-      const key = randomBytes(32).toString("hex");
-      writeFileSync(keyPath, key, { mode: 0o600 });
-      process.env.WALLET_ENCRYPTION_KEY = key;
+  if (!process.env.WALLET_ENCRYPTION_KEY) {
+    const storePath = resolve(process.cwd(), process.env.WALLET_STORE_PATH);
+    const keyPath = join(dirname(storePath), ".key");
+    try {
+      if (existsSync(keyPath)) {
+        process.env.WALLET_ENCRYPTION_KEY = readFileSync(keyPath, "utf-8").trim();
+      } else {
+        mkdirSync(dirname(keyPath), { recursive: true });
+        const key = randomBytes(32).toString("hex");
+        writeFileSync(keyPath, key, { mode: 0o600 });
+        process.env.WALLET_ENCRYPTION_KEY = key;
+      }
+    } catch {
+      // File ops failed (read-only FS, permission error) — fall back to in-memory behavior
     }
-  } catch {
-    // File ops failed (read-only FS, permission error) — fall back to in-memory behavior
   }
 }

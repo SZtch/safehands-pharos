@@ -94,6 +94,7 @@ Owner:    0x6730d3a2a217108ab53ccfe60ffdad05d3c124e5
 
 ## Links
 
-- Repository: [PASTE_GITHUB_LINK]
-- Demo Video: [PASTE_DEMO_VIDEO_LINK]
-- Package/NPM: [PASTE_IF_AVAILABLE]
+- Repository: https://github.com/SZtch/safehands-pharos
+- Package/NPM: https://www.npmjs.com/package/safehands-pharos
+- Demo Video: to be added before final review
+- Try it now: `npx safehands-pharos --demo`

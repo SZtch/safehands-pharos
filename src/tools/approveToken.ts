@@ -6,8 +6,8 @@ import { z } from "zod";
 import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
 import { DODO_APPROVE_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, ERC20_ABI, MAX_APPROVAL_AMOUNT_USDC, CHAIN_ID, PHAROS_ENVIRONMENT } from "../lib/constants.js";
 import { resolveTokenDecimals, toWei } from "../lib/dodoApi.js";
-import { fail, ok, requireWriteToolsEnabled, classifyExternalError } from "../lib/toolResponse.js";
-import { getSigner, isSignerFailure } from "../lib/signer/index.js";
+import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
+import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { validatePositiveAmount } from "../lib/validation.js";
 
@@ -27,15 +27,6 @@ export const approveTokenTool = {
 };
 
 export async function handleApproveToken(raw: ApproveTokenInput) {
-  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
-    return fail(
-      "WRITE_TOOLS_DISABLED",
-      "approve_token is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
-      false,
-      "approve_token"
-    );
-  }
-
   let input: z.infer<typeof approveTokenSchema>;
   try {
     input = approveTokenSchema.parse(raw);
@@ -51,13 +42,13 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
     if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "approve_token");
   }
 
-  const signer = await getSigner(input.agentId);
-  if (isSignerFailure(signer)) {
-    return fail(signer.error.code, signer.error.message, false, "approve_token");
-  }
+  const gate = await requireManagedExecutionReady("approve_token", input.agentId);
+  if (isManagedExecutionFailure(gate)) return gate;
+  const { signer } = gate;
 
   const policy = evaluateActionPolicy({
     actionType: "approve_token",
+    agentId: input.agentId,
     approvalAmount: input.amount,
     approvalToken: input.token,
     approvalUnlimited: input.amount === "max",
@@ -76,7 +67,7 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
   }
 
   if (input.amount !== "max" && Number(input.amount) > Number(MAX_APPROVAL_AMOUNT_USDC)) {
-    return fail("APPROVAL_LIMIT_EXCEEDED", `Approval amount exceeds configured testnet limit (${MAX_APPROVAL_AMOUNT_USDC}).`, false, "approve_token");
+    return fail("APPROVAL_LIMIT_EXCEEDED", `Approval amount exceeds the operator ceiling MAX_APPROVAL_AMOUNT_USDC (${MAX_APPROVAL_AMOUNT_USDC}), which bounds all agent policies. Raise MAX_APPROVAL_AMOUNT_USDC to allow larger testnet approvals.`, false, "approve_token");
   }
 
   const tokenAddress = input.token === "USDC" ? USDC_ADDRESS : USDT_ADDRESS;

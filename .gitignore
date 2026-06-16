@@ -9,7 +9,7 @@ coverage/
 safehands-prd.md
 *.prd.md
 SAFEHANDS_PHASE*_PROMPT.md
-!docs/reports/
+SAFEHANDS_FULL_FINAL_REPAIR.md
 
 # Environment and local secrets
 .env
@@ -40,7 +40,9 @@ dist/
 .agents/*.json
 .agents/.key
 
-# docs/ is tracked
-!docs/
-!docs/reports/
-!docs/reports/**
+# Hardhat build output
+artifacts/
+cache/
+
+# docs/ is tracked EXCEPT internal status reports
+docs/reports/

@@ -236,7 +236,6 @@ PHAROS ATLANTIC TESTNET
   RPC: https://atlantic.dplabs-internal.com
   Explorer: https://atlantic.pharosscan.xyz/
   RiskRegistry V2: 0x92e7b0d7029b1fe43f7da44ca9b0f805f3f31c25
-  RiskRegistry V1: 0x61962a6c812ee9f57b207e1ea47c19ae70bb7141 (legacy)
 
 x402 BEHAVIOR
   Free endpoints, such as /supported and /health, do not require a private key.
