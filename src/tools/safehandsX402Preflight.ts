@@ -8,6 +8,7 @@ import { assertSafeFetchUrl, fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, MAX_X402_PAYMENT_USDC, X402_PAYMENT_TOKEN_ADDRESS } from "../lib/constants.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
+import { isValidPositiveAmount } from "../lib/validation.js";
 
 export const safehandsX402PreflightSchema = z.object({
   url: z.string(),
@@ -22,6 +23,16 @@ export type SafeHandsX402PreflightInput = z.input<typeof safehandsX402PreflightS
 
 export async function handleSafeHandsX402Preflight(raw: SafeHandsX402PreflightInput): Promise<ToolResponse<unknown>> {
   const input = safehandsX402PreflightSchema.parse(raw);
+
+  if (!isValidPositiveAmount(input.paymentAmountUsdc)) {
+    return fail(
+      "VALIDATION_ERROR",
+      `paymentAmountUsdc must be a valid positive number (got "${input.paymentAmountUsdc}").`,
+      false,
+      "safehands_x402_preflight"
+    );
+  }
+
   try {
     await assertSafeFetchUrl(input.url);
   } catch (err) {

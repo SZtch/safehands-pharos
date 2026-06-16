@@ -1,0 +1,15 @@
+{
+  "profile": "balanced",
+  "limits": {
+    "maxPaymentPHRS": "1",
+    "maxSwapPHRS": "10",
+    "maxDailySpendPHRS": "25",
+    "maxX402PaymentUSDC": "0.1",
+    "maxApprovalUSDC": "50"
+  },
+  "flags": {
+    "allowUnknownTokens": false,
+    "allowCustomContractCalls": false,
+    "requireConfirmationAboveRisk": "MEDIUM"
+  }
+}

@@ -5,10 +5,11 @@
 import { z } from "zod";
 import { formatEther, formatUnits } from "viem";
 import { publicClient } from "../lib/pharosClient.js";
-import { ERC20_ABI, USDC_ADDRESS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, MAX_X402_PAYMENT_USDC } from "../lib/constants.js";
+import { ERC20_ABI, USDC_ADDRESS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, MAX_X402_PAYMENT_USDC, RISK_REGISTRY_V2_ADDRESS } from "../lib/constants.js";
 import { fail, ok, classifyExternalError, type ToolResponse } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { walletStore } from "../lib/wallet/index.js";
+import { isAgentAuthorized } from "../lib/riskRegistryV2.js";
 
 export const safehandsWalletHealthSchema = z.object({
   agentId: z.string().optional().describe("Managed testnet wallet agentId"),
@@ -73,6 +74,14 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
     const canPayX402 = parseFloat(usdc) >= Number(MAX_X402_PAYMENT_USDC);
     const canExecuteWrites = signerAvailable && canPayGas && process.env.WRITE_TOOLS_ENABLED === "true";
 
+    let riskRegistryV2: { authorized: boolean; address: string; error?: string } | undefined;
+    try {
+      const authorized = await isAgentAuthorized(address as `0x${string}`);
+      riskRegistryV2 = { authorized, address: RISK_REGISTRY_V2_ADDRESS };
+    } catch {
+      riskRegistryV2 = { authorized: false, address: RISK_REGISTRY_V2_ADDRESS, error: "RiskRegistry V2 query failed" };
+    }
+
     return ok({
       ...base,
       status: canExecuteWrites ? "READY" : signerAvailable ? "DEGRADED" : "NOT_READY",
@@ -86,6 +95,7 @@ export async function handleSafeHandsWalletHealth(raw: SafeHandsWalletHealthInpu
         canPayX402,
         canExecuteWrites,
       },
+      riskRegistryV2,
       dailySpendStatus: {
         implemented: false,
         note: "Daily spend accounting is config-ready but not persisted in this MVP.",

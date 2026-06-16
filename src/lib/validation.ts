@@ -43,6 +43,18 @@ export function validateNonZeroAddress(value: unknown, fieldName: string): strin
   return null;
 }
 
+const KNOWN_TOKEN_SYMBOLS = new Set(["PHRS", "USDC", "USDT", "WBTC", "WETH", "WPHRS", "CIRCLE_USDC"]);
+
+export function validateTokenIdentifier(value: unknown, fieldName: string): string | null {
+  if (value === null || value === undefined || value === "") {
+    return `${fieldName} is required.`;
+  }
+  const str = String(value).trim();
+  if (KNOWN_TOKEN_SYMBOLS.has(str.toUpperCase())) return null;
+  if (isAddress(str)) return null;
+  return `${fieldName} must be a known token symbol (PHRS, USDC, USDT, etc.) or a valid EVM address (got "${str}").`;
+}
+
 export function collectErrors(errors: (string | null)[]): string[] {
   return errors.filter((e): e is string => e !== null);
 }

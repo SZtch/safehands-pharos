@@ -7,7 +7,7 @@ import { fail, ok, type ToolResponse } from "../lib/toolResponse.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, X402_PAYMENT_TOKEN_ADDRESS } from "../lib/constants.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { classifyTokenRegistryStatus } from "./tokenRegistryStatus.js";
-import { validatePositiveAmount, validateNonZeroAddress, validateAddress, collectErrors } from "../lib/validation.js";
+import { validatePositiveAmount, validateNonZeroAddress, validateAddress, validateTokenIdentifier, collectErrors } from "../lib/validation.js";
 
 const WRITE_ACTION_TYPES = new Set([
   "send_payment", "approve_token", "execute_swap",
@@ -66,13 +66,24 @@ function validateActionFields(input: z.infer<typeof safehandsPreflightCheckSchem
       }
       if (!input.approvalToken && !input.tokenAddress && !input.token) {
         errors.push("approvalToken (or tokenAddress/token) is required for approve_token.");
+      } else {
+        const tokenValue = input.approvalToken || input.tokenAddress || input.token;
+        errors.push(validateTokenIdentifier(tokenValue, "approvalToken"));
       }
       break;
 
     case "execute_swap":
       errors.push(validatePositiveAmount(input.amount, "amount"));
-      if (!input.tokenIn) errors.push("tokenIn is required for execute_swap.");
-      if (!input.tokenOut) errors.push("tokenOut is required for execute_swap.");
+      if (!input.tokenIn) {
+        errors.push("tokenIn is required for execute_swap.");
+      } else {
+        errors.push(validateTokenIdentifier(input.tokenIn, "tokenIn"));
+      }
+      if (!input.tokenOut) {
+        errors.push("tokenOut is required for execute_swap.");
+      } else {
+        errors.push(validateTokenIdentifier(input.tokenOut, "tokenOut"));
+      }
       break;
 
     case "x402_pay_and_fetch":
@@ -85,13 +96,15 @@ function validateActionFields(input: z.infer<typeof safehandsPreflightCheckSchem
       break;
 
     case "publish_risk_score":
-      if (input.walletAddress) {
+      if (!input.walletAddress) {
+        errors.push("walletAddress is required for publish_risk_score.");
+      } else {
         errors.push(validateNonZeroAddress(input.walletAddress, "walletAddress"));
       }
-      if (input.score !== undefined && input.score !== null) {
-        if (!Number.isFinite(input.score) || input.score < 0 || input.score > 100) {
-          errors.push("score must be between 0 and 100.");
-        }
+      if (input.score === undefined || input.score === null) {
+        errors.push("score is required for publish_risk_score.");
+      } else if (!Number.isFinite(input.score) || input.score < 0 || input.score > 100) {
+        errors.push("score must be between 0 and 100.");
       }
       break;
 

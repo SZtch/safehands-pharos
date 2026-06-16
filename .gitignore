@@ -39,8 +39,7 @@ dist/
 .agents/*.json
 .agents/.key
 
-# docs/ is tracked; specific sub-paths excluded from internal-only patterns above
+# docs/ is tracked
 !docs/
 !docs/reports/
 !docs/reports/**
-docs/reports/
