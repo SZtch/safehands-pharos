@@ -10,6 +10,8 @@ import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, MAX_X402_PAYMENT_USDC, X402_PAYM
 import { assertSafeFetchUrl, fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { fail, ok, requireWriteToolsEnabled } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
+import { checkManagedWalletAuthorization } from "../lib/riskRegistryV2.js";
+import { REQUIRE_AUTHORIZED_AGENT_FOR_WRITE } from "../lib/constants.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { validatePositiveAmount } from "../lib/validation.js";
 
@@ -122,6 +124,7 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
 
   const staticPolicy = evaluateActionPolicy({
     actionType: "x402_pay_and_fetch",
+    agentId: input.agentId,
     url: input.url,
     paymentAmountUsdc: input.maxPaymentUsdc,
     paymentTokenAddress: X402_PAYMENT_TOKEN_ADDRESS,
@@ -190,8 +193,23 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
       );
     }
 
+    // Managed-testnet wallets must be authorized in RiskRegistry V2, same as
+    // every other write path — a direct x402 payment must not bypass this gate.
+    if (signer.mode === "managed-testnet" && REQUIRE_AUTHORIZED_AGENT_FOR_WRITE) {
+      const authCheck = await checkManagedWalletAuthorization(signer.address);
+      if (!authCheck.authorized) {
+        return fail(
+          "REQUIRE_AUTHORIZATION",
+          authCheck.errorMessage || "Managed wallet is not authorized in RiskRegistry V2.",
+          false,
+          "x402_pay_and_fetch"
+        );
+      }
+    }
+
     const paymentPolicy = evaluateActionPolicy({
       actionType: "x402_pay_and_fetch",
+      agentId: input.agentId,
       url: input.url,
       paymentAmountUsdc: input.maxPaymentUsdc,
       paymentTokenAddress: X402_PAYMENT_TOKEN_ADDRESS,

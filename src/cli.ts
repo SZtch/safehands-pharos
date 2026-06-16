@@ -24,6 +24,16 @@ import { handleGetTokenPrice } from "./tools/getTokenPrice.js";
 import { handleGetTransactionStatus } from "./tools/getTransactionStatus.js";
 import { handleQueryRiskRegistry } from "./tools/queryRiskRegistry.js";
 import { handlePublishRiskScore } from "./tools/publishRiskScore.js";
+import { handleExecuteSwap } from "./tools/executeSwap.js";
+import { handleSendPayment } from "./tools/sendPayment.js";
+import { handleApproveToken } from "./tools/approveToken.js";
+import { handleX402PayAndFetch } from "./tools/x402PayAndFetch.js";
+import { handleGetGasPrice } from "./tools/getGasPrice.js";
+import { handleGetPoolInfo } from "./tools/getPoolInfo.js";
+import { handleGetExecutionHistory } from "./tools/getExecutionHistory.js";
+import { handleCheckAllowance } from "./tools/checkAllowance.js";
+import { handleGetAgentPolicy } from "./tools/getAgentPolicy.js";
+import { handleSetAgentPolicy } from "./tools/setAgentPolicy.js";
 
 export type SkillCliToolName =
   | "safehands_preflight_check"
@@ -44,7 +54,17 @@ export type SkillCliToolName =
   | "get_token_price"
   | "get_transaction_status"
   | "query_risk_registry"
-  | "publish_risk_score";
+  | "publish_risk_score"
+  | "execute_swap"
+  | "send_payment"
+  | "approve_token"
+  | "x402_pay_and_fetch"
+  | "get_gas_price"
+  | "get_pool_info"
+  | "get_execution_history"
+  | "check_allowance"
+  | "get_agent_policy"
+  | "set_agent_policy";
 
 type SkillCliHandler = (input: any) => Promise<unknown>;
 
@@ -68,6 +88,16 @@ const SKILL_CLI_TOOLS: Record<SkillCliToolName, SkillCliHandler> = {
   get_transaction_status: handleGetTransactionStatus,
   query_risk_registry: handleQueryRiskRegistry,
   publish_risk_score: handlePublishRiskScore,
+  execute_swap: handleExecuteSwap,
+  send_payment: handleSendPayment,
+  approve_token: handleApproveToken,
+  x402_pay_and_fetch: handleX402PayAndFetch,
+  get_gas_price: handleGetGasPrice,
+  get_pool_info: handleGetPoolInfo,
+  get_execution_history: handleGetExecutionHistory,
+  check_allowance: handleCheckAllowance,
+  get_agent_policy: handleGetAgentPolicy,
+  set_agent_policy: handleSetAgentPolicy,
 };
 
 function isStructuredResponse(value: unknown): value is ToolResponse<unknown> {

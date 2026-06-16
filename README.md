@@ -106,7 +106,24 @@ Then connect to Claude Desktop, Anvita Flow, or use from CLI.
 
 ### Option A — Connect to AI Agent (Claude Desktop)
 
-Add to `claude_desktop_config.json`, then restart Claude Desktop:
+Add to `claude_desktop_config.json`, then restart Claude Desktop. **The default is read-only — no `.env`, no private key, no wallet, no authorization required:**
+
+```json
+{
+  "mcpServers": {
+    "safehands": {
+      "command": "npx",
+      "args": ["safehands-pharos"]
+    }
+  }
+}
+```
+
+All safety, analysis, and market tools work in this mode. Ask Claude: *"Run a SafeHands preflight on this payment"* to try it.
+
+#### Optional — enable managed execution (testnet writes)
+
+Only when you intentionally want the agent to execute on Pharos Atlantic Testnet, add the `env` block:
 
 ```json
 {
@@ -123,19 +140,20 @@ Add to `claude_desktop_config.json`, then restart Claude Desktop:
 }
 ```
 
-On first connection, SafeHands **auto-creates an encrypted agent wallet** — no manual setup. Ask Claude: *"Check my SafeHands wallet health"* to see your wallet address, then fund it from the [Pharos faucet](https://testnet.pharosnetwork.xyz/).
-
-> **Read-only mode:** Omit the `env` block to run without a wallet. All safety, analysis, and market tools still work.
+With managed execution enabled, SafeHands **auto-creates an encrypted agent wallet** on first connection — no manual setup. Ask Claude *"Check my SafeHands wallet health"* to see the address, fund it from the [Pharos faucet](https://testnet.pharosnetwork.xyz/), then authorize it in RiskRegistry V2 before write tools can run.
 
 ### Option B — Pharos Skill Engine / Anvita Flow
+
+Read-only default:
 
 ```json
 {
   "command": "npx",
-  "args": ["safehands-pharos"],
-  "env": { "WALLET_MODE": "managed-testnet", "WRITE_TOOLS_ENABLED": "true" }
+  "args": ["safehands-pharos"]
 }
 ```
+
+Add `"env": { "WALLET_MODE": "managed-testnet", "WRITE_TOOLS_ENABLED": "true" }` only for optional managed execution.
 
 ### Option C — Terminal / CLI
 
@@ -242,22 +260,16 @@ SafeHands makes x402 safer for autonomous agents by validating HTTP 402 payment 
 
 ---
 
-## On-Chain RiskRegistry
+## On-Chain RiskRegistry V2
 
-### V2 (active)
+RiskRegistry V2 is the only active registry. There is no V1 in active code, packaging, or supported usage.
 
 | | |
 |---|---|
 | **Contract** | `0x92e7b0d7029b1fe43f7da44ca9b0f805f3f31c25` |
 | **Network** | Pharos Atlantic Testnet (688689) |
 | **Features** | Authorized-agent registry, risk record publishing, action hash attestations, record validity/revocation |
-
-### V1 (legacy)
-
-| | |
-|---|---|
-| **Contract** | `0x61962a6c812ee9f57b207e1ea47c19ae70bb7141` |
-| **Live TX** | [`0x6a58f636...fdefc`](https://atlantic.pharosscan.xyz/tx/0x6a58f636814458c09304db3d7c4f5f48e764f6439649fbb786cddb32c77fdefc) |
+| **Key functions** | `setAuthorizedAgent`, `isAuthorizedAgent`, `publishRiskRecord`, `getRiskRecord`, `getLatestRiskRecordForWallet`, `getRiskRecordsForWallet`, `getRiskRecordByActionHash`, `isRiskRecordValid` |
 
 ---
 
@@ -340,41 +352,32 @@ See [.env.example](.env.example) for full reference.
 
 ## Roadmap
 
-### Phase 1 — Foundation (complete)
+SafeHands' direction is to be the safety layer autonomous agents call *before* they act on Pharos.
 
-- [x] 27-tool MCP package published to npm
-- [x] Policy engine: mainnet guard, approval limits, SSRF, spend caps
-- [x] RiskRegistry V1 live on Pharos Atlantic
-- [x] x402 client + server — preflight-gated payment flow
-- [x] AES-256-GCM managed wallet with persistent encrypted store
+### Shipped
 
-### Phase 2 — RiskRegistry V2 (complete)
+- 29-tool MCP package (preflight, risk, market/chain data, gated execution, agent policy, managed wallet)
+- Deterministic policy engine: mainnet guard, approval limits, SSRF guard, spend caps, per-agent policy
+- RiskRegistry V2 on Pharos Atlantic Testnet — authorized-agent registry + on-chain risk attestation
+- Managed execution gated by RiskRegistry V2 authorization, funding, and policy
+- x402 preflight + gated `pay_and_fetch` with SSRF/redirect protection
+- AES-256-GCM managed testnet wallet store
 
-- [x] RiskRegistry V2 smart contract with authorized-agent registry + on-chain risk attestation
-- [x] 37 contract tests (authorization, publishing, queries, revocation, events)
-- [x] Deployed to Pharos Atlantic Testnet
+### Next — agent safety depth
 
-### Phase 3 — V2 Integration (complete)
+- **Agent safety memory** — persist prior decisions and outcomes per agent to inform future preflights
+- **Agent role policies** — richer per-role limits beyond the current profile model
+- **x402 payment safety for autonomous agents** — full paymentId/requestHash replay cache and idempotency
+- **Swap & approval risk before execution** — deeper pre-trade simulation and spender reputation
 
-- [x] V2 integrated into all tools (publish, query, risk report, wallet health)
-- [x] Managed execution gated by V2 authorization
-- [x] Preflight/read-only modes unaffected
+### Later — builder surface
 
-### Phase 4 — UX, Policy, Docs (complete)
+- **Hosted preflight endpoint** — let any builder call SafeHands preflight over HTTP without local setup
+- **SafeHands Guardian Agent** — a reference safety agent for Agent Arena
 
-- [x] Per-agent policy profiles (conservative / balanced / advanced / custom)
-- [x] `get_agent_policy` and `set_agent_policy` tools
-- [x] Execution mode documentation
-- [x] `.env.example` restructured with clear sections
-- [x] SECURITY.md created
-- [x] README/SKILL.md aligned with V2 and 29-tool count
-- [x] Package version bumped to 1.7.0
+### Research only (not supported today)
 
-### Phase 5 — Final Submission
-
-- [ ] Final full validation and reviewer demo script
-- [ ] Final ZIP/package review
-- [ ] Final secret scan
+- **Cross-chain safety research** — long-term research direction. SafeHands does **not** support mainnet, Pacific, or cross-chain execution in the current release.
 
 ---
 

@@ -11,7 +11,7 @@ import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { validatePositiveAmount } from "../lib/validation.js";
 import { deriveActionHash, checkManagedWalletAuthorization } from "../lib/riskRegistryV2.js";
 
-const PKG_VERSION = "1.6.0";
+const PKG_VERSION = "1.7.0";
 
 export const publishRiskScoreSchema = z.object({
   action: z.enum(["swap", "transfer"]).describe("Type of on-chain action to assess"),
@@ -88,6 +88,7 @@ export async function handlePublishRiskScore(raw: PublishRiskScoreInput) {
 
   const policy = evaluateActionPolicy({
     actionType: "publish_risk_score",
+    agentId: input.agentId,
     chainId: CHAIN_ID,
     environment: PHAROS_ENVIRONMENT,
     isMainnet: false,
@@ -154,6 +155,8 @@ export async function handlePublishRiskScore(raw: PublishRiskScoreInput) {
       assessment,
       policy,
       signerMode: signer.mode,
+      riskRegistryVersion: "v2",
+      riskRegistryAddress: RISK_REGISTRY_V2_ADDRESS,
       riskRegistry: {
         version: "v2",
         address: RISK_REGISTRY_V2_ADDRESS,

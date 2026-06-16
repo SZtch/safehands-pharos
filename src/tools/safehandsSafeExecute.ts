@@ -21,16 +21,17 @@ export const safehandsSafeExecuteSchema = z.object({
 export type SafeHandsSafeExecuteInput = z.input<typeof safehandsSafeExecuteSchema>;
 
 function toPreflight(path: string, action: Record<string, unknown>, signerAvailable: boolean) {
+  const agentId = typeof action.agentId === "string" ? action.agentId : undefined;
   if (path === "safe_execute_send_payment") {
-    return { actionType: "send_payment" as const, amount: String(action.amount || ""), amountUnit: "PHRS" as const, recipient: String(action.toAddress || ""), recipientVerified: false, requiresSigner: true, signerAvailable };
+    return { actionType: "send_payment" as const, agentId, amount: String(action.amount || ""), amountUnit: "PHRS" as const, recipient: String(action.toAddress || ""), recipientVerified: false, requiresSigner: true, signerAvailable };
   }
   if (path === "safe_execute_approve_token") {
-    return { actionType: "approve_token" as const, approvalAmount: String(action.amount || ""), approvalToken: String(action.token || ""), approvalUnlimited: action.amount === "max", spender: String(action.spender || ""), requiresSigner: true, signerAvailable };
+    return { actionType: "approve_token" as const, agentId, approvalAmount: String(action.amount || ""), approvalToken: String(action.token || ""), approvalUnlimited: action.amount === "max", spender: String(action.spender || ""), requiresSigner: true, signerAvailable };
   }
   if (path === "safe_execute_swap") {
-    return { actionType: "execute_swap" as const, amount: String(action.amountIn || ""), tokenIn: String(action.tokenIn || ""), tokenOut: String(action.tokenOut || ""), requiresSigner: true, signerAvailable };
+    return { actionType: "execute_swap" as const, agentId, amount: String(action.amountIn || ""), tokenIn: String(action.tokenIn || ""), tokenOut: String(action.tokenOut || ""), requiresSigner: true, signerAvailable };
   }
-  return { actionType: "x402_pay_and_fetch" as const, url: String(action.url || ""), paymentAmountUsdc: String(action.maxPaymentUsdc || "0.001"), requiresSigner: true, signerAvailable };
+  return { actionType: "x402_pay_and_fetch" as const, agentId, url: String(action.url || ""), paymentAmountUsdc: String(action.maxPaymentUsdc || "0.001"), requiresSigner: true, signerAvailable };
 }
 
 function resolveMode(signerMode: string | undefined): string {

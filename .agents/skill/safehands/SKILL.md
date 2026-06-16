@@ -144,7 +144,7 @@ Hard safety rules (mainnet blocked, zero address blocked, SSRF blocked, unauthor
 
 Features: authorized-agent registry, per-wallet risk records, action hash attestations, record validity/revocation, batch authorization.
 
-RiskRegistry V1 (`0x61962a6c812ee9f57b207e1ea47c19ae70bb7141`) is preserved as legacy.
+RiskRegistry V2 is the only active registry. There is no V1 in active code, packaging, or supported usage.
 
 ---
 

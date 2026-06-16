@@ -3,9 +3,9 @@ import { z } from "zod";
 import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
 import { getDodoRoute, isNativeToken, resolveTokenAddress, resolveTokenDecimals, toWei } from "../lib/dodoApi.js";
 import { assessRisk } from "../lib/riskEngine.js";
-import { fail, ok, requireWriteToolsEnabled, classifyExternalError } from "../lib/toolResponse.js";
+import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { DODO_APPROVE_ADDRESS, ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PHRS, CHAIN_ID, PHAROS_ENVIRONMENT } from "../lib/constants.js";
-import { getSigner, isSignerFailure } from "../lib/signer/index.js";
+import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
 import { validatePositiveAmount } from "../lib/validation.js";
@@ -27,15 +27,6 @@ export const executeSwapTool = {
 };
 
 export async function handleExecuteSwap(raw: ExecuteSwapInput) {
-  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
-    return fail(
-      "WRITE_TOOLS_DISABLED",
-      "execute_swap is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
-      false,
-      "execute_swap"
-    );
-  }
-
   let input: z.infer<typeof executeSwapSchema>;
   try {
     input = executeSwapSchema.parse(raw);
@@ -49,14 +40,14 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
   const amtErr = validatePositiveAmount(input.amountIn, "amountIn");
   if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "execute_swap");
 
-  const signer = await getSigner(input.agentId);
-  if (isSignerFailure(signer)) {
-    return fail(signer.error.code, signer.error.message, false, "execute_swap");
-  }
+  const gate = await requireManagedExecutionReady("execute_swap", input.agentId);
+  if (isManagedExecutionFailure(gate)) return gate;
+  const { signer } = gate;
   const walletAddress = signer.address;
 
   const policy = evaluateActionPolicy({
     actionType: "execute_swap",
+    agentId: input.agentId,
     amount: input.amountIn,
     amountUnit: "TOKEN",
     tokenIn: input.tokenIn,
@@ -72,7 +63,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
   }
 
   if (Number(input.amountIn) > Number(MAX_TX_AMOUNT_PHRS) && input.tokenIn.toUpperCase() === "PHRS") {
-    return fail("TX_LIMIT_EXCEEDED", `Swap amount exceeds configured testnet limit (${MAX_TX_AMOUNT_PHRS}).`, false, "execute_swap");
+    return fail("TX_LIMIT_EXCEEDED", `Swap amount exceeds the operator ceiling MAX_TX_AMOUNT_PHRS (${MAX_TX_AMOUNT_PHRS} PHRS), which bounds all agent policies. Raise MAX_TX_AMOUNT_PHRS to allow larger testnet swaps.`, false, "execute_swap");
   }
 
   const amountUsd = estimateUsd(input.amountIn, input.tokenIn);
@@ -128,6 +119,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
       if (allowance < amountWei) {
         const approvalPolicy = evaluateActionPolicy({
           actionType: "approve_token",
+          agentId: input.agentId,
           approvalAmount: input.amountIn,
           spender: DODO_APPROVE_ADDRESS,
           spenderVerified: true,

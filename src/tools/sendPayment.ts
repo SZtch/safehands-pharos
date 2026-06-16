@@ -3,9 +3,9 @@ import { z } from "zod";
 import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
 import { isAddress, parseEther, formatEther } from "viem";
 import { assessRisk } from "../lib/riskEngine.js";
-import { fail, ok, requireWriteToolsEnabled, classifyExternalError } from "../lib/toolResponse.js";
+import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { MAX_BALANCE_USAGE_PCT, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PHRS, CHAIN_ID, PHAROS_ENVIRONMENT } from "../lib/constants.js";
-import { getSigner, isSignerFailure } from "../lib/signer/index.js";
+import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
 import { validatePositiveAmount, validateNonZeroAddress, collectErrors } from "../lib/validation.js";
@@ -26,15 +26,6 @@ export const sendPaymentTool = {
 };
 
 export async function handleSendPayment(raw: SendPaymentInput) {
-  if (process.env.WRITE_TOOLS_ENABLED !== "true") {
-    return fail(
-      "WRITE_TOOLS_DISABLED",
-      "send_payment is disabled by default. Set WRITE_TOOLS_ENABLED=true only for trusted testnet execution.",
-      false,
-      "send_payment"
-    );
-  }
-
   let input: z.infer<typeof sendPaymentSchema>;
   try {
     input = sendPaymentSchema.parse(raw);
@@ -53,14 +44,14 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     return fail("VALIDATION_ERROR", fieldErrors.join(" "), false, "send_payment");
   }
 
-  const signer = await getSigner(input.agentId);
-  if (isSignerFailure(signer)) {
-    return fail(signer.error.code, signer.error.message, false, "send_payment");
-  }
+  const gate = await requireManagedExecutionReady("send_payment", input.agentId);
+  if (isManagedExecutionFailure(gate)) return gate;
+  const { signer } = gate;
   const walletAddress = signer.address;
 
   const policy = evaluateActionPolicy({
     actionType: "send_payment",
+    agentId: input.agentId,
     amount: input.amount,
     amountUnit: "PHRS",
     recipient: input.toAddress,
@@ -76,7 +67,7 @@ export async function handleSendPayment(raw: SendPaymentInput) {
   }
 
   if (Number(input.amount) > Number(MAX_TX_AMOUNT_PHRS)) {
-    return fail("TX_LIMIT_EXCEEDED", `Payment amount exceeds configured testnet limit (${MAX_TX_AMOUNT_PHRS} PHRS).`, false, "send_payment");
+    return fail("TX_LIMIT_EXCEEDED", `Payment amount exceeds the operator ceiling MAX_TX_AMOUNT_PHRS (${MAX_TX_AMOUNT_PHRS} PHRS), which bounds all agent policies. Raise MAX_TX_AMOUNT_PHRS to allow larger testnet payments.`, false, "send_payment");
   }
 
   const amountUsd = estimateUsd(input.amount, "PHRS");

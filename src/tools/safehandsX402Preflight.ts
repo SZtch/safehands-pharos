@@ -60,6 +60,7 @@ export async function handleSafeHandsX402Preflight(raw: SafeHandsX402PreflightIn
   const signerAvailable = !isSignerFailure(signer);
   const policy = evaluateActionPolicy({
     actionType: "x402_pay_and_fetch",
+    agentId: input.agentId,
     url: input.url,
     paymentAmountUsdc: input.paymentAmountUsdc,
     paymentTokenAddress: input.paymentTokenAddress,

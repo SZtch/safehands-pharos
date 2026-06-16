@@ -16,6 +16,7 @@ const WRITE_ACTION_TYPES = new Set([
 
 export const safehandsPreflightCheckSchema = z.object({
   actionType: z.enum(["send_payment", "approve_token", "execute_swap", "x402_pay_and_fetch", "publish_risk_score", "custom_contract_call"]),
+  agentId: z.string().optional().describe("Agent identifier — selects the per-agent safety policy used for this preflight"),
   chainId: z.number().optional().default(CHAIN_ID),
   environment: z.string().optional().default(PHAROS_ENVIRONMENT),
   isMainnet: z.boolean().optional().default(IS_MAINNET),
