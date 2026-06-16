@@ -1,8 +1,5 @@
-// ─── Tool: safehands_safe_execute ──────────────────────────────────────
-// Guarded execution wrapper so AI agents cannot bypass preflight checks.
-// ───────────────────────────────────────────────────────────────────────
-
 import { z } from "zod";
+import { formatEther } from "viem";
 import { fail, ok, requireWriteToolsEnabled, type ToolResponse } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { handleSafeHandsPreflightCheck } from "./safehandsPreflightCheck.js";
@@ -10,6 +7,9 @@ import { handleSendPayment } from "./sendPayment.js";
 import { handleApproveToken } from "./approveToken.js";
 import { handleExecuteSwap } from "./executeSwap.js";
 import { handleX402PayAndFetch } from "./x402PayAndFetch.js";
+import { REQUIRE_AUTHORIZED_AGENT_FOR_WRITE, CHAIN_ID } from "../lib/constants.js";
+import { checkManagedWalletAuthorization } from "../lib/riskRegistryV2.js";
+import { publicClient } from "../lib/pharosClient.js";
 
 export const safehandsSafeExecuteSchema = z.object({
   path: z.enum(["safe_execute_send_payment", "safe_execute_approve_token", "safe_execute_swap", "safe_x402_pay_and_fetch"]),
@@ -33,6 +33,12 @@ function toPreflight(path: string, action: Record<string, unknown>, signerAvaila
   return { actionType: "x402_pay_and_fetch" as const, url: String(action.url || ""), paymentAmountUsdc: String(action.maxPaymentUsdc || "0.001"), requiresSigner: true, signerAvailable };
 }
 
+function resolveMode(signerMode: string | undefined): string {
+  if (signerMode === "managed-testnet") return "managed_execution";
+  if (signerMode === "env") return "env_wallet";
+  return "unknown";
+}
+
 export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput): Promise<ToolResponse<unknown>> {
   let input: z.infer<typeof safehandsSafeExecuteSchema>;
   try {
@@ -52,6 +58,36 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
   const signerResult = await getSigner(agentId, { purpose });
   const signerAvailable = !isSignerFailure(signerResult);
 
+  if (signerAvailable && signerResult.mode === "managed-testnet" && REQUIRE_AUTHORIZED_AGENT_FOR_WRITE) {
+    const authCheck = await checkManagedWalletAuthorization(signerResult.address);
+    if (!authCheck.authorized) {
+      return fail(
+        authCheck.errorCode || "AGENT_WALLET_NOT_AUTHORIZED",
+        authCheck.errorMessage || "Managed wallet is not authorized in RiskRegistry V2.",
+        false,
+        "safehands_safe_execute"
+      );
+    }
+
+    try {
+      const balance = await publicClient.getBalance({ address: signerResult.address });
+      if (balance === 0n) {
+        return ok({
+          executed: false,
+          decision: "REQUIRE_FUNDING",
+          requiresFunding: true,
+          walletAddress: signerResult.address,
+          network: "Pharos Atlantic Testnet",
+          chainId: CHAIN_ID,
+          mode: "managed_execution",
+          source: "safehands_safe_execute",
+        });
+      }
+    } catch {
+      // RPC failed — continue, let execution attempt surface the real error
+    }
+  }
+
   const preflight = await handleSafeHandsPreflightCheck(toPreflight(input.path, input.action, signerAvailable));
   if (!preflight.success) return preflight;
   const report = preflight.data as any;
@@ -62,6 +98,7 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
       blocked: true,
       safetyReport: report,
       executionResult: null,
+      mode: signerAvailable ? resolveMode(signerResult.mode) : "unknown",
       source: "safehands_safe_execute",
     });
   }
@@ -82,6 +119,7 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
       reason: "Set execute=true and confirmExecution=true to execute this allowed testnet action.",
       safetyReport: report,
       executionResult: null,
+      mode: signerAvailable ? resolveMode(signerResult.mode) : "unknown",
       source: "safehands_safe_execute",
     });
   }
@@ -112,6 +150,7 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
     executed: true,
     safetyReport: report,
     executionResult,
+    mode: signerAvailable ? resolveMode(signerResult.mode) : "unknown",
     source: "safehands_safe_execute",
   });
 }

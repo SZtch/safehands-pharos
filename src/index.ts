@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ─── SafeHands MCP Server ──────────────────────────────────────────────
-// Entry point — registers 27 tools (17 legacy/core + 3 managed wallet + 7 SafeHands guardrail tools) and starts the MCP server.
+// Entry point — registers 29 tools and starts the MCP server.
 // ────────────────────────────────────────────────────────────────────────
 
 // Must be first import — loads .env before any module reads process.env at init time
@@ -40,6 +40,8 @@ import { explainRiskSchema, handleExplainRisk } from "./tools/explainRisk.js";
 import { tokenRegistryStatusSchema, handleTokenRegistryStatus } from "./tools/tokenRegistryStatus.js";
 import { getAgentWalletSchema, handleGetAgentWallet } from "./tools/getAgentWallet.js";
 import { getAgentWalletBalanceSchema, handleGetAgentWalletBalance } from "./tools/getAgentWalletBalance.js";
+import { getAgentPolicySchema, handleGetAgentPolicy } from "./tools/getAgentPolicy.js";
+import { setAgentPolicySchema, handleSetAgentPolicy } from "./tools/setAgentPolicy.js";
 import { fail, ok } from "./lib/toolResponse.js";
 import { auditLog } from "./lib/auditLog.js";
 import { walletStore, encryptKey, getEffectiveEncryptionKey } from "./lib/wallet/index.js";
@@ -197,39 +199,44 @@ USAGE
       Run a Pharos Skill Engine-compatible SafeHands CLI tool.
 
 POSITIONING
-  SafeHands is a guardrail layer, not a generic Web3 toolbox.
-  It checks whether an AI agent action is safe before execution.
+  SafeHands is an open-source reusable Pharos Skill that gives AI agents
+  a safety gateway before on-chain actions. Pharos Atlantic Testnet only.
 
   User intent
   → SafeHands preflight
   → ALLOW / WARN / BLOCK / REQUIRE_CONFIRMATION
-  → Pharos Skill Engine or MCP execution only if safe
+  → Execute only if safe
   → SafeHands risk report
 
-SAFEHANDS BRANDED TOOLS
-  safehands_preflight_check   Policy preflight for payments, approvals, swaps, x402, and custom calls
-  safehands_safe_execute      Guarded wrapper that preflights before execution
-  safehands_wallet_health     Wallet/signer/gas/x402 readiness report
-  safehands_x402_preflight    URL, payment, token, and signer safety check before x402 payment
-  safehands_risk_report       Human-readable judge/demo risk report
-  explain_risk                Explain ALLOW/WARN/BLOCK decisions in plain English
-  token_registry_status       Classify canonical, test, custom, unknown, or invalid token address
+EXECUTION MODES
+  Preflight / read-only    No wallet, no key, no authorization required
+  User-signed              SafeHands validates; user signs externally
+  Managed execution        RiskRegistry V2 authorization + funding required
+  Env wallet (advanced)    Local testnet key, not default UX
+  Operator / demo          Auto-authorize via owner key, testnet only
 
-OTHER MCP TOOLS
-  Core safety: assess_risk, check_token_security, simulate_transaction, estimate_gas
-  Execution: execute_swap, send_payment, approve_token
-  Market: get_token_price, get_pool_info, get_gas_price
-  Wallet/history: get_wallet_balance, check_allowance, get_transaction_status, get_execution_history
-  Risk registry: publish_risk_score, query_risk_registry
-  x402: x402_pay_and_fetch
-  Managed testnet wallet: create_agent_wallet, get_agent_wallet, get_agent_wallet_balance
+SAFEHANDS TOOLS (29)
+  Safety preflight:   safehands_preflight_check, safehands_x402_preflight,
+                      safehands_risk_report, safehands_wallet_health,
+                      explain_risk, token_registry_status, query_risk_registry
+  Execution (gated):  safehands_safe_execute, execute_swap, send_payment,
+                      approve_token, publish_risk_score, x402_pay_and_fetch
+  Risk + analysis:    assess_risk, check_token_security, simulate_transaction,
+                      estimate_gas
+  Market + chain:     get_token_price, get_pool_info, get_gas_price,
+                      get_wallet_balance, check_allowance,
+                      get_transaction_status, get_execution_history
+  Agent policy:       get_agent_policy, set_agent_policy
+  Managed wallet:     create_agent_wallet, get_agent_wallet,
+                      get_agent_wallet_balance
 
 PHAROS ATLANTIC TESTNET
   Environment: atlantic-testnet
   Chain ID: 688689
   RPC: https://atlantic.dplabs-internal.com
   Explorer: https://atlantic.pharosscan.xyz/
-  RiskRegistry: 0x61962a6c812ee9f57b207e1ea47c19ae70bb7141
+  RiskRegistry V2: 0x92e7b0d7029b1fe43f7da44ca9b0f805f3f31c25
+  RiskRegistry V1: 0x61962a6c812ee9f57b207e1ea47c19ae70bb7141 (legacy)
 
 x402 BEHAVIOR
   Free endpoints, such as /supported and /health, do not require a private key.
@@ -488,6 +495,21 @@ server.tool(
   "Fetch resources from an HTTP x402 payment-gated server. Automatically handles HTTP 402 payment challenge.",
   x402PayAndFetchSchema.shape,
   async (params) => mcpText(await invokeTool(handleX402PayAndFetch, params, "x402_pay_and_fetch"))
+);
+
+// ─── Agent Policy Tools ───────────────────────────────────────────────
+
+server.tool(
+  "get_agent_policy",
+  "Get the active safety policy for an agent. Returns limits, flags, and profile name. Read-only.",
+  getAgentPolicySchema.shape,
+  async (params) => mcpText(await invokeTool(handleGetAgentPolicy, params, "get_agent_policy"))
+);
+server.tool(
+  "set_agent_policy",
+  "Set or update safety policy for an agent. Choose a profile (conservative/balanced/advanced) or set custom limits. Saved to local policy file.",
+  setAgentPolicySchema.shape,
+  async (params) => mcpText(await invokeTool(handleSetAgentPolicy, params, "set_agent_policy"))
 );
 
 // ─── Managed Wallet Tools ──────────────────────────────────────────────

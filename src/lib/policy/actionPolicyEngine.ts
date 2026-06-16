@@ -15,6 +15,7 @@ import {
   USDC_ADDRESS,
   TEST_USDC_ADDRESS,
 } from "../constants.js";
+import { loadAgentPolicy, resolveEffectiveLimits, type AgentPolicy } from "./agentPolicy.js";
 
 export type SafeHandsActionType =
   | "send_payment"
@@ -69,6 +70,8 @@ export interface ActionPolicyInput {
   allowUnlimitedApproval?: boolean;
   writeToolsEnabled?: boolean;
   requiresSigner?: boolean;
+  agentId?: string;
+  agentPolicy?: AgentPolicy;
 }
 
 export interface ActionPolicyResult {
@@ -163,6 +166,9 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
   const reasons: string[] = [];
   const requiredActions: string[] = [];
 
+  const policy = input.agentPolicy ?? loadAgentPolicy(input.agentId);
+  const effectiveLimits = resolveEffectiveLimits(policy);
+
   if (isMainnet) {
     pushCheck(checks, "mainnet_guard", "fail", "Mainnet actions are blocked by SafeHands.", reasons, requiredActions, "Mainnet actions are not supported.", "Switch to Pharos Atlantic Testnet.");
   } else {
@@ -189,10 +195,11 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
 
   if (input.actionType === "send_payment") {
     const amount = numeric(input.amount);
-    if (amount !== null && amount > Number(MAX_TX_AMOUNT_PHRS)) {
-      pushCheck(checks, "payment_limit", "fail", `Payment ${amount} PHRS exceeds limit ${MAX_TX_AMOUNT_PHRS} PHRS.`, reasons, requiredActions, "Payment exceeds configured PHRS limit.", "Reduce amount or increase MAX_TX_AMOUNT_PHRS consciously for testnet.");
+    const paymentLimit = effectiveLimits.maxPaymentPHRS;
+    if (amount !== null && amount > paymentLimit) {
+      pushCheck(checks, "payment_limit", "fail", `Payment ${amount} PHRS exceeds limit ${paymentLimit} PHRS (policy: ${policy.profile}).`, reasons, requiredActions, "Payment exceeds configured PHRS limit.", "Reduce amount or adjust agent policy.");
     } else {
-      pushCheck(checks, "payment_limit", "pass", `Payment is within ${MAX_TX_AMOUNT_PHRS} PHRS limit.`);
+      pushCheck(checks, "payment_limit", "pass", `Payment is within ${paymentLimit} PHRS limit (policy: ${policy.profile}).`);
     }
     if (input.recipient && !isAddress(input.recipient)) {
       pushCheck(checks, "recipient_address", "fail", "Recipient address is invalid.", reasons, requiredActions, "Invalid recipient address.", "Provide a valid EVM address.");
@@ -207,10 +214,11 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
       pushCheck(checks, "approval_amount", "fail", "Unlimited approval is blocked by default.", reasons, requiredActions, "Unlimited approval requested.", "Use a limited approval amount.");
     } else {
       const approvalAmount = numeric(input.approvalAmount) ?? numeric(input.amount);
-      if (approvalAmount !== null && approvalAmount > Number(MAX_APPROVAL_AMOUNT_USDC)) {
-        pushCheck(checks, "approval_limit", "fail", `Approval ${approvalAmount} exceeds limit ${MAX_APPROVAL_AMOUNT_USDC}.`, reasons, requiredActions, "Approval exceeds configured limit.", "Reduce approval or increase MAX_APPROVAL_AMOUNT_USDC consciously for testnet.");
+      const approvalLimit = effectiveLimits.maxApprovalUSDC;
+      if (approvalAmount !== null && approvalAmount > approvalLimit) {
+        pushCheck(checks, "approval_limit", "fail", `Approval ${approvalAmount} exceeds limit ${approvalLimit} (policy: ${policy.profile}).`, reasons, requiredActions, "Approval exceeds configured limit.", "Reduce approval or adjust agent policy.");
       } else {
-        pushCheck(checks, "approval_limit", "pass", `Approval is within ${MAX_APPROVAL_AMOUNT_USDC} USDC-equivalent limit.`);
+        pushCheck(checks, "approval_limit", "pass", `Approval is within ${approvalLimit} USDC-equivalent limit (policy: ${policy.profile}).`);
       }
     }
     if (input.spender && !isAddress(input.spender)) {
@@ -222,8 +230,9 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
 
   if (input.actionType === "execute_swap") {
     const amount = numeric(input.amount);
-    if (amount !== null && amount > Number(MAX_TX_AMOUNT_PHRS) && (input.tokenIn || "").toUpperCase() === "PHRS") {
-      pushCheck(checks, "swap_amount_limit", "fail", `Swap ${amount} PHRS exceeds limit ${MAX_TX_AMOUNT_PHRS} PHRS.`, reasons, requiredActions, "Swap exceeds configured PHRS limit.", "Reduce amount or increase MAX_TX_AMOUNT_PHRS consciously for testnet.");
+    const swapLimit = effectiveLimits.maxSwapPHRS;
+    if (amount !== null && amount > swapLimit && (input.tokenIn || "").toUpperCase() === "PHRS") {
+      pushCheck(checks, "swap_amount_limit", "fail", `Swap ${amount} PHRS exceeds limit ${swapLimit} PHRS (policy: ${policy.profile}).`, reasons, requiredActions, "Swap exceeds configured PHRS limit.", "Reduce amount or adjust agent policy.");
     }
   }
 
@@ -235,10 +244,11 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
     }
 
     const payment = numeric(input.paymentAmountUsdc);
-    if (payment !== null && payment > Number(MAX_X402_PAYMENT_USDC)) {
-      pushCheck(checks, "x402_payment_limit", "fail", `x402 payment ${payment} USDC exceeds limit ${MAX_X402_PAYMENT_USDC} USDC.`, reasons, requiredActions, "x402 payment exceeds configured limit.", "Reduce payment amount or increase MAX_X402_PAYMENT_USDC consciously for testnet.");
+    const x402Limit = effectiveLimits.maxX402PaymentUSDC;
+    if (payment !== null && payment > x402Limit) {
+      pushCheck(checks, "x402_payment_limit", "fail", `x402 payment ${payment} USDC exceeds limit ${x402Limit} USDC (policy: ${policy.profile}).`, reasons, requiredActions, "x402 payment exceeds configured limit.", "Reduce payment amount or adjust agent policy.");
     } else {
-      pushCheck(checks, "x402_payment_limit", "pass", `x402 payment is within ${MAX_X402_PAYMENT_USDC} USDC limit.`);
+      pushCheck(checks, "x402_payment_limit", "pass", `x402 payment is within ${x402Limit} USDC limit (policy: ${policy.profile}).`);
     }
 
     if (input.paymentTokenAddress && input.paymentTokenAddress.toLowerCase() !== USDC_ADDRESS.toLowerCase()) {

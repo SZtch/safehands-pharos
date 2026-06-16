@@ -1,7 +1,7 @@
 {
   "name": "safehands-pharos",
-  "version": "1.6.0",
-  "description": "Pharos Skill Engine-compatible transaction safety firewall for AI agents.",
+  "version": "1.7.0",
+  "description": "Open-source reusable Pharos Skill — safety gateway for AI agent on-chain actions on Pharos Atlantic Testnet.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,9 +16,12 @@
     "contracts",
     "README.md",
     "DEMO.md",
+    "SECURITY.md",
     ".env.example",
     "LICENSE",
-    ".agents/skill/safehands/SKILL.md"
+    ".agents/skill/safehands/SKILL.md",
+    ".agents/policies/default.json",
+    "docs"
   ],
   "scripts": {
     "build": "tsc",
@@ -76,6 +79,6 @@
     "@types/node": "^22.15.0",
     "hardhat": "^3.9.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   }
 }

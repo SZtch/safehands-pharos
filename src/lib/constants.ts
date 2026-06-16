@@ -270,7 +270,31 @@ export const ERC20_ABI = [
   },
 ] as const;
 
-// ─── Risk Registry Contract ────────────────────────────────────────────
+// ─── RiskRegistry V2 Config ───────────────────────────────────────
+
+export const RISK_REGISTRY_V2_ADDRESS = (process.env.RISK_REGISTRY_V2_ADDRESS ||
+  "0x92e7b0d7029b1fe43f7da44ca9b0f805f3f31c25") as `0x${string}`;
+
+export const REQUIRE_AUTHORIZED_AGENT_FOR_WRITE =
+  (process.env.REQUIRE_AUTHORIZED_AGENT_FOR_WRITE ?? "true") === "true";
+
+export const AUTO_AUTHORIZE_AGENT_WALLET =
+  process.env.AUTO_AUTHORIZE_AGENT_WALLET === "true";
+
+export const DEFAULT_RISK_REGISTRY_VERSION = "v2";
+
+export const RISK_REGISTRY_V2_ABI = [
+  { name: "isAuthorizedAgent", type: "function", stateMutability: "view", inputs: [{ name: "agent", type: "address" }], outputs: [{ name: "", type: "bool" }] },
+  { name: "setAuthorizedAgent", type: "function", stateMutability: "nonpayable", inputs: [{ name: "agent", type: "address" }, { name: "authorized", type: "bool" }], outputs: [] },
+  { name: "publishRiskRecord", type: "function", stateMutability: "nonpayable", inputs: [{ name: "wallet", type: "address" }, { name: "agent", type: "address" }, { name: "actionHash", type: "bytes32" }, { name: "score", type: "uint8" }, { name: "riskLevel", type: "string" }, { name: "recommendation", type: "string" }, { name: "policyVersion", type: "string" }, { name: "evidenceURI", type: "string" }, { name: "expiresAt", type: "uint256" }], outputs: [{ name: "recordId", type: "uint256" }] },
+  { name: "getRiskRecord", type: "function", stateMutability: "view", inputs: [{ name: "recordId", type: "uint256" }], outputs: [{ name: "", type: "tuple", components: [{ name: "recordId", type: "uint256" }, { name: "wallet", type: "address" }, { name: "agent", type: "address" }, { name: "actionHash", type: "bytes32" }, { name: "score", type: "uint8" }, { name: "riskLevel", type: "string" }, { name: "recommendation", type: "string" }, { name: "policyVersion", type: "string" }, { name: "evidenceURI", type: "string" }, { name: "createdAt", type: "uint256" }, { name: "expiresAt", type: "uint256" }, { name: "revoked", type: "bool" }] }] },
+  { name: "getLatestRiskRecordForWallet", type: "function", stateMutability: "view", inputs: [{ name: "wallet", type: "address" }], outputs: [{ name: "", type: "tuple", components: [{ name: "recordId", type: "uint256" }, { name: "wallet", type: "address" }, { name: "agent", type: "address" }, { name: "actionHash", type: "bytes32" }, { name: "score", type: "uint8" }, { name: "riskLevel", type: "string" }, { name: "recommendation", type: "string" }, { name: "policyVersion", type: "string" }, { name: "evidenceURI", type: "string" }, { name: "createdAt", type: "uint256" }, { name: "expiresAt", type: "uint256" }, { name: "revoked", type: "bool" }] }] },
+  { name: "getRiskRecordsForWallet", type: "function", stateMutability: "view", inputs: [{ name: "wallet", type: "address" }], outputs: [{ name: "", type: "uint256[]" }] },
+  { name: "getRiskRecordByActionHash", type: "function", stateMutability: "view", inputs: [{ name: "actionHash", type: "bytes32" }], outputs: [{ name: "", type: "tuple", components: [{ name: "recordId", type: "uint256" }, { name: "wallet", type: "address" }, { name: "agent", type: "address" }, { name: "actionHash", type: "bytes32" }, { name: "score", type: "uint8" }, { name: "riskLevel", type: "string" }, { name: "recommendation", type: "string" }, { name: "policyVersion", type: "string" }, { name: "evidenceURI", type: "string" }, { name: "createdAt", type: "uint256" }, { name: "expiresAt", type: "uint256" }, { name: "revoked", type: "bool" }] }] },
+  { name: "isRiskRecordValid", type: "function", stateMutability: "view", inputs: [{ name: "recordId", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
+] as const;
+
+// ─── Risk Registry V1 Contract (legacy) ───────────────────────────
 
 export const RISK_REGISTRY_ADDRESS = (process.env.RISK_REGISTRY_ADDRESS ||
   "0x61962a6c812ee9f57b207e1ea47c19ae70bb7141") as `0x${string}`;
