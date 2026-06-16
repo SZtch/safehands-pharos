@@ -273,6 +273,30 @@ RiskRegistry V2 is the only active registry. There is no V1 in active code, pack
 
 ---
 
+## On-Chain Proof (live on Pharos Atlantic Testnet)
+
+SafeHands doesn't just deploy a contract — the full flow runs on-chain:
+**agent → SafeHands preflight → risk scored → attestation written to RiskRegistry V2 → queryable by any agent.**
+
+**Contract:** [`0x92e7b0d7029b1fe43f7da44ca9b0f805f3f31c25`](https://atlantic.pharosscan.xyz/address/0x92e7b0d7029b1fe43f7da44ca9b0f805f3f31c25)
+
+**Live risk attestations published on-chain:**
+
+| # | Action | Risk score | Transaction |
+|---|--------|-----------|-------------|
+| 1 | transfer 0.001 PHRS | 3 (low) | [`0x025a97ce…38a690`](https://atlantic.pharosscan.xyz/tx/0x025a97ce4e3f6635ab171f48eef35a5b2cf7b4c5a09c3c9bf307bd5add38a690) |
+| 2 | swap PHRS → USDC | 35 (medium) | [`0x3297ed1a…582231`](https://atlantic.pharosscan.xyz/tx/0x3297ed1aef4bbae9b884f9f93a075d89ec6292fd5adb0772418498b692582231) |
+| 3 | transfer 0.05 PHRS | 7 (low) | [`0xe2bbf8f0…9b9488`](https://atlantic.pharosscan.xyz/tx/0xe2bbf8f0e6d7c5ec70dab8871cb0c7d5ccb7930d60b6e85fa98eb05f089b9488) |
+
+Each transaction stores a permanent, queryable risk record (score, level, recommendation, action hash, policy version `1.7.0`). Verify the round-trip yourself — read the records back, no key required:
+
+```bash
+npx safehands-pharos skill query_risk_registry \
+  --input-json '{"walletAddress":"0x6730d3a2A217108AB53CCFe60ffdAd05D3C124e5"}'
+```
+
+---
+
 ## Network
 
 | | Value |
