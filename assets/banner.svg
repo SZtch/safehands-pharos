@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="200" viewBox="0 0 1000 200" role="img" aria-label="SafeHands — transaction-safety gateway for AI agents on Pharos Pacific Mainnet">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#151c2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#0891b2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="200" rx="16" fill="url(#bg)"/>
+  <rect width="1000" height="4" rx="2" fill="url(#accent)"/>
+  <g transform="translate(58,54)">
+    <path d="M42 0 L84 16 V44 C84 70 64 85 42 92 C20 85 0 70 0 44 V16 Z" fill="none" stroke="url(#accent)" stroke-width="4"/>
+    <path d="M22 46 L36 60 L64 30" fill="none" stroke="#16a34a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="185" y="90" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="56" font-weight="700" fill="#f0f6fc">SafeHands</text>
+  <text x="187" y="126" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="20" fill="#9da7b3">Transaction-safety gateway for AI agents · Pharos Pacific Mainnet</text>
+  <text x="187" y="156" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" fill="#6e7781" letter-spacing="0.4">33 tools · MCP · HTTP · CLI · zero-custody · chain 1672</text>
+</svg>

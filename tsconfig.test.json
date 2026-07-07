@@ -1,0 +1,17 @@
+{
+  "//": "Type-checks the test suite (base tsconfig only includes src/**). noEmit — this is a verification pass, not a build. Wired via `npm run typecheck:test`.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": [
+    "test/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test/SafeHandsRegistry.ts",
+    "test/SafeHandsAttestation.ts"
+  ]
+}

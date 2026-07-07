@@ -1,0 +1,39 @@
+name: SafeHands CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # ── Hermetic gate: no live-network dependency. Must be green to merge. ──
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run typecheck:test          # type-check the test suite (catches test/code drift)
+      - run: npm test                        # deterministic policy + engine suite (no live RPC)
+      - run: npm audit --omit=dev --audit-level=high  # production dependency path must stay clean
+      - run: npm run package:anvita
+      - run: npm run test:contracts          # CI=true → real Hardhat, no grep fallback
+
+  # ── Live mainnet smoke: hits public Pharos RPC (read-only, never broadcasts). ──
+  # Non-gating: a public-RPC outage must not block merges. Runs after the gate.
+  live-smoke:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:live
