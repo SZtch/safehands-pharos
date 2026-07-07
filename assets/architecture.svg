@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 640" font-family="ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-label="SafeHands architecture: agent intent flows through the deterministic policy engine to a four-value decision, the user signs with their own wallet, and Pharos mainnet records attestation, risk memory, and reputation.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#151c2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#0891b2"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#0891b2"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="640" rx="14" fill="url(#bg)"/>
+
+  <!-- title -->
+  <text x="700" y="52" text-anchor="middle" font-size="26" font-weight="700" fill="#f0f6fc">SafeHands — the check between an agent's intent and the signature</text>
+  <text x="700" y="80" text-anchor="middle" font-size="14" fill="#9da7b3">zero-custody · deterministic · Pharos Pacific Mainnet (1672)</text>
+
+  <!-- ── column 1: agent intent ─────────────────────────────── -->
+  <rect x="48" y="150" width="300" height="270" rx="12" fill="#161d2f" stroke="#232c44"/>
+  <text x="198" y="188" text-anchor="middle" font-size="17" font-weight="700" fill="#f0f6fc">AI agent intent</text>
+  <line x1="76" y1="204" x2="320" y2="204" stroke="#232c44"/>
+  <text x="76" y="236" font-size="14" fill="#9da7b3">· token swap / approval</text>
+  <text x="76" y="264" font-size="14" fill="#9da7b3">· native payment</text>
+  <text x="76" y="292" font-size="14" fill="#9da7b3">· tokenized-asset (RWA) transfer</text>
+  <text x="76" y="320" font-size="14" fill="#9da7b3">· x402 / USDC settlement</text>
+  <text x="76" y="348" font-size="14" fill="#9da7b3">· raw contract call</text>
+  <text x="76" y="392" font-size="12" fill="#6e7781">MCP · HTTP API · CLI — 33 tools</text>
+
+  <!-- arrow 1 -->
+  <line x1="348" y1="285" x2="428" y2="285" stroke="#0891b2" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- ── column 2: policy engine ────────────────────────────── -->
+  <rect x="436" y="120" width="360" height="330" rx="12" fill="#161d2f" stroke="url(#accent)" stroke-width="1.5"/>
+  <text x="616" y="158" text-anchor="middle" font-size="17" font-weight="700" fill="#f0f6fc">Deterministic policy engine</text>
+  <text x="616" y="180" text-anchor="middle" font-size="12" fill="#6e7781">the policy decides — a model can advise, never override</text>
+  <line x1="464" y1="196" x2="768" y2="196" stroke="#232c44"/>
+  <text x="464" y="228" font-size="14" fill="#9da7b3">· chain-ID guard (1672 only)</text>
+  <text x="464" y="256" font-size="14" fill="#9da7b3">· approval limits — unlimited blocked</text>
+  <text x="464" y="284" font-size="14" fill="#9da7b3">· token registry + GoPlus security</text>
+  <text x="464" y="312" font-size="14" fill="#9da7b3">· SSRF / x402 URL safety</text>
+  <text x="464" y="340" font-size="14" fill="#9da7b3">· per-agent spend &amp; settlement caps</text>
+  <text x="464" y="368" font-size="14" fill="#9da7b3">· human-in-the-loop for unknowns</text>
+  <text x="464" y="410" font-size="12" fill="#6e7781">RWA lens: asset legitimacy · transfer restrictions</text>
+  <text x="464" y="428" font-size="12" fill="#6e7781">settlement discipline · counterparty trust</text>
+
+  <!-- decisions -->
+  <line x1="616" y1="450" x2="616" y2="492" stroke="#0891b2" stroke-width="2.5" marker-end="url(#arr)"/>
+  <g font-size="13" font-weight="700" text-anchor="middle">
+    <rect x="380" y="500" width="110" height="34" rx="17" fill="none" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="435" y="522" fill="#16a34a">ALLOW</text>
+    <rect x="502" y="500" width="130" height="34" rx="17" fill="none" stroke="#0891b2" stroke-width="1.5"/>
+    <text x="567" y="522" fill="#0891b2">PREPARE_ONLY</text>
+    <rect x="644" y="500" width="196" height="34" rx="17" fill="none" stroke="#d97706" stroke-width="1.5"/>
+    <text x="742" y="522" fill="#d97706">REQUIRE_CONFIRMATION</text>
+    <rect x="852" y="500" width="110" height="34" rx="17" fill="none" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="907" y="522" fill="#dc2626">BLOCK</text>
+  </g>
+  <text x="671" y="566" text-anchor="middle" font-size="12" fill="#6e7781">every decision returns a plain-English reason</text>
+
+  <!-- arrow 2 -->
+  <line x1="796" y1="285" x2="876" y2="285" stroke="#0891b2" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- ── column 3: user signs ───────────────────────────────── -->
+  <rect x="884" y="222" width="212" height="126" rx="12" fill="#161d2f" stroke="#232c44"/>
+  <text x="990" y="262" text-anchor="middle" font-size="15" font-weight="700" fill="#f0f6fc">User signs with</text>
+  <text x="990" y="284" text-anchor="middle" font-size="15" font-weight="700" fill="#f0f6fc">their own wallet</text>
+  <text x="990" y="318" text-anchor="middle" font-size="12" fill="#6e7781">SafeHands holds no keys,</text>
+  <text x="990" y="334" text-anchor="middle" font-size="12" fill="#6e7781">signs nothing</text>
+
+  <!-- arrow 3 -->
+  <line x1="1096" y1="285" x2="1176" y2="285" stroke="#0891b2" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- ── column 4: on-chain layer ───────────────────────────── -->
+  <rect x="1184" y="132" width="176" height="306" rx="12" fill="#161d2f" stroke="#232c44"/>
+  <text x="1272" y="168" text-anchor="middle" font-size="15" font-weight="700" fill="#f0f6fc">Pharos Mainnet</text>
+  <text x="1272" y="188" text-anchor="middle" font-size="12" fill="#6e7781">chain 1672 · live</text>
+  <line x1="1204" y1="202" x2="1340" y2="202" stroke="#232c44"/>
+
+  <rect x="1200" y="216" width="144" height="60" rx="8" fill="none" stroke="url(#accent)"/>
+  <text x="1272" y="240" text-anchor="middle" font-size="13" font-weight="600" fill="#f0f6fc">Attestation</text>
+  <text x="1272" y="258" text-anchor="middle" font-size="11" fill="#9da7b3">hash-only audit trail</text>
+
+  <rect x="1200" y="288" width="144" height="60" rx="8" fill="none" stroke="url(#accent)"/>
+  <text x="1272" y="312" text-anchor="middle" font-size="13" font-weight="600" fill="#f0f6fc">Risk registry</text>
+  <text x="1272" y="330" text-anchor="middle" font-size="11" fill="#9da7b3">Merkle roots · verify</text>
+
+  <rect x="1200" y="360" width="144" height="60" rx="8" fill="none" stroke="url(#accent)"/>
+  <text x="1272" y="384" text-anchor="middle" font-size="13" font-weight="600" fill="#f0f6fc">reputationOf()</text>
+  <text x="1272" y="402" text-anchor="middle" font-size="11" fill="#9da7b3">composable trust</text>
+
+  <!-- footer -->
+  <text x="700" y="612" text-anchor="middle" font-size="13" fill="#6e7781">Registry 0x428e02bf…8b06c8d · Attestation 0x71a7a87b…5b4588c · verifiable on pharosscan.xyz</text>
+</svg>

@@ -1,0 +1,31 @@
+[
+  { "type": "function", "name": "owner", "stateMutability": "view", "inputs": [], "outputs": [{ "name": "", "type": "address" }] },
+  { "type": "function", "name": "isAuthorizedOperator", "stateMutability": "view", "inputs": [{ "name": "operator", "type": "address" }], "outputs": [{ "name": "", "type": "bool" }] },
+  { "type": "function", "name": "isAuthorizedAgent", "stateMutability": "view", "inputs": [{ "name": "agent", "type": "address" }], "outputs": [{ "name": "", "type": "bool" }] },
+  { "type": "function", "name": "currentMerkleRoot", "stateMutability": "view", "inputs": [], "outputs": [{ "name": "", "type": "bytes32" }] },
+  { "type": "function", "name": "currentDataURI", "stateMutability": "view", "inputs": [], "outputs": [{ "name": "", "type": "string" }] },
+  { "type": "function", "name": "setOperator", "stateMutability": "nonpayable", "inputs": [{ "name": "operator", "type": "address" }, { "name": "authorized", "type": "bool" }], "outputs": [] },
+  { "type": "function", "name": "setAuthorizedAgent", "stateMutability": "nonpayable", "inputs": [{ "name": "agent", "type": "address" }, { "name": "authorized", "type": "bool" }], "outputs": [] },
+  { "type": "function", "name": "setAuthorizedAgents", "stateMutability": "nonpayable", "inputs": [{ "name": "agents", "type": "address[]" }, { "name": "authorized", "type": "bool" }], "outputs": [] },
+  { "type": "function", "name": "commitRiskRoot", "stateMutability": "nonpayable", "inputs": [{ "name": "root", "type": "bytes32" }, { "name": "dataURI", "type": "string" }], "outputs": [] },
+  {
+    "type": "function",
+    "name": "verifyRiskRecord",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "target", "type": "address" },
+      { "name": "actionHash", "type": "bytes32" },
+      { "name": "score", "type": "uint8" },
+      { "name": "level", "type": "uint8" },
+      { "name": "recommendation", "type": "uint8" },
+      { "name": "policyVersionHash", "type": "bytes32" },
+      { "name": "evidenceHash", "type": "bytes32" },
+      { "name": "expiresAt", "type": "uint64" },
+      { "name": "proof", "type": "bytes32[]" }
+    ],
+    "outputs": [{ "name": "", "type": "bool" }]
+  },
+  { "type": "event", "name": "OperatorSet", "anonymous": false, "inputs": [{ "name": "operator", "type": "address", "indexed": true }, { "name": "authorized", "type": "bool", "indexed": false }] },
+  { "type": "event", "name": "AgentSet", "anonymous": false, "inputs": [{ "name": "agent", "type": "address", "indexed": true }, { "name": "authorized", "type": "bool", "indexed": false }] },
+  { "type": "event", "name": "RiskRootCommitted", "anonymous": false, "inputs": [{ "name": "root", "type": "bytes32", "indexed": true }, { "name": "dataURI", "type": "string", "indexed": false }, { "name": "operator", "type": "address", "indexed": true }] }
+]

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-anvita/
+
+# Secrets & local env — NEVER commit (.env holds deployer/attester private keys).
+# SECURITY.md states ".env is gitignored"; this enforces it. Only the template is tracked.
+.env
+.env.*
+!.env.example
+
+# SafeHands runtime state (prepared tx, attestation queue, activity, replay, batches)
+.safehands/
+public/batches/
+
+# Hardhat / contract build artifacts
+artifacts/
+cache/
+typechain-types/
+
+# Logs & OS noise
+*.log
+npm-debug.log*
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Internal docs — NEVER publish to public GitHub.
+# Pitch strategy, operator runbooks, and work-tracking stay local; publish only
+# external-audience docs (reviewers / judges / users).
+docs/pitch/
+docs/deployment/DESIGN_DECISION_REGISTER.md
+docs/deployment/PHASE_D_LIVE_MAINNET_RUNBOOK.md
+docs/deployment/NPM_PUBLISH_CHECKLIST.md

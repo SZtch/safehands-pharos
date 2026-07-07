@@ -1,0 +1,14 @@
+# Normalize all text files to LF in the repo (and on checkout). Prevents the
+# mixed CRLF/LF churn that WSL/Windows working copies introduce.
+* text=auto eol=lf
+
+# Keep common binaries untouched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

@@ -1,0 +1,69 @@
+[
+  {
+    "type": "function",
+    "name": "attest",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "preparedTransactionHash", "type": "bytes32" },
+      { "name": "txHash", "type": "bytes32" },
+      { "name": "chainId", "type": "uint256" },
+      { "name": "actionType", "type": "bytes32" },
+      { "name": "policyHash", "type": "bytes32" },
+      { "name": "metadataHash", "type": "bytes32" },
+      { "name": "agent", "type": "address" }
+    ],
+    "outputs": []
+  },
+  { "type": "function", "name": "isAttested", "stateMutability": "view", "inputs": [{ "name": "txHash", "type": "bytes32" }], "outputs": [{ "name": "", "type": "bool" }] },
+  { "type": "function", "name": "isPreparedAttested", "stateMutability": "view", "inputs": [{ "name": "preparedTransactionHash", "type": "bytes32" }], "outputs": [{ "name": "", "type": "bool" }] },
+  {
+    "type": "function",
+    "name": "getAttestation",
+    "stateMutability": "view",
+    "inputs": [{ "name": "txHash", "type": "bytes32" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "components": [
+          { "name": "preparedTransactionHash", "type": "bytes32" },
+          { "name": "txHash", "type": "bytes32" },
+          { "name": "chainId", "type": "uint256" },
+          { "name": "actionType", "type": "bytes32" },
+          { "name": "policyHash", "type": "bytes32" },
+          { "name": "metadataHash", "type": "bytes32" },
+          { "name": "agent", "type": "address" },
+          { "name": "attester", "type": "address" },
+          { "name": "timestamp", "type": "uint64" }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "reputationOf",
+    "stateMutability": "view",
+    "inputs": [{ "name": "agent", "type": "address" }],
+    "outputs": [
+      { "name": "verifiedCount", "type": "uint256" },
+      { "name": "lastAt", "type": "uint64" }
+    ]
+  },
+  { "type": "function", "name": "attestationCountByAgent", "stateMutability": "view", "inputs": [{ "name": "agent", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }] },
+  { "type": "function", "name": "lastAttestationAt", "stateMutability": "view", "inputs": [{ "name": "agent", "type": "address" }], "outputs": [{ "name": "", "type": "uint64" }] },
+  {
+    "type": "event",
+    "name": "SafeHandsAttested",
+    "anonymous": false,
+    "inputs": [
+      { "name": "preparedTransactionHash", "type": "bytes32", "indexed": true },
+      { "name": "txHash", "type": "bytes32", "indexed": true },
+      { "name": "agent", "type": "address", "indexed": true },
+      { "name": "chainId", "type": "uint256", "indexed": false },
+      { "name": "actionType", "type": "bytes32", "indexed": false },
+      { "name": "policyHash", "type": "bytes32", "indexed": false },
+      { "name": "metadataHash", "type": "bytes32", "indexed": false },
+      { "name": "attester", "type": "address", "indexed": false }
+    ]
+  }
+]

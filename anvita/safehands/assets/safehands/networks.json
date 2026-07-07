@@ -1,0 +1,32 @@
+{
+  "default": "pacific-mainnet",
+  "networks": {
+    "pacific-mainnet": {
+      "name": "pacific-mainnet",
+      "label": "Pharos Pacific Mainnet",
+      "chainId": 1672,
+      "nativeToken": "PROS",
+      "rpcUrl": "https://rpc.pharos.xyz",
+      "rpcEnvOverride": "PHAROS_RPC_URL",
+      "explorerUrl": "https://www.pharosscan.xyz",
+      "explorerTxPath": "/tx/",
+      "isMainnet": true,
+      "supportedBySkill": true
+    },
+    "atlantic-testnet": {
+      "name": "atlantic-testnet",
+      "label": "Pharos Atlantic Testnet",
+      "chainId": 688689,
+      "nativeToken": "PROS",
+      "explorerUrl": "https://atlantic.pharosscan.xyz",
+      "isMainnet": false,
+      "supportedBySkill": false,
+      "note": "Listed for identification only. This Skill is mainnet-locked; reject requests targeting this chain."
+    }
+  },
+  "engine": {
+    "script": "scripts/safehands-engine.js",
+    "rpcEnvOverride": "PHAROS_RPC_URL",
+    "mode": "fully-hosted read-only"
+  }
+}

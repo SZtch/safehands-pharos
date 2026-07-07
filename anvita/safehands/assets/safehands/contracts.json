@@ -1,0 +1,47 @@
+{
+  "network": "pacific-mainnet",
+  "chainId": 1672,
+  "note": "Deployed on Pharos pacific-mainnet (chainId 1672). Overridable via SAFEHANDS_REGISTRY_ADDRESS / SAFEHANDS_ATTESTATION_ADDRESS env vars.",
+  "contracts": {
+    "SafeHandsRegistry": {
+      "address": "0x428e02bf85412e7242d991cd6725ec59e8b06c8d",
+      "addressEnv": "SAFEHANDS_REGISTRY_ADDRESS",
+      "abi": "abi/SafeHandsRegistry.json",
+      "approvedWriteMethods": [
+        "commitRiskRoot"
+      ],
+      "readMethods": [
+        "currentMerkleRoot",
+        "currentDataURI",
+        "isAuthorizedAgent",
+        "isAuthorizedOperator",
+        "owner",
+        "verifyRiskRecord"
+      ],
+      "description": "Merkle-batched risk record registry. Operator commits batch roots; individual records are verified with Merkle proofs via verifyRiskRecord.",
+      "hostedUse": "read-only queries via safehands-engine.js"
+    },
+    "SafeHandsAttestation": {
+      "address": "0x71a7a87b3b1ab6d86204cad691bb32fd75b4588c",
+      "addressEnv": "SAFEHANDS_ATTESTATION_ADDRESS",
+      "abi": "abi/SafeHandsAttestation.json",
+      "approvedWriteMethods": [
+        "attest"
+      ],
+      "readMethods": [
+        "isAttested",
+        "isPreparedAttested",
+        "getAttestation",
+        "reputationOf",
+        "attestationCountByAgent",
+        "lastAttestationAt"
+      ],
+      "description": "Immutable attestations of SafeHands-verified broadcasts; powers the reputationOf trust signal.",
+      "hostedUse": "read-only queries via safehands-engine.js"
+    }
+  },
+  "writePolicy": {
+    "hostedWrites": false,
+    "note": "No signing in the hosted deployment. Publish/attest require the SafeHands operator backend (not included)."
+  }
+}
