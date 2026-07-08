@@ -8,7 +8,7 @@
 // hermetic unit test of the parser — no network, no SSRF coupling.
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { interpretGoplusTokenResult } from "../src/tools/checkTokenSecurity.js";
+import { handleCheckTokenSecurity, interpretGoplusTokenResult } from "../src/tools/checkTokenSecurity.js";
 
 describe("P0-1 · interpretGoplusTokenResult (fail-closed on GoPlus schema drift)", () => {
   it("parses a clean token as safe (honeypot false, zero tax)", () => {
@@ -54,5 +54,88 @@ describe("P0-1 · interpretGoplusTokenResult (fail-closed on GoPlus schema drift
     assert.strictEqual(interpretGoplusTokenResult(undefined), null);
     assert.strictEqual(interpretGoplusTokenResult("nope"), null);
     assert.strictEqual(interpretGoplusTokenResult({}), null);
+  });
+
+  it("exposes tokenName/tokenSymbol as display-only metadata (trimmed, length-capped)", () => {
+    const p = interpretGoplusTokenResult({
+      is_honeypot: "0",
+      token_name: "  Pharos Token  ",
+      token_symbol: "PHRS",
+    });
+    assert.ok(p);
+    assert.strictEqual(p.tokenName, "Pharos Token");
+    assert.strictEqual(p.tokenSymbol, "PHRS");
+
+    const long = interpretGoplusTokenResult({ is_honeypot: "0", token_name: "x".repeat(500) });
+    assert.ok(long);
+    assert.strictEqual(long.tokenName?.length, 128);
+  });
+
+  it("still parses when name/symbol are absent, empty, or non-string (metadata never fails closed)", () => {
+    for (const details of [
+      { is_honeypot: "0" },
+      { is_honeypot: "0", token_name: "", token_symbol: "   " },
+      { is_honeypot: "0", token_name: 42, token_symbol: {} },
+    ]) {
+      const p = interpretGoplusTokenResult(details);
+      assert.ok(p, "valid honeypot signal must parse regardless of metadata shape");
+      assert.strictEqual(p.tokenName, undefined);
+      assert.strictEqual(p.tokenSymbol, undefined);
+    }
+  });
+
+  it("FAILS CLOSED (null) even when token identity metadata is present but honeypot signal is missing", () => {
+    assert.strictEqual(
+      interpretGoplusTokenResult({ token_name: "Legit Coin", token_symbol: "LGT", buy_tax: "0" }),
+      null
+    );
+  });
+});
+
+// ─── Handler-level: successful response exposes identity; schema drift still fails closed ───
+describe("check_token_security handler · tokenName/tokenSymbol pass-through (hermetic, mocked fetch)", () => {
+  const ADDRESS = "0x000000000000000000000000000000000000dead";
+
+  async function withMockedGoplus<T>(payload: unknown, fn: () => Promise<T>): Promise<T> {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })) as typeof fetch;
+    try {
+      return await fn();
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }
+
+  it("successful GoPlus response exposes tokenName/tokenSymbol", async () => {
+    const res = await withMockedGoplus(
+      {
+        code: 1,
+        result: {
+          [ADDRESS]: { is_honeypot: "0", buy_tax: "0", sell_tax: "0", token_name: "Dead Token", token_symbol: "DEAD" },
+        },
+      },
+      () => handleCheckTokenSecurity({ tokenAddress: ADDRESS })
+    );
+    assert.strictEqual(res.success, true);
+    const data = res.data as { tokenName?: string; tokenSymbol?: string; securityProfile: { isHoneypot: boolean } };
+    assert.strictEqual(data.tokenName, "Dead Token");
+    assert.strictEqual(data.tokenSymbol, "DEAD");
+    assert.strictEqual(data.securityProfile.isHoneypot, false);
+  });
+
+  it("schema drift (honeypot missing) STILL fails closed even with token identity present", async () => {
+    const res = await withMockedGoplus(
+      {
+        code: 1,
+        result: { [ADDRESS]: { token_name: "Legit Coin", token_symbol: "LGT", buy_tax: "0" } },
+      },
+      () => handleCheckTokenSecurity({ tokenAddress: ADDRESS })
+    );
+    assert.strictEqual(res.success, false);
+    assert.ok(!res.success && res.error.code === "TOKEN_SECURITY_DATA_UNAVAILABLE");
   });
 });

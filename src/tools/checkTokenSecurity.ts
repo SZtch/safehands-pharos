@@ -78,6 +78,9 @@ function goplusFlagKnown(v: unknown): boolean {
 }
 
 export interface GoplusTokenProfile {
+  /** Display-only identity metadata — never used in scoring or policy decisions. */
+  tokenName?: string;
+  tokenSymbol?: string;
   isHoneypot: boolean;
   buyTaxPercent: number;
   sellTaxPercent: number;
@@ -99,7 +102,13 @@ export function interpretGoplusTokenResult(details: unknown): GoplusTokenProfile
   const d = details as Record<string, unknown>;
   if (!goplusFlagKnown(d.is_honeypot)) return null; // schema drift → fail closed, never "safe"
   const zero = "0x0000000000000000000000000000000000000000";
+  // Untrusted external strings, display-only: trim + cap; absent/non-string → undefined
+  // (identity metadata never influences the fail-closed decision above).
+  const optionalString = (v: unknown): string | undefined =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, 128) : undefined;
   return {
+    tokenName: optionalString(d.token_name),
+    tokenSymbol: optionalString(d.token_symbol),
     isHoneypot: goplusTruthy(d.is_honeypot),
     buyTaxPercent: (parseFloat(String(d.buy_tax ?? "")) || 0) * 100,
     sellTaxPercent: (parseFloat(String(d.sell_tax ?? "")) || 0) * 100,
@@ -200,6 +209,8 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
     return ok({
       ...tokenSecurityNetworkMetadata(chainId),
       tokenAddress: address,
+      tokenName: profile.tokenName,
+      tokenSymbol: profile.tokenSymbol,
       securityProfile: {
         safetyScore,
         isHoneypot,
