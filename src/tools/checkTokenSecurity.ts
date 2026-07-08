@@ -77,6 +77,12 @@ function goplusFlagKnown(v: unknown): boolean {
   return v === "1" || v === "0" || v === 1 || v === 0 || v === true || v === false;
 }
 
+// Untrusted external strings, display-only: trim + cap; absent/non-string → undefined.
+// Identity metadata never influences any fail-closed decision.
+function optionalString(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v.trim().slice(0, 128) : undefined;
+}
+
 export interface GoplusTokenProfile {
   /** Display-only identity metadata — never used in scoring or policy decisions. */
   tokenName?: string;
@@ -102,10 +108,6 @@ export function interpretGoplusTokenResult(details: unknown): GoplusTokenProfile
   const d = details as Record<string, unknown>;
   if (!goplusFlagKnown(d.is_honeypot)) return null; // schema drift → fail closed, never "safe"
   const zero = "0x0000000000000000000000000000000000000000";
-  // Untrusted external strings, display-only: trim + cap; absent/non-string → undefined
-  // (identity metadata never influences the fail-closed decision above).
-  const optionalString = (v: unknown): string | undefined =>
-    typeof v === "string" && v.trim() ? v.trim().slice(0, 128) : undefined;
   return {
     tokenName: optionalString(d.token_name),
     tokenSymbol: optionalString(d.token_symbol),
@@ -118,6 +120,51 @@ export function interpretGoplusTokenResult(details: unknown): GoplusTokenProfile
     ownerAddress: (typeof d.owner_address === "string" && d.owner_address) || zero,
     creatorAddress: (typeof d.creator_address === "string" && d.creator_address) || zero,
   };
+}
+
+/**
+ * Best-effort, DISPLAY-ONLY token identity from GoPlus. Reads ONLY token_name /
+ * token_symbol and deliberately ignores the security schema: a payload that
+ * check_token_security fails closed on (e.g. is_honeypot missing) can still carry
+ * identity metadata. Never throws — returns {} on any timeout/network/parse failure.
+ * Unlike the security check (which keeps the stronger fetchGoplus retry path),
+ * this is optional enrichment: a single attempt with a short 3s timeout so it
+ * cannot make token_registry_status slow.
+ * MUST NOT be used for risk scoring, policy decisions, write gates, or
+ * allow/block logic; it does not verify anything about the token.
+ */
+export async function fetchGoplusTokenIdentity(
+  tokenAddress: string,
+  chainId = CHAIN_ID
+): Promise<{ tokenName?: string; tokenSymbol?: string }> {
+  const address = tokenAddress.toLowerCase().trim();
+  if (!isAddress(address)) return {};
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3_000);
+  try {
+    const res = await fetch(
+      `https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${address}`,
+      {
+        signal: controller.signal,
+        headers: {
+          accept: "application/json",
+          "user-agent": "SafeHands/2.3.0",
+        },
+      }
+    );
+    if (!res.ok) return {};
+    const data = (await res.json()) as any;
+    const d = data?.result?.[address];
+    if (!d || typeof d !== "object") return {};
+    return {
+      tokenName: optionalString(d.token_name),
+      tokenSymbol: optionalString(d.token_symbol),
+    };
+  } catch {
+    return {};
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
