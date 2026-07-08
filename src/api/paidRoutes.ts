@@ -22,7 +22,7 @@ import { handleGetPoolInfo } from "../tools/getPoolInfo.js";
 import { handleSafeHandsRiskReport } from "../tools/safehandsRiskReport.js";
 import { getDodoRoute } from "../lib/dodoApi.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET } from "../lib/constants.js";
-import { fail, ok } from "../lib/toolResponse.js";
+import { fail, ok, productionSafeMessage } from "../lib/toolResponse.js";
 
 const SOURCE = "guardian_api_x402";
 
@@ -45,7 +45,7 @@ export function registerPaidRoutes(app: express.Application): void {
       });
       res.json(result);
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", e.message, false, SOURCE));
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
     }
   });
 
@@ -56,7 +56,7 @@ export function registerPaidRoutes(app: express.Application): void {
       const result = await handleCheckTokenSecurity({ tokenAddress: tokenAddress as string, chainId: cid });
       res.json(result);
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", e.message, false, SOURCE));
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
     }
   });
 
@@ -73,7 +73,7 @@ export function registerPaidRoutes(app: express.Application): void {
       });
       res.json(result);
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", e.message, false, SOURCE));
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
     }
   });
 
@@ -88,7 +88,7 @@ export function registerPaidRoutes(app: express.Application): void {
       const result = await handleGetTokenPrice({ token: token as any });
       res.json(result);
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", e.message, false, SOURCE));
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
     }
   });
 
@@ -105,7 +105,7 @@ export function registerPaidRoutes(app: express.Application): void {
       const result = await handleGetPoolInfo({ tokenA: tokenA as any, tokenB: tokenB as any });
       res.json(result);
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", e.message, false, SOURCE));
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
     }
   });
 
@@ -152,7 +152,7 @@ export function registerPaidRoutes(app: express.Application): void {
         }),
       );
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", e.message, false, SOURCE));
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
     }
   });
 
@@ -175,7 +175,7 @@ export function registerPaidRoutes(app: express.Application): void {
       });
       res.status(result.success ? 200 : 400).json(result);
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", e.message, false, SOURCE));
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
     }
   });
 }

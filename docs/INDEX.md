@@ -3,7 +3,7 @@
 SafeHands is a Pharos-native **transaction safety layer**: it checks risky approvals,
 contract calls, AI-agent actions, and prepared transactions before any on-chain action.
 Default network is **Pharos Pacific Mainnet** (chain `1672`, `PROS`), with live contracts.
-The hosted agent runs on [Anvita Flow](https://flow.anvita.xyz/home), discoverable and callable
+The hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2); once live it will be discoverable and callable
 by any Steward Agent; to hit the HTTP API directly, self-host the read-only backend locally
 (`npm run build && node dist/api/server.js` → `http://localhost:4022`).
 

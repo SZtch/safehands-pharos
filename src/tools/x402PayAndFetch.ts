@@ -13,6 +13,7 @@ import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { checkManagedWalletAuthorization } from "../lib/safeHandsRegistry.js";
 import { REQUIRE_AUTHORIZED_AGENT_FOR_X402 } from "../lib/constants.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
 import { validatePositiveAmount } from "../lib/validation.js";
 
 export const x402PayAndFetchSchema = z.object({
@@ -22,6 +23,7 @@ export const x402PayAndFetchSchema = z.object({
   rpcUrl: z.string().optional().describe("Custom RPC URL for payment verification"),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
   maxPaymentUsdc: z.string().optional().default(MAX_X402_PAYMENT_USDC),
+  confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION for the payment. Hard BLOCK / SSRF / over-limit / unsupported-token are never overridable."),
 }).strict();
 
 export type X402PayAndFetchInput = z.input<typeof x402PayAndFetchSchema>;
@@ -221,9 +223,8 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
       signerAvailable: true,
       requiresSigner: true,
     });
-    if (paymentPolicy.decision === "BLOCK") {
-      return fail("POLICY_BLOCKED", paymentPolicy.reasons.join(" ") || "x402 payment blocked by SafeHands policy.", false, "x402_pay_and_fetch");
-    }
+    const paymentGate = enforceWriteDecision(paymentPolicy, { confirmed: input.confirm === true, toolName: "x402_pay_and_fetch" });
+    if (paymentGate) return paymentGate;
 
     const rpc = input.rpcUrl || process.env.PHAROS_RPC_URL || RPC_URL;
     const client = new x402Client();

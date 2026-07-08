@@ -54,6 +54,19 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
   const writeGuard = requireWriteToolsEnabled("safehands_safe_execute");
   if (writeGuard) return writeGuard;
 
+  // SAFE_EXECUTE_ENABLED is the documented second gate for the auto-execute path:
+  // WRITE_TOOLS_ENABLED opens writes; SAFE_EXECUTE_ENABLED specifically authorizes
+  // preflight→execute. Enforced here so it is not a decorative env var. Read-only
+  // preflight remains available via safehands_preflight_check (needs neither gate).
+  if (process.env.SAFE_EXECUTE_ENABLED !== "true") {
+    return fail(
+      "SAFE_EXECUTE_DISABLED",
+      "safehands_safe_execute is disabled. Set SAFE_EXECUTE_ENABLED=true (in addition to WRITE_TOOLS_ENABLED=true) to enable the preflight→execute path. Read-only preflight is available via safehands_preflight_check.",
+      false,
+      "safehands_safe_execute",
+    );
+  }
+
   const purpose = input.path === "safe_x402_pay_and_fetch" ? "x402" : "write";
   const agentId = typeof input.action.agentId === "string" ? input.action.agentId : undefined;
   const signerResult = await getSigner(agentId, { purpose });
@@ -93,20 +106,40 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
   if (!preflight.success) return preflight;
   const report = preflight.data as any;
 
+  const mode = signerAvailable ? resolveMode(signerResult.mode) : "unknown";
+
   if (report.decision === "BLOCK") {
     return ok({
       executed: false,
       blocked: true,
       safetyReport: report,
       executionResult: null,
-      mode: signerAvailable ? resolveMode(signerResult.mode) : "unknown",
+      mode,
       source: "safehands_safe_execute",
     });
   }
 
-  if (report.decision !== "ALLOW") {
+  // PREPARE_ONLY = execution unavailable (read-only deployment) or a funding
+  // shortfall. Never auto-execute; hand back the guarded report.
+  if (report.decision === "PREPARE_ONLY") {
+    return ok({
+      executed: false,
+      prepareOnly: true,
+      decision: "PREPARE_ONLY",
+      safetyReport: report,
+      executionResult: null,
+      mode,
+      source: "safehands_safe_execute",
+    });
+  }
+
+  // ALLOW executes directly; REQUIRE_CONFIRMATION is executable only when the
+  // caller explicitly confirms (confirmExecution IS that confirmation). Any other
+  // value is a safety-net refusal.
+  const requiresConfirmation = report.decision === "REQUIRE_CONFIRMATION";
+  if (report.decision !== "ALLOW" && !requiresConfirmation) {
     return fail(
-      report.decision === "REQUIRE_CONFIRMATION" ? "CONFIRMATION_REQUIRED" : "POLICY_BLOCKED",
+      "POLICY_BLOCKED",
       `SafeHands did not execute because policy decision is ${report.decision}.`,
       false,
       "safehands_safe_execute"
@@ -117,19 +150,26 @@ export async function handleSafeHandsSafeExecute(raw: SafeHandsSafeExecuteInput)
     return ok({
       executed: false,
       dryRun: true,
-      reason: "Set execute=true and confirmExecution=true to execute this allowed mainnet action.",
+      requiresConfirmation,
+      reason: requiresConfirmation
+        ? "Policy is REQUIRE_CONFIRMATION. Set execute=true and confirmExecution=true to proceed after reviewing the safety report."
+        : "Set execute=true and confirmExecution=true to execute this allowed mainnet action.",
       safetyReport: report,
       executionResult: null,
-      mode: signerAvailable ? resolveMode(signerResult.mode) : "unknown",
+      mode,
       source: "safehands_safe_execute",
     });
   }
 
+  // Reaching here means the operator explicitly set execute=true + confirmExecution=true
+  // AND the gated preflight returned ALLOW or REQUIRE_CONFIRMATION. Pass confirm=true
+  // to the raw handler so its own (independent) confirmation gate does not re-block.
+  const confirmedAction = { ...(input.action as Record<string, unknown>), confirm: true };
   let executionResult: unknown;
-  if (input.path === "safe_execute_send_payment") executionResult = await handleSendPayment(input.action as any);
-  else if (input.path === "safe_execute_approve_token") executionResult = await handleApproveToken(input.action as any);
-  else if (input.path === "safe_execute_swap") executionResult = await handleExecuteSwap(input.action as any);
-  else executionResult = await handleX402PayAndFetch(input.action as any);
+  if (input.path === "safe_execute_send_payment") executionResult = await handleSendPayment(confirmedAction as any);
+  else if (input.path === "safe_execute_approve_token") executionResult = await handleApproveToken(confirmedAction as any);
+  else if (input.path === "safe_execute_swap") executionResult = await handleExecuteSwap(confirmedAction as any);
+  else executionResult = await handleX402PayAndFetch(confirmedAction as any);
 
   const execFailed =
     executionResult &&

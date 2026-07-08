@@ -8,7 +8,9 @@ import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist } from "../lib/constants.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
-import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
+import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
+import { evaluateTokenSecurityGate } from "./checkTokenSecurity.js";
+import { checkDailyLimit, reserveDailyLimit, releaseReservation, estimateUsd } from "../lib/spendAccumulator.js";
 import { validatePositiveAmount } from "../lib/validation.js";
 
 export const executeSwapSchema = z.object({
@@ -17,6 +19,7 @@ export const executeSwapSchema = z.object({
   amountIn: z.string(),
   slippageTolerance: z.number().optional().describe("Override auto slippage. Default: 3 (Auto mode adjusts to 0.5 for major, 0.1 for stablecoins)"),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
+  confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION / REQUIRE_TOKEN_REVIEW. Hard BLOCK / honeypot / over-limit are never overridable."),
 }).strict();
 
 export type ExecuteSwapInput = z.input<typeof executeSwapSchema>;
@@ -46,6 +49,24 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
   const { signer } = gate;
   const walletAddress = signer.address;
 
+  // H3: consult token-security (GoPlus honeypot/tax) on the token being acquired.
+  // Honeypot / extreme-tax → hard block; flagged or provider-unavailable →
+  // tokenSecurityStatus="unknown" → REQUIRE_TOKEN_REVIEW (confirmable after review).
+  let tokenSecurityStatus: "ok" | "unknown" | undefined;
+  if (!isNativeToken(input.tokenOut)) {
+    let outAddr: string;
+    try {
+      outAddr = isAddress(input.tokenOut) ? input.tokenOut : resolveTokenAddress(input.tokenOut);
+    } catch {
+      outAddr = input.tokenOut;
+    }
+    const sec = await evaluateTokenSecurityGate(outAddr);
+    if (sec.verdict === "block") {
+      return fail("TOKEN_SECURITY_BLOCKED", `Swap blocked — ${sec.detail ?? "token failed security review"} ${sec.flags.join("; ")}`.trim(), false, "execute_swap");
+    }
+    tokenSecurityStatus = sec.policyStatus;
+  }
+
   const policy = evaluateActionPolicy({
     actionType: "execute_swap",
     agentId: input.agentId,
@@ -53,15 +74,15 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     amountUnit: "TOKEN",
     tokenIn: input.tokenIn,
     tokenOut: input.tokenOut,
+    tokenSecurityStatus,
     chainId: CHAIN_ID,
     environment: PHAROS_ENVIRONMENT,
     isMainnet: IS_MAINNET,
     signerAvailable: true,
     requiresSigner: true,
   });
-  if (policy.decision === "BLOCK") {
-    return fail("POLICY_BLOCKED", policy.reasons.join(" ") || "Swap blocked by SafeHands policy.", false, "execute_swap");
-  }
+  const swapGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "execute_swap" });
+  if (swapGate) return swapGate;
 
   if (Number(input.amountIn) > Number(MAX_TX_AMOUNT_PROS) && input.tokenIn.toUpperCase() === "PROS") {
     return fail("TX_LIMIT_EXCEEDED", `Swap amount exceeds the operator ceiling MAX_TX_AMOUNT_PROS (${MAX_TX_AMOUNT_PROS} PROS), which bounds all agent policies. Raise MAX_TX_AMOUNT_PROS to allow larger mainnet swaps.`, false, "execute_swap");
@@ -78,6 +99,20 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     );
   }
 
+  // M2: an unknown/unpriceable input token cannot be bounded by the USD daily cap
+  // (estimateUsd returns 0), so it would otherwise slip past MAX_DAILY_SPEND_USD.
+  // Require explicit confirmation rather than allowing a silent unbounded spend.
+  const tokenInUpper = input.tokenIn.toUpperCase();
+  const spentTokenPriceable = tokenInUpper === "PROS" || tokenInUpper === "USDC" || tokenInUpper === "USDT";
+  if (!spentTokenPriceable && Number(input.amountIn) > 0 && input.confirm !== true) {
+    return fail(
+      "CONFIRMATION_REQUIRED",
+      `execute_swap spends ${input.tokenIn}, which SafeHands cannot price for the daily USD cap — this spend is not bounded by MAX_DAILY_SPEND_USD. Re-invoke with confirm=true only after review.`,
+      false,
+      "execute_swap"
+    );
+  }
+
   const risk = await assessRisk({
     action: "swap",
     tokenIn: input.tokenIn,
@@ -86,10 +121,15 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     walletAddress,
   });
 
-  if (risk.riskScore > RISK_BLOCK_THRESHOLD) {
+  if (risk.riskScore > RISK_BLOCK_THRESHOLD || risk.recommendation === "block") {
     return fail("POLICY_BLOCKED", `Swap blocked — risk score ${risk.riskScore}/100: ${risk.suggestion}`, false, "execute_swap");
   }
+  // H2: never sign silently on degraded risk data — require explicit confirmation.
+  if (risk.degraded && input.confirm !== true) {
+    return fail("CONFIRMATION_REQUIRED", `Swap risk assessment is degraded — ${risk.degradedReasons.join(" ")} Re-invoke with confirm=true only after manual review.`, false, "execute_swap");
+  }
 
+  let reserved = false;
   try {
     const quote = await getDodoRoute({
       fromToken: input.tokenIn,
@@ -150,9 +190,8 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
           signerAvailable: true,
           requiresSigner: true,
         });
-        if (approvalPolicy.decision === "BLOCK") {
-          return fail("POLICY_BLOCKED", `Swap approval blocked: ${approvalPolicy.reasons.join(" ")}`, false, "execute_swap");
-        }
+        const approvalGate = enforceWriteDecision(approvalPolicy, { confirmed: input.confirm === true, toolName: "execute_swap" });
+        if (approvalGate) return approvalGate;
         const approveHash = await wallet.writeContract({
           address: tokenAddr,
           abi: ERC20_ABI,
@@ -162,6 +201,20 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
       }
     }
+
+    // M2: atomically reserve the daily-spend budget immediately before the swap
+    // broadcast (no await between reserve and send). Released below on revert/error.
+    const reservation = reserveDailyLimit(walletAddress, amountUsd);
+    if (!reservation.allowed) {
+      return fail(
+        "DAILY_SPEND_LIMIT_EXCEEDED",
+        `Daily spend limit reached. Spent $${reservation.currentUsd.toFixed(2)} of $${reservation.limitUsd.toFixed(2)} USD today. Remaining: $${reservation.remainingUsd.toFixed(2)}. Resets at UTC midnight.`,
+        false,
+        "execute_swap"
+      );
+    }
+
+    reserved = amountUsd > 0;
 
     const txHash = await wallet.sendTransaction({
       to: quote.to as `0x${string}`,
@@ -173,10 +226,9 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
     if (receipt.status !== "success") {
+      releaseReservation(walletAddress, amountUsd);
       return fail("TX_REVERTED", "execute_swap transaction was mined but reverted on-chain.", false, "execute_swap");
     }
-
-    recordSpend(walletAddress, amountUsd);
 
     return ok({
       txHash,
@@ -193,6 +245,10 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
       source: "execute_swap",
     });
   } catch (err) {
+    // Release the daily-spend reservation on a thrown broadcast/receipt error so a
+    // swap that never landed does not permanently consume the cap (parity with
+    // send_payment; the revert path above already releases).
+    if (reserved) releaseReservation(walletAddress, amountUsd);
     return classifyExternalError("pharos_rpc", err);
   }
 }

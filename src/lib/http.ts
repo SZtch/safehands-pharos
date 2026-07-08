@@ -116,6 +116,29 @@ export async function fetchWithTimeoutAndRetry(
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
+function isProductionEnv(): boolean {
+  return (process.env.NODE_ENV || "").toLowerCase() === "production";
+}
+
+/**
+ * ALLOW_LOCAL_X402_FETCH is a LOCAL-ONLY escape hatch. It is hard-disabled in
+ * production (NODE_ENV=production) and, even when set, it relaxes ONLY loopback
+ * (localhost / 127.0.0.0/8 / ::1). Cloud-metadata (169.254.169.254), RFC1918,
+ * CGNAT, and every other blocked range stay blocked via isBlockedIp regardless.
+ */
+function localFetchBypassEnabled(): boolean {
+  return process.env.ALLOW_LOCAL_X402_FETCH === "true" && !isProductionEnv();
+}
+
+function isLoopbackHost(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost")) return true;
+  const version = net.isIP(h);
+  if (version === 4) return ipv4InCidr(h, "127.0.0.0", 8);
+  if (version === 6) return h === "::1" || h.startsWith("::ffff:127.");
+  return false;
+}
+
 async function safeFetchWithTimeout(
   url: string | URL,
   init: RequestInit,
@@ -124,9 +147,11 @@ async function safeFetchWithTimeout(
 ): Promise<Response> {
   const parsed = typeof url === "string" ? new URL(url) : new URL(url.href);
 
-  // ALLOW_LOCAL_X402_FETCH exists only for local demos/tests. In production we
-  // avoid global fetch because it performs a second DNS lookup after validation.
-  if (process.env.ALLOW_LOCAL_X402_FETCH === "true") {
+  // Local demo/test escape hatch, LOOPBACK-ONLY and never in production. Any
+  // non-loopback URL — including cloud-metadata IPs — falls through to the
+  // DNS-pinned, blocklist-enforcing path below, so the flag can no longer be
+  // used to reach internal/metadata endpoints.
+  if (localFetchBypassEnabled() && isLoopbackHost(parsed.hostname)) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -365,9 +390,19 @@ function validateFetchUrlSyntax(rawUrl: string): URL {
 }
 
 export async function assertSafeFetchUrl(rawUrl: string): Promise<void> {
-  if (process.env.ALLOW_LOCAL_X402_FETCH === "true") {
-    validateFetchUrlSyntax(rawUrl);
-    return;
+  if (localFetchBypassEnabled()) {
+    // The bypass only clears LOOPBACK. A non-loopback URL still goes through full
+    // DNS resolution + blocklist, so metadata/private IPs are never waved through.
+    let parsed: URL;
+    try {
+      parsed = new URL(rawUrl);
+    } catch {
+      throw new Error("Invalid URL");
+    }
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error("Only HTTP and HTTPS URLs are allowed");
+    }
+    if (isLoopbackHost(parsed.hostname)) return;
   }
   await resolveSafeFetchTarget(rawUrl);
 }

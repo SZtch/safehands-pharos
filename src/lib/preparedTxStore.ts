@@ -49,6 +49,22 @@ function cleanupExpired(target: PreparedTxState = state, now = Date.now(), shoul
   if (changed && shouldPersist) persist();
 }
 
+// M3: bound the store so an anonymous flood of /wallet/prepare writes cannot grow
+// it without limit between TTL sweeps. Evicts oldest-created first. (Public-scale
+// deployments should back this with Redis/Postgres rather than a JSON file.)
+const MAX_PREPARED_TX_RECORDS = Number(process.env.SAFEHANDS_PREPARED_TX_MAX || 5000);
+
+function enforceStoreCap(): void {
+  const ids = Object.keys(state.records);
+  if (ids.length <= MAX_PREPARED_TX_RECORDS) return;
+  const excess = ids.length - MAX_PREPARED_TX_RECORDS;
+  const oldest = ids
+    .map((id) => ({ id, createdAt: state.records[id].createdAt ?? 0 }))
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(0, excess);
+  for (const { id } of oldest) delete state.records[id];
+}
+
 export function generatePreparedTransactionHash(
   from: string,
   to: string,
@@ -94,6 +110,7 @@ export function savePreparedTx(
   };
 
   state.records[id] = record;
+  enforceStoreCap();
   persist();
   return record;
 }

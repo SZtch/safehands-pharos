@@ -82,6 +82,8 @@ setup wizard (`src/init.ts`) writes them as defaults; redeploy with
 
 Preflight, read-only, user-signed, and env wallet modes do **not** require RiskRegistry authorization.
 
+**Operator-trust caveat.** The registry/attestation contracts are the intended trust anchor, but they are *operator-permissioned*: any address the owner has authorized can call `commitRiskRoot` (SafeHandsRiskRegistry) or `attest` (SafeHandsAttestation). A compromised or malicious authorized operator could therefore publish a poisoned risk root or mint a reputation attestation. The contracts are otherwise sound — `Ownable2Step`, `renounceOwnership` disabled, double-hashed Merkle leaves, write-once attestations, no reentrancy — so the centralization of the *authorized-operator set* is the real residual trust assumption whenever the registry is presented as an oracle. Consumers should treat published risk roots as **operator-attested, not trustless**, and pin/verify the operator set they rely on.
+
 ## Reporting Vulnerabilities
 
 If you discover a security issue, please open a GitHub issue at [github.com/SZtch/safehands-pharos/issues](https://github.com/SZtch/safehands-pharos/issues) or contact the maintainer directly.

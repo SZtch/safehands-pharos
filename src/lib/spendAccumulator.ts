@@ -92,3 +92,32 @@ export function recordSpend(walletAddress: string, amountUsd: number): void {
   }
   saveBuckets();
 }
+
+/**
+ * Atomic check-and-reserve (M2). `checkDailyLimit` + `recordSpend` run with NO
+ * `await` between them, so within Node's single-threaded event loop the reserve is
+ * atomic: two concurrent tool calls can no longer both pass the cap by reading the
+ * pre-spend bucket. Reserve immediately BEFORE broadcasting, then `releaseReservation`
+ * on any failure so a reverted/failed tx does not permanently consume the cap.
+ */
+export function reserveDailyLimit(
+  walletAddress: string,
+  amountUsd: number
+): { allowed: boolean; currentUsd: number; limitUsd: number; remainingUsd: number } {
+  const check = checkDailyLimit(walletAddress, amountUsd);
+  if (check.allowed && amountUsd > 0) {
+    recordSpend(walletAddress, amountUsd);
+  }
+  return check;
+}
+
+/** Release a previously reserved amount (call when a reserved tx fails/reverts). */
+export function releaseReservation(walletAddress: string, amountUsd: number): void {
+  if (amountUsd <= 0) return;
+  const key = walletAddress.toLowerCase();
+  const bucket = buckets.get(key);
+  if (bucket && bucket.dateUtc === todayUtc()) {
+    bucket.totalUsd = Math.max(0, bucket.totalUsd - amountUsd);
+    saveBuckets();
+  }
+}

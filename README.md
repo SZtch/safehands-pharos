@@ -10,11 +10,23 @@ An AI agent can sign almost anything: an unlimited token approval, a swap on the
 
 It ships as an MCP server, an HTTP API, and a CLI, exposing 33 tools that any agent in the Pharos ecosystem can call.
 
+### Which SafeHands is for me?
+
+SafeHands is one deterministic policy engine behind three surfaces — pick the one that matches you:
+
+| You are… | Use | What it is |
+|---|---|---|
+| A **user or Steward agent** that just wants a safety check | the **Anvita Flow hosted skill** | Zero-infra, read-only, no keys — the hosted deliverable in [`anvita/safehands/`](anvita/safehands/) (being published to Anvita). |
+| A **developer** adding safety to your own agent | the **npm package** — MCP server, CLI & SDK | `npx … --demo`, drop it into any MCP client, or `import { evaluateActionPolicy } from "safehands-pharos"`. Read-only by default; write tools stay gated behind env flags + a signer. |
+| An **operator** who wants the HTTP API | the **self-hosted read-only backend** | `node dist/api/server.js` → `http://localhost:4022` — free read endpoints plus the optional x402-gated `/paid/*` bundle. |
+
+> **Two verdict vocabularies, one logic.** The compact hosted engine returns an `allow / warn / block` risk recommendation; the full policy engine (npm/API) returns the four-value decision `ALLOW / BLOCK / REQUIRE_CONFIRMATION / PREPARE_ONLY`. They map cleanly: `block ↔ BLOCK`, `warn ↔ REQUIRE_CONFIRMATION`, `allow ↔ ALLOW` or `PREPARE_ONLY` (safe — you sign it yourself).
+
 ---
 
-## 🏆 NEW: SafeHands on Anvita Flow — fully-hosted Service Agent (Agent Carnival Phase 2)
+## 🏆 SafeHands on Anvita Flow — a fully-hosted Service Agent (Agent Carnival Phase 2, launching)
 
-SafeHands ships as a **fully-hosted, zero-infrastructure Service Agent** for [Anvita Flow](https://flow.anvita.xyz/home) (Pharos Agent Carnival, Phase 2). Once published, any Steward Agent on the marketplace can discover and call it — no server, no keys, no custody anywhere in the running system.
+SafeHands is packaged as a **fully-hosted, zero-infrastructure Service Agent** for [Anvita Flow](https://flow.anvita.xyz/home) (Pharos Agent Carnival, Phase 2). **Once published**, any Steward Agent on the marketplace can discover and call it — no server, no keys, no custody anywhere in the running system.
 <!-- after publish: replace the sentence above with the live marketplace link + "tell your Steward: go find SafeHands" -->
 
 ```
@@ -60,7 +72,7 @@ npx -y github:SZtch/safehands-pharos --demo
 # (after npm publish: npx safehands-pharos --demo · or locally: git clone → npm install → node dist/index.js --demo)
 ```
 
-Watch the deterministic policy engine issue real `ALLOW` / `BLOCK` decisions against Pharos Pacific Mainnet. The hosted agent lives on [Anvita Flow](https://flow.anvita.xyz/home) — see the section above.
+Watch the deterministic policy engine issue real `ALLOW` / `BLOCK` decisions against Pharos Pacific Mainnet. The hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2) — see the section above.
 
 It runs twelve deterministic safety checks in your terminal (wallet health, ALLOW/BLOCK decisions, token-registry lookups, x402 preflight, SSRF blocking, risk scoring, RWA transfer-compliance and settlement-cap scenarios) and touches nothing on-chain.
 
@@ -97,7 +109,7 @@ safehands_preflight_check
 
 ## Run the API yourself (optional self-host)
 
-The hosted agent lives on Anvita Flow (see above). To exercise the HTTP API directly, self-host the zero-custody reference backend locally against Pharos Pacific Mainnet — no API key needed for the public surface:
+The hosted agent is being published to Anvita Flow (see above). To exercise the HTTP API directly, self-host the zero-custody reference backend locally against Pharos Pacific Mainnet — no API key needed for the public surface:
 
 ```bash
 npm install --include=dev && npm run build
@@ -384,13 +396,13 @@ SafeHands ships closed. Nothing runs without an explicit opt-in:
 
 ```bash
 npm run build           # compile
-npm test                # mainnet integration smoke tests (live read-only RPC; no wallet, never broadcasts)
+npm test                # hermetic deterministic suite (policy, x402 gate, write-auth, risk-inclusion; no network)
 npm run demo            # live safety checks in the terminal
 npm run test:contracts  # Hardhat contract tests (offline smoke fallback)
 npm run test:all        # build + test + demo + contracts
 ```
 
-`npm test` needs no wallet or key and never broadcasts — it runs live read-only checks against Pharos mainnet RPC. To exercise the live user-signed broadcast path on mainnet, opt in explicitly:
+`npm test` needs no wallet, key, or network — it runs a hermetic deterministic suite (policy engine, x402 gate, write-tool auth, risk inclusion) and never broadcasts. The live read-only RPC checks against Pharos mainnet run separately via `npm run test:live`. To exercise the live user-signed broadcast path on mainnet, opt in explicitly:
 
 ```bash
 SAFEHANDS_USER_SIGNED_BROADCAST_ENABLED=true SAFEHANDS_LIVE_BROADCAST_TEST=true npm run test:live-broadcast
