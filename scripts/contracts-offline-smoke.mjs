@@ -2,8 +2,8 @@ import fs from 'fs';
 
 const registry = fs.readFileSync('contracts/SafeHandsRegistry.sol', 'utf-8');
 const attestation = fs.readFileSync('contracts/SafeHandsAttestation.sol', 'utf-8');
-const registryTest = fs.readFileSync('test/SafeHandsRegistry.ts', 'utf-8');
-const attestationTest = fs.readFileSync('test/SafeHandsAttestation.ts', 'utf-8');
+const registryTest = fs.readFileSync('test/contracts/SafeHandsRegistry.ts', 'utf-8');
+const attestationTest = fs.readFileSync('test/contracts/SafeHandsAttestation.ts', 'utf-8');
 
 const checks = [
   ['SafeHandsRegistry source exists', registry.includes('contract SafeHandsRegistry')],

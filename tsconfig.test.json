@@ -11,7 +11,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "test/SafeHandsRegistry.ts",
-    "test/SafeHandsAttestation.ts"
+    "test/contracts/SafeHandsRegistry.ts",
+    "test/contracts/SafeHandsAttestation.ts"
   ]
 }
