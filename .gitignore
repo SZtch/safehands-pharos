@@ -36,3 +36,6 @@ docs/pitch/
 docs/deployment/DESIGN_DECISION_REGISTER.md
 docs/deployment/PHASE_D_LIVE_MAINNET_RUNBOOK.md
 docs/deployment/NPM_PUBLISH_CHECKLIST.md
+
+# Local resume-context for Claude — internal notes, not for public GitHub.
+/CLAUDE.md

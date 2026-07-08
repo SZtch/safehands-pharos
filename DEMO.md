@@ -5,7 +5,7 @@ Run:
 ```bash
 npm run demo
 # or
-npx safehands-pharos --demo
+npx -y github:SZtch/safehands-pharos --demo
 ```
 
 The demo is non-destructive. It does not load a private key, does not create a wallet, and does not broadcast transactions.
