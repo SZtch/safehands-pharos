@@ -122,16 +122,28 @@ function validatePolicy(raw: unknown): AgentPolicy | null {
   };
 }
 
-export function loadAgentPolicy(agentId?: string): AgentPolicy {
-  const dir = getPoliciesDir();
+/**
+ * P1-2 fail-closed fallback: a policy file that EXISTS but is malformed or
+ * invalid must never silently degrade to the more permissive `balanced`
+ * profile (a typo in a conservative custom policy would otherwise 10× the
+ * per-tx limits). Warn the operator and pin the most restrictive profile.
+ */
+function invalidPolicyFallback(label: string, path: string): AgentPolicy {
+  console.warn(
+    `[SafeHands policy] ${label} policy file exists but is malformed or invalid — falling back to the 'conservative' profile (fail-closed). Fix ${path} to restore the intended limits.`
+  );
+  return POLICY_PROFILES.conservative;
+}
 
+export function loadAgentPolicy(agentId?: string): AgentPolicy {
   if (agentId && isSafeAgentId(agentId)) {
     const specific = policyPath(agentId);
     if (existsSync(specific)) {
       try {
         const parsed = validatePolicy(JSON.parse(readFileSync(specific, "utf-8")));
         if (parsed) return parsed;
-      } catch { /* fall through to default */ }
+      } catch { /* malformed JSON — fail closed below */ }
+      return invalidPolicyFallback(`Agent '${agentId}'`, specific);
     }
   }
 
@@ -140,7 +152,8 @@ export function loadAgentPolicy(agentId?: string): AgentPolicy {
     try {
       const parsed = validatePolicy(JSON.parse(readFileSync(defaultPath, "utf-8")));
       if (parsed) return parsed;
-    } catch { /* fall through to hardcoded */ }
+    } catch { /* malformed JSON — fail closed below */ }
+    return invalidPolicyFallback("Default", defaultPath);
   }
 
   return POLICY_PROFILES.balanced;
