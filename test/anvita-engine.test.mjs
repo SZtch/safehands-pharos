@@ -130,6 +130,19 @@ describe("Anvita engine — decision logic (mock RPC + GoPlus)", () => {
     assert.ok(out.riskFactors.some((f) => /unreachable/i.test(f)), "should disclose the unreachable threat-intel");
   });
 
+  it("FAIL-CLOSED: never 'allow' a token GoPlus has not indexed yet (fresh-rug window)", async () => {
+    const addr = "0x7777777777777777777777777777777777777777";
+    // GoPlus IS reachable and answers code:1, but has no entry for this address — the
+    // just-deployed-scam window. Pre-fix: +10 only → score 25 → "allow" with a caution note.
+    mock = startMock({ symbol: "GOOD", goplusResult: {} });
+    const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: addr }), { PHAROS_RPC_URL: mock.url, GOPLUS_API_BASE: mock.url });
+    mock.close();
+    assert.strictEqual(out.success, true);
+    assert.notStrictEqual(out.recommendation, "allow"); // unvetted token must never read "allow"
+    assert.ok(out.riskScore > 30, `score must leave the allow band, got ${out.riskScore}`);
+    assert.ok(out.riskFactors.some((f) => /not yet indexed/i.test(f) && /UNVERIFIED/i.test(f)), "should disclose unindexed-unverified status");
+  });
+
   it("FAIL-CLOSED: never 'allow' when GoPlus returns a drifted/unrecognized schema", async () => {
     const addr = "0x6666666666666666666666666666666666666666";
     // GoPlus is reachable and returns an entry, but the honeypot field is renamed/retyped —

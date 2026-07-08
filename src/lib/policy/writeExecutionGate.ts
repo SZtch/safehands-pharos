@@ -17,7 +17,10 @@
 //                              reasons, so the confirmation is explicit + audited
 //                              instead of silent.
 // Honeypot/malicious tokens are turned into a hard BLOCK upstream (in the tool,
-// before this gate), so they are never merely "confirmable".
+// before this gate) — but only while GoPlus token intel is available. When GoPlus
+// is unreachable or has no data for a token, the same token degrades to
+// REQUIRE_TOKEN_REVIEW and IS confirmable here; fail-closed handling of that
+// provider-outage path on the execute/approve path is tracked as P0-2.
 // ────────────────────────────────────────────────────────────────────────
 
 import { fail, type ToolFailure } from "../toolResponse.js";

@@ -24,7 +24,7 @@ npm pack --dry-run
 Expected:
 
 - `npm run build` compiles TypeScript.
-- `npm test` runs the hermetic deterministic suite (68 checks across policy engine, x402 gate, write-tool auth, execution hardening, SDK exports, wallet crypto, and risk inclusion; no network, never broadcasts). Live read-only RPC checks run separately via `npm run test:live`.
+- `npm test` runs the hermetic deterministic suite — policy engine, write gate, x402 gate, token-security fail-closed behavior, execution hardening, SDK exports, wallet crypto, and risk inclusion; no network, never broadcasts. Live read-only RPC checks run separately via `npm run test:live`.
 - `npm run demo` runs 12 non-destructive demo scenarios.
 - `npm pack --dry-run` includes `dist`, contracts, core docs, `SKILL.md`, and the default policy.
 
@@ -41,7 +41,7 @@ Expected:
 
 ### Gated execution behavior
 
-Execution tools are disabled by default. To enable them intentionally, the operator must configure the relevant flags, signer mode, funding, policy limits, and authorization.
+Execution tools are disabled by default. To enable them intentionally, the operator must configure the relevant flags, signer mode, funding, policy limits, and authorization. Write/execution tools are **experimental and unaudited** — they ship disabled and are opt-in, self-hosted, single-tenant only.
 
 Typical gates:
 
