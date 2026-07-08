@@ -40,7 +40,7 @@ DeFi tolerates "code is law, oops". Real-Fi cannot. That is the gap SafeHands fi
 
 ```bash
 # Terminal demo — scenarios 11 and 12 are the RWA/Real-Fi scenarios
-npx safehands-pharos --demo
+npx -y github:SZtch/safehands-pharos --demo
 ```
 
 - **Scenario 11 — Tokenized-asset transfer compliance.** An agent asks to approve spending of an *unregistered* asset token to an *unverified* spender. SafeHands returns `REQUIRE_CONFIRMATION` (risk `MEDIUM`) — not a blind block, but mandatory human review: the transfer-restriction behavior regulated assets require.

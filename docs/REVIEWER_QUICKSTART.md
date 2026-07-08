@@ -2,7 +2,7 @@
 
 SafeHands is a Pharos Pacific Mainnet-first SafeHands Agent. It is read-only by default and only executes writes/payments after explicit environment flags, signer availability, policy checks, and authorization where required.
 
-**No-install path:** the fully-hosted, zero-custody agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2); once published, any Steward Agent on the marketplace can discover and call it (no server, no keys). To try the safety engine on your own machine without cloning, run `npx safehands-pharos --demo`. To exercise the HTTP API directly, self-host the read-only backend locally (`npm run build && node dist/api/server.js` → `http://localhost:4022`) and use the curl examples in [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md).
+**No-install path:** the fully-hosted, zero-custody agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2); once published, any Steward Agent on the marketplace can discover and call it (no server, no keys). To try the safety engine on your own machine without cloning, run `npx -y github:SZtch/safehands-pharos --demo`. To exercise the HTTP API directly, self-host the read-only backend locally (`npm run build && node dist/api/server.js` → `http://localhost:4022`) and use the curl examples in [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md).
 
 ## 1. Install and build
 

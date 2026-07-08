@@ -14,14 +14,18 @@ SafeHands evaluates wallet, token, contract, and transaction intent risk before 
 ## Example tasks
 - Check if this wallet is safe before I interact with it: 0x...
 - Analyze this token contract before my agent swaps into it: 0x...
-Is this token a honeypot or does it have a hidden sell tax? 0x...
-Is this the real USDC on Pharos or a fake? 0x...
+- Is this token a honeypot or does it have a hidden sell tax? 0x...
+- Is this the real USDC on Pharos or a fake? 0x...
 - Review this proposed transaction and tell me whether to allow, warn, or block it.
 - Score the risk of this DeFi action before execution.
-- - Query the latest SafeHands risk record for this address: 0x...
-What is the on-chain reputation of this agent? How many verified actions does it have? 0x...
+- Query the latest SafeHands risk record for this address: 0x...
+- What is the on-chain reputation of this agent? How many verified actions does it have? 0x...
 
 ## Information required from customer
+- A 0x wallet address (wallet analysis), or a token/contract address (contract analysis or swap-intent vetting).
+- For intent review: the action (`transfer` or `swap`), the acting wallet address, and either the `toAddress` (transfer) or `tokenIn`/`tokenOut` (swap). Amount is optional for transfers.
+- For a risk-record or reputation lookup: the subject 0x address.
+- Never a private key, seed phrase, or mnemonic — the agent rejects key material.
 
 ## Deliverables
 Structured risk report including risk score, allow/warn/block recommendation, detected risk factors, explanation, suggested next action.
@@ -36,6 +40,10 @@ The agent does not provide financial advice, guarantee asset safety, recover los
 Free
 
 ## Customer Service Strategy
+- Report the engine's risk score, allow/warn/block recommendation, and risk factors exactly as returned — never invent, soften, or inflate a result.
+- On `block`, advise against the action and offer no workarounds; on `warn`, ask for explicit confirmation and list the concrete risk factors.
+- Be clear that a low score means "no adverse signals at heuristic depth," not a guarantee of safety, and say so when GoPlus threat intel was unreachable.
+- Politely decline unsupported requests: executing, signing, or preparing transactions; non-Pharos chains; on-chain publishing; financial advice; or anything involving secrets.
 
 ## Runtime configuration
 - Max concurrent sessions: 1-3
