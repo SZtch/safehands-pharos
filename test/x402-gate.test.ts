@@ -22,6 +22,7 @@ import { tmpdir } from "node:os";
 
 import { resolveX402GateConfig } from "../src/api/x402Gate.js";
 import { evaluateProductionPosture } from "../src/lib/productionGuards.js";
+import { getCapabilityFlags } from "../src/lib/config.js";
 
 const GATE_ENV_KEYS = [
   "X402_PAY_TO",
@@ -239,6 +240,32 @@ describe("P13 · zero-custody production posture", () => {
       issues.some((i) => i.code === "X402_REPLAY_REDIS_MISSING"),
       "URL-configured x402 must count as configured for the replay-durability warning",
     );
+  });
+
+  it("capability flags report x402 paid endpoints for the zero-custody (URL-based) config", () => {
+    const keys = ["X402_PAY_TO", "WALLET_ADDRESS", "X402_FACILITATOR_URL", "X402_FACILITATOR_PRIVATE_KEY"] as const;
+    const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+    try {
+      for (const k of keys) delete process.env[k];
+      assert.strictEqual(getCapabilityFlags().x402PaidEndpointsAvailable, false, "unconfigured → false");
+      assert.strictEqual(getCapabilityFlags().premiumEndpointsAvailable, false, "unconfigured → false");
+
+      process.env.X402_PAY_TO = PAY_TO;
+      assert.strictEqual(getCapabilityFlags().x402PaidEndpointsAvailable, false, "receiver alone is not enough");
+
+      process.env.X402_FACILITATOR_URL = "https://facilitator.example";
+      assert.strictEqual(getCapabilityFlags().x402PaidEndpointsAvailable, true, "zero-custody URL config → true");
+      assert.strictEqual(getCapabilityFlags().premiumEndpointsAvailable, true, "zero-custody URL config → true");
+
+      delete process.env.X402_FACILITATOR_URL;
+      process.env.X402_FACILITATOR_PRIVATE_KEY = "0x" + "11".repeat(32);
+      assert.strictEqual(getCapabilityFlags().x402PaidEndpointsAvailable, true, "local-facilitator (dev) config → true");
+    } finally {
+      for (const k of keys) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
+    }
   });
 
   it("refuses a local facilitator key in production without the explicit override", () => {

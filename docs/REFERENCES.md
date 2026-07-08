@@ -157,7 +157,8 @@ From `src/lib/constants.ts` `docsSource` fields and existing config — all
   (stdout only, no persistent volume), the
   sanitized in-memory activity feed (`GET /activity/summary`, `/activity/recent`), public
   metrics (`GET /metrics/public`), and the optional API-key foundation (open by default;
-  paid endpoints are a future, x402-gated phase — not implemented here). No DB, no external
+  paid endpoints use the x402 `/paid/*` gate — env-gated, off until `X402_PAY_TO` +
+  `X402_FACILITATOR_URL` are configured). No DB, no external
   API; self-host mode stays read-only.
 - Mainnet addresses and exact doc paths marked **TO-VERIFY** must be confirmed
   against official Pharos docs **before** any mainnet code path is enabled.

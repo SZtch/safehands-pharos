@@ -83,7 +83,7 @@ async function run() {
   console.log("✅ Transaction prepared. ID:", prepareRes.preparedTransactionId);
   
   if (prepareRes.decision === "REQUIRE_CONFIRMATION") {
-    console.error("❌ Action requires confirmation, but the trusted confirmation mechanism is not implemented yet.");
+    console.error("❌ Action requires confirmation. This helper intentionally does not support confirmation flows (fail-closed) — review the decision and use the SafeHands tools/API (confirm=true) directly instead.");
     process.exit(1);
   }
 
