@@ -17,10 +17,12 @@
 //                              reasons, so the confirmation is explicit + audited
 //                              instead of silent.
 // Honeypot/malicious tokens are turned into a hard BLOCK upstream (in the tool,
-// before this gate) — but only while GoPlus token intel is available. When GoPlus
-// is unreachable or has no data for a token, the same token degrades to
-// REQUIRE_TOKEN_REVIEW and IS confirmable here; fail-closed handling of that
-// provider-outage path on the execute/approve path is tracked as P0-2.
+// before this gate) while GoPlus token intel is available. When intel is MISSING
+// (provider outage / token not indexed / unresolvable address), the policy emits
+// the `token_security_intel_missing` check and this gate fails closed (P0-2):
+// a caller confirmation cannot substitute for intel that never existed, so the
+// action stops with TOKEN_INTEL_UNAVAILABLE even with confirm=true. Only tokens
+// GoPlus actually reviewed-and-flagged remain confirmable after review.
 // ────────────────────────────────────────────────────────────────────────
 
 import { fail, type ToolFailure } from "../toolResponse.js";
@@ -69,6 +71,19 @@ export function enforceWriteDecision(
     case "REQUIRE_TOKEN_REVIEW":
     case "WARN":
     default:
+      // P0-2 fail-closed: when token-security intel is MISSING (not merely flagged),
+      // nothing was reviewed — a caller confirmation cannot attest to a review that
+      // never happened. Hard stop, never confirmable on the direct write path.
+      if (policy.checks.some((c) => c.name === "token_security_intel_missing" && c.status === "unknown")) {
+        return fail(
+          "TOKEN_INTEL_UNAVAILABLE",
+          `${opts.toolName} is blocked fail-closed: token-security intelligence is unavailable for this token (provider outage or token not yet indexed), so nothing was actually reviewed. Retry when the provider is reachable, or verify the token independently. ${reasons}`
+            .replace(/\s+/g, " ")
+            .trim(),
+          true,
+          opts.toolName
+        );
+      }
       if (opts.confirmed) return null;
       return fail(
         "CONFIRMATION_REQUIRED",

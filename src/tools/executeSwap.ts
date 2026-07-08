@@ -19,7 +19,7 @@ export const executeSwapSchema = z.object({
   amountIn: z.string(),
   slippageTolerance: z.number().optional().describe("Override auto slippage. Default: 3 (Auto mode adjusts to 0.5 for major, 0.1 for stablecoins)"),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
-  confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION / REQUIRE_TOKEN_REVIEW. Hard BLOCK / honeypot / over-limit are never overridable."),
+  confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION / REQUIRE_TOKEN_REVIEW. Hard BLOCK / honeypot / over-limit / unpriceable input token / missing token-security intel are never overridable."),
 }).strict();
 
 export type ExecuteSwapInput = z.input<typeof executeSwapSchema>;
@@ -50,9 +50,10 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
   const walletAddress = signer.address;
 
   // H3: consult token-security (GoPlus honeypot/tax) on the token being acquired.
-  // Honeypot / extreme-tax → hard block; flagged or provider-unavailable →
-  // tokenSecurityStatus="unknown" → REQUIRE_TOKEN_REVIEW (confirmable after review).
-  let tokenSecurityStatus: "ok" | "unknown" | undefined;
+  // Honeypot / extreme-tax → hard block; reviewed-and-flagged → "unknown" →
+  // REQUIRE_TOKEN_REVIEW (confirmable after review); intel MISSING (outage /
+  // unindexed, non-registry) → "unavailable" → the write gate fails closed (P0-2).
+  let tokenSecurityStatus: "ok" | "unknown" | "unavailable" | undefined;
   if (!isNativeToken(input.tokenOut)) {
     let outAddr: string;
     try {
@@ -99,19 +100,9 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     );
   }
 
-  // M2: an unknown/unpriceable input token cannot be bounded by the USD daily cap
-  // (estimateUsd returns 0), so it would otherwise slip past MAX_DAILY_SPEND_USD.
-  // Require explicit confirmation rather than allowing a silent unbounded spend.
-  const tokenInUpper = input.tokenIn.toUpperCase();
-  const spentTokenPriceable = tokenInUpper === "PROS" || tokenInUpper === "USDC" || tokenInUpper === "USDT";
-  if (!spentTokenPriceable && Number(input.amountIn) > 0 && input.confirm !== true) {
-    return fail(
-      "CONFIRMATION_REQUIRED",
-      `execute_swap spends ${input.tokenIn}, which SafeHands cannot price for the daily USD cap — this spend is not bounded by MAX_DAILY_SPEND_USD. Re-invoke with confirm=true only after review.`,
-      false,
-      "execute_swap"
-    );
-  }
+  // P0-3: unpriceable input tokens are DENIED by the policy engine above
+  // (swap_notional_unpriceable → BLOCK via enforceWriteDecision — never merely
+  // confirmable), so every swap reaching this point is bounded by the USD caps.
 
   const risk = await assessRisk({
     action: "swap",

@@ -19,6 +19,7 @@ import {
   isCanonicalInfrastructure,
 } from "../constants.js";
 import { getNetworkByChainId } from "../networks.js";
+import { resolvePriceableToken } from "../spendAccumulator.js";
 import { loadAgentPolicy, resolveEffectiveLimits, type AgentPolicy } from "./agentPolicy.js";
 
 export type SafeHandsActionType =
@@ -274,6 +275,13 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
       pushCheck(checks, "swap_amount_limit", "fail", `Swap ${amount} PROS exceeds limit ${swapLimit} PROS (policy: ${policy.profile}).`, reasons, requiredActions, "Swap exceeds configured PROS limit.", "Reduce amount or adjust agent policy.");
     }
 
+    // P0-3: an input token that cannot be priced in USD contributes $0 to
+    // MAX_DAILY_SPEND_USD and has no per-transaction ceiling — the spend caps would
+    // silently not apply. Deny by default (fail → BLOCK, never confirmable).
+    if (input.tokenIn && resolvePriceableToken(input.tokenIn) === null) {
+      pushCheck(checks, "swap_notional_unpriceable", "fail", `Swap input token ${input.tokenIn} cannot be priced in USD, so the daily USD cap and per-transaction ceiling cannot bound this spend — denied by default.`, reasons, requiredActions, "Unpriceable input token would escape spend caps.", "Swap a priceable token (PROS, WPROS, USDC, USDT) or add the token to the price map before enabling it.");
+    }
+
     const balance = numeric(input.walletBalancePhs);
     if (amount !== null && balance !== null && (input.tokenIn || "").toUpperCase() === "PROS") {
       if (amount > balance) {
@@ -339,7 +347,12 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
   if (tokenStatus === "CUSTOM_NON_REGISTRY" || tokenStatus === "UNKNOWN") {
     pushCheck(checks, "token_registry", "warn", `Token registry status is ${tokenStatus}.`, reasons, requiredActions, undefined, "Review token contract before execution.");
   }
-  if (input.tokenSecurityStatus === "unavailable" || input.tokenSecurityStatus === "unknown") {
+  if (input.tokenSecurityStatus === "unavailable") {
+    // P0-2: intel is MISSING (provider outage / token not indexed) — nothing was
+    // reviewed. Distinct check name so the write-execution gate can fail closed on it
+    // (a caller confirmation cannot substitute for intel that never existed).
+    pushCheck(checks, "token_security_intel_missing", "unknown", "Token security intelligence is unavailable (provider outage or token not indexed) — the token was NOT reviewed.", reasons, requiredActions, undefined, "Retry when the token-security provider is reachable, or verify the token independently before executing.");
+  } else if (input.tokenSecurityStatus === "unknown") {
     pushCheck(checks, "token_security_provider", "unknown", "Token security provider is unavailable or unknown.", reasons, requiredActions, undefined, "Proceed only after manual token review.");
   }
 

@@ -26,6 +26,8 @@ SafeHands is:
 - It will not sign transactions in default mode.
 - It will not broadcast transactions in default mode.
 - It will not allow unlimited token approvals by default.
+- It will not execute or approve a token whose security intelligence is unavailable (provider outage / token not yet indexed) — fail-closed, not confirmable; registry-canonical tokens excepted.
+- It will not swap an input token it cannot price against the USD spend caps (denied by default).
 - It will not fetch localhost/private-IP x402 URLs unless local demo mode is explicitly enabled.
 - It will not use Atlantic/testnet token addresses for Pacific Mainnet token operations.
 

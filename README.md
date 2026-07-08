@@ -188,7 +188,7 @@ SafeHands is a **safety layer**, not a wallet. It is not a custody service, a pr
 
 In hosted mode (Anvita Flow) it is **read-only and zero-custody**: it holds no keys, signs nothing, and broadcasts nothing. It reads chain state, evaluates policy, and returns decisions. You always sign and send with your own wallet.
 
-Execution tools (`execute_swap`, `send_payment`, `approve_token`, …) exist in the codebase but are gated behind explicit environment flags and are only meant to run **self-hosted and single-tenant**, on a machine you control. These write tools are **experimental and unaudited** — they ship disabled and require explicit opt-in. The public server refuses to enable them: a boot guard fails fast if managed execution is configured on a public host.
+Execution tools (`execute_swap`, `send_payment`, `approve_token`, …) exist in the codebase but are gated behind explicit environment flags and are only meant to run **self-hosted and single-tenant**, on a machine you control. These write tools are **experimental and unaudited** — they ship disabled and require explicit opt-in. The public server refuses to enable them: a boot guard fails fast if managed execution is configured on a public host (the guard runs when `NODE_ENV=production` — always set it for self-hosted deployments).
 
 ---
 

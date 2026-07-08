@@ -8,14 +8,17 @@ SafeHands is a **mainnet-first, read-only** safety gateway for AI agents on **Ph
 
 SafeHands protects agents from:
 
-- Unintended **execution/signing on mainnet** (mainnet execution/write/publish is blocked by design; only read-only checks run on Pacific Mainnet)
+- Unintended **execution/signing on mainnet** — blocked **by default**: the hosted/default posture ships `WRITE_TOOLS_ENABLED=false` and holds no keys, so only read-only checks run on Pacific Mainnet. Self-hosted operators can opt in to execution via explicit env flags (see "Self-Hosted Backend"); those write paths are experimental and unaudited.
 - Unlimited token approvals (blocked by default)
 - SSRF via x402 URLs (localhost, private IPs, metadata IPs, IPv6 local all blocked)
-- Overspending (per-tx + daily caps enforced)
+- Overspending (per-tx + daily caps enforced; swaps of tokens that cannot be priced against the USD caps — outside PROS/WPROS/USDC/USDT and the official registry — are denied by default rather than silently uncounted)
+- Executing/approving a token whose **security intelligence is missing** (GoPlus outage or token not yet indexed): the direct write path fails closed with `TOKEN_INTEL_UNAVAILABLE` — a caller `confirm` cannot substitute for a review that never happened. Registry-canonical tokens (identity verified on the official token registry) remain confirmable.
 - Unauthorized managed wallet execution for the heavier write paths — swap/payment/approve via a custodial wallet require SafeHandsRegistry authorization (`REQUIRE_AUTHORIZED_AGENT_FOR_WRITE`, default on). x402 is permissionless-first: self-signed x402 needs no authorization, and managed x402 is allowlist-gated only when `REQUIRE_AUTHORIZED_AGENT_FOR_X402=true` is opted in.
 - Invalid amounts, zero addresses, unknown tokens (strict validation)
 - Sends/approvals to operator-denylisted recipients (hard-BLOCK via `SAFEHANDS_RECIPIENT_DENYLIST`; empty by default — no fabricated scam list. Deeper address-poisoning / first-time-recipient checks are indexer-backed and deferred, not faked.)
 - Prompt/runtime injection of policy limits (policy stored in files, not runtime params)
+
+**Confirmation trust anchor.** The `confirm=true` flag accepted by the soft decision tiers (`REQUIRE_CONFIRMATION` / `REQUIRE_TOKEN_REVIEW`) is **caller-attested**: it is supplied by the calling agent — the very party SafeHands is guarding. The real trust anchor is therefore the **MCP host / human operator** who relays that confirmation; SafeHands cannot verify that a human actually reviewed the action. Hard stops (`BLOCK`, `REQUIRE_FUNDING`, missing token intel) never accept it, and the HTTP broadcast relay refuses confirmation-tier records entirely (no trusted confirmation channel exists there). See `docs/DECISION_CONTRACT.md`.
 
 ## What SafeHands Does NOT Protect Against
 
@@ -101,7 +104,7 @@ For the Mainnet Production Profile (Single-Instance Production Architecture), de
 ```bash
 npm ci --omit=dev
 npm run build
-npm run start:api
+NODE_ENV=production npm run start:api   # the boot guards only run with NODE_ENV=production — always set it
 ```
 
 Do not run Hardhat/Mocha tooling on the public API host. A forced audit fix can downgrade/change Hardhat toolbox versions and may break the Hardhat 3 setup, so it is intentionally not applied blindly. Track these as dev-tooling findings and re-run `npm audit` after Hardhat/Mocha publish compatible patched releases.
