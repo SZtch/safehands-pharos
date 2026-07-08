@@ -226,10 +226,24 @@ async function safePinnedFetchOnce(parsed: URL, init: RequestInit, timeoutMs: nu
         headers: headerPairs(headers),
         signal: controller.signal,
         timeout: timeoutMs,
-        lookup: (_hostname, _options, callback) => {
+        lookup: (_hostname, options, callback) => {
           // DNS rebinding protection: connect only to the exact IP address that
           // was resolved and verified immediately before this request.
-          callback(null, target.address.address, target.address.family);
+          //
+          // Node may call custom lookup with options.all=true. In that mode the
+          // callback must receive an array of addresses, not (address, family).
+          // Returning the one pinned safe address preserves SSRF protection.
+          const pinned = {
+            address: target.address.address,
+            family: target.address.family,
+          };
+
+          if ((options as { all?: boolean } | undefined)?.all) {
+            callback(null, [pinned] as any);
+            return;
+          }
+
+          callback(null, pinned.address, pinned.family);
         },
       },
       (res) => {
