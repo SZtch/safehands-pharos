@@ -8,6 +8,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert";
 import { evaluateActionPolicy } from "../src/lib/policy/actionPolicyEngine.js";
 import { enforceWriteDecision } from "../src/lib/policy/writeExecutionGate.js";
+import { estimateUsd, resolvePriceableToken } from "../src/lib/spendAccumulator.js";
 import { handleSafeHandsSafeExecute } from "../src/tools/safehandsSafeExecute.js";
 
 const DEAD = "0x000000000000000000000000000000000000dEaD";
@@ -65,6 +66,59 @@ describe("B1 · write-execution gate honors the full decision", () => {
     });
     assert.strictEqual(funding.decision, "REQUIRE_FUNDING");
     assert.strictEqual(enforceWriteDecision(funding, { confirmed: true, toolName: "send_payment" })!.error.code, "REQUIRE_FUNDING");
+  });
+});
+
+describe("P0-2 · missing token intel is never caller-confirmable", () => {
+  const SWAP = {
+    ...MAINNET,
+    actionType: "execute_swap" as const,
+    amount: "0.01",
+    tokenIn: "PROS",
+    tokenOut: "0x1234000000000000000000000000000000005678",
+    signerAvailable: true,
+    requiresSigner: true,
+  };
+
+  it("reviewed-and-flagged intel (unknown) stays confirmable after review", () => {
+    const p = evaluateActionPolicy({ ...SWAP, tokenSecurityStatus: "unknown" });
+    assert.strictEqual(p.decision, "REQUIRE_TOKEN_REVIEW");
+    assert.strictEqual(enforceWriteDecision(p, { confirmed: false, toolName: "execute_swap" })!.error.code, "CONFIRMATION_REQUIRED");
+    assert.strictEqual(enforceWriteDecision(p, { confirmed: true, toolName: "execute_swap" }), null);
+  });
+
+  it("missing intel (unavailable) hard-stops even with confirm=true", () => {
+    const p = evaluateActionPolicy({ ...SWAP, tokenSecurityStatus: "unavailable" });
+    assert.strictEqual(p.decision, "REQUIRE_TOKEN_REVIEW");
+    assert.ok(p.checks.some((c) => c.name === "token_security_intel_missing" && c.status === "unknown"), "distinct intel-missing check must be emitted");
+    assert.strictEqual(enforceWriteDecision(p, { confirmed: true, toolName: "execute_swap" })!.error.code, "TOKEN_INTEL_UNAVAILABLE");
+    assert.strictEqual(enforceWriteDecision(p, { confirmed: false, toolName: "execute_swap" })!.error.code, "TOKEN_INTEL_UNAVAILABLE");
+  });
+});
+
+describe("P0-3 · unpriceable-token swaps are denied by default", () => {
+  it("unpriceable tokenIn → BLOCK, never confirmable", () => {
+    const p = evaluateActionPolicy({
+      ...MAINNET,
+      actionType: "execute_swap",
+      amount: "5",
+      tokenIn: "SCAMCOIN",
+      tokenOut: "USDC",
+      tokenSecurityStatus: "ok",
+      signerAvailable: true,
+      requiresSigner: true,
+    });
+    assert.strictEqual(p.decision, "BLOCK");
+    assert.ok(p.checks.some((c) => c.name === "swap_notional_unpriceable" && c.status === "fail"), "unpriceable-notional check must fail");
+    assert.strictEqual(enforceWriteDecision(p, { confirmed: true, toolName: "execute_swap" })!.error.code, "POLICY_BLOCKED");
+  });
+
+  it("priceable tokens (incl. WPROS) count toward the USD caps; unknown tokens resolve null", () => {
+    assert.strictEqual(resolvePriceableToken("WPROS"), "WPROS");
+    assert.strictEqual(resolvePriceableToken("usdc"), "USDC");
+    assert.strictEqual(resolvePriceableToken("SCAMCOIN"), null);
+    assert.ok(estimateUsd("5", "WPROS") > 0, "WPROS must be priced (like PROS), not silently uncounted");
+    assert.strictEqual(estimateUsd("5", "USDC"), 5);
   });
 });
 

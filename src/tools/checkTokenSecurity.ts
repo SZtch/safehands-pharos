@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { isAddress } from "viem";
-import { CHAIN_ID, PHAROS_ENVIRONMENT } from "../lib/constants.js";
+import { CHAIN_ID, PHAROS_ENVIRONMENT, activeTokenMap } from "../lib/constants.js";
 import { fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { classifyExternalError, fail, ok } from "../lib/toolResponse.js";
 
@@ -168,19 +168,33 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
 // Wraps handleCheckTokenSecurity into a fail-closed verdict the write tools feed
 // into evaluateActionPolicy. Maps to:
 //   • "block"  → honeypot / severe (hard stop in the tool — never confirmable)
-//   • "review" → flagged (tax, mintable, pausable, low score) OR provider
-//                unavailable / no data → tokenSecurityStatus="unknown" so the
-//                policy routes to REQUIRE_TOKEN_REVIEW (confirmable after review)
+//   • "review" + policyStatus="unknown"     → GoPlus HAS data and flagged the token
+//                (tax, mintable, pausable, low score) → REQUIRE_TOKEN_REVIEW, which a
+//                caller may confirm AFTER reviewing the flags.
+//   • "review" + policyStatus="unavailable" → GoPlus outage / token not indexed /
+//                unresolvable address — nothing was actually reviewed, so a caller
+//                confirmation cannot substitute for the missing intel. The write gate
+//                fails closed on this (P0-2). Exception: tokens whose address matches
+//                the official active-network token registry keep "unknown" — identity
+//                is registry-verified even when GoPlus intel is missing.
 //   • "ok"     → clean → tokenSecurityStatus="ok"
 export type TokenSecurityVerdict = "ok" | "review" | "block";
 
 export interface TokenSecurityGateResult {
   verdict: TokenSecurityVerdict;
   /** Value to pass as evaluateActionPolicy input.tokenSecurityStatus. */
-  policyStatus: "ok" | "unknown";
+  policyStatus: "ok" | "unknown" | "unavailable";
   flags: string[];
   safetyScore?: number;
   detail?: string;
+}
+
+/** Address is a canonical token in the active-network registry (identity verified). */
+function isRegistryToken(address: string): boolean {
+  const a = address.toLowerCase();
+  return Object.values(activeTokenMap()).some(
+    (v) => typeof v === "string" && v.toLowerCase() === a
+  );
 }
 
 export async function evaluateTokenSecurityGate(
@@ -188,14 +202,19 @@ export async function evaluateTokenSecurityGate(
   chainId = CHAIN_ID
 ): Promise<TokenSecurityGateResult> {
   if (!isAddress(tokenAddress)) {
-    // Unresolvable token → cannot clear it → fail closed to review.
-    return { verdict: "review", policyStatus: "unknown", flags: [], detail: "Token address could not be resolved for security review." };
+    // Unresolvable token → nothing reviewable → fail closed (not caller-confirmable).
+    return { verdict: "review", policyStatus: "unavailable", flags: [], detail: "Token address could not be resolved for security review." };
   }
 
   const res = await handleCheckTokenSecurity({ tokenAddress, chainId });
   if (!res.success) {
-    // GoPlus unavailable / no data → fail closed to review, never silently ok.
-    return { verdict: "review", policyStatus: "unknown", flags: [], detail: res.error.message };
+    // GoPlus unavailable / token not indexed → nothing was reviewed. Registry-canonical
+    // tokens stay caller-confirmable (identity verified on the official token registry);
+    // everything else is "unavailable" and the write gate fails closed on it (P0-2).
+    if (isRegistryToken(tokenAddress)) {
+      return { verdict: "review", policyStatus: "unknown", flags: [], detail: `${res.error.message} Token address matches the official active-network token registry — identity verified; GoPlus intel unavailable.` };
+    }
+    return { verdict: "review", policyStatus: "unavailable", flags: [], detail: res.error.message };
   }
 
   const data = res.data as {

@@ -33,6 +33,11 @@ export async function handleBroadcastSigned(raw: unknown) {
     throw new Error("Action is blocked by SafeHands policy.");
   }
   
+  // Deliberate stance split vs the MCP write gate (see docs/DECISION_CONTRACT.md):
+  // the MCP tools accept caller `confirm=true` because the MCP host / human operator
+  // relaying the call is the trust anchor attesting the review happened. This HTTP
+  // relay has NO such trusted channel — any client can set a boolean — so a
+  // REQUIRE_CONFIRMATION record is refused outright rather than self-confirmed.
   if (record.decision === "REQUIRE_CONFIRMATION") {
     throw new Error("Action requires confirmation. No trusted confirmation-satisfied mechanism is currently implemented.");
   }

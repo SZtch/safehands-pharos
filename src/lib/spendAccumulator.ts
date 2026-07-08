@@ -1,11 +1,12 @@
 // ─── Daily Spend Accumulator ────────────────────────────────────────────
 // In-memory per-wallet daily spend tracker. Resets at UTC midnight.
 // Enforces MAX_DAILY_SPEND_USD across sendPayment and executeSwap.
-// PROS → USD conversion uses PROS_USD_PRICE env var (default 1.0).
+// PROS/WPROS → USD conversion uses PROS_USD_PRICE env var (default 1.0).
 // ────────────────────────────────────────────────────────────────────────
 
-import fs from "fs";
 import path from "path";
+import { readJsonFile, writeJsonFileAtomic } from "./persistentJsonStore.js";
+import { activeTokenMap } from "./constants.js";
 
 interface DayBucket {
   dateUtc: string; // "YYYY-MM-DD"
@@ -16,24 +17,17 @@ const buckets = new Map<string, DayBucket>();
 const SPEND_FILE = process.env.SAFEHANDS_SPEND_HISTORY_PATH || path.join(process.env.SAFEHANDS_STATE_DIR || process.env.STATE_DIR || ".safehands", "spend_history.json");
 
 function loadBuckets() {
-  try {
-    if (fs.existsSync(SPEND_FILE)) {
-      const data = JSON.parse(fs.readFileSync(SPEND_FILE, "utf-8"));
-      for (const [k, v] of Object.entries(data)) {
-        buckets.set(k, v as DayBucket);
-      }
-    }
-  } catch (e) {
-    console.error("Failed to load spend history:", e);
+  const data = readJsonFile<Record<string, DayBucket>>(SPEND_FILE, {});
+  for (const [k, v] of Object.entries(data)) {
+    buckets.set(k, v);
   }
 }
 
 function saveBuckets() {
   try {
-    const dir = path.dirname(SPEND_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const data = Object.fromEntries(buckets);
-    fs.writeFileSync(SPEND_FILE, JSON.stringify(data, null, 2));
+    // Atomic write (temp file + rename) — a crash mid-write can no longer
+    // truncate the spend history and silently reset the daily caps.
+    writeJsonFileAtomic(SPEND_FILE, Object.fromEntries(buckets));
   } catch (e) {
     console.error("Failed to save spend history:", e);
   }
@@ -53,13 +47,37 @@ export function getMaxDailySpendUsd(): number {
   return parseFloat(process.env.MAX_DAILY_SPEND_USD || "10");
 }
 
+export type PriceableSpendToken = "PROS" | "WPROS" | "USDC" | "USDT";
+
+/**
+ * Resolve a token symbol OR address to a priceable spend token, or `null` when the
+ * token cannot be priced in USD. Addresses are matched against the official
+ * active-network token registry so registry USDC passed by address still counts
+ * toward the caps instead of slipping past them.
+ */
+export function resolvePriceableToken(token: string): PriceableSpendToken | null {
+  const trimmed = token.trim();
+  const upper = trimmed.toUpperCase();
+  if (upper === "PROS" || upper === "WPROS" || upper === "USDC" || upper === "USDT") return upper;
+  const lower = trimmed.toLowerCase();
+  for (const [symbol, addr] of Object.entries(activeTokenMap())) {
+    if (typeof addr === "string" && addr.toLowerCase() === lower) {
+      const s = symbol.toUpperCase();
+      if (s === "PROS" || s === "WPROS" || s === "USDC" || s === "USDT") return s;
+    }
+  }
+  return null;
+}
+
 export function estimateUsd(amount: string, token: "PROS" | "USDC" | "USDT" | string): number {
   const n = parseFloat(amount);
   if (isNaN(n)) return 0;
-  const upper = token.toUpperCase();
-  if (upper === "PROS") return n * getPhrsUsdPrice();
-  if (upper === "USDC" || upper === "USDT") return n;
-  return 0; // unknown token — do not count to avoid false blocks
+  const resolved = resolvePriceableToken(token);
+  if (resolved === "PROS" || resolved === "WPROS") return n * getPhrsUsdPrice();
+  if (resolved === "USDC" || resolved === "USDT") return n;
+  // Unpriceable token — the policy engine DENIES execute_swap on these upstream
+  // (swap_notional_unpriceable → BLOCK), so this 0 is never a silent cap escape.
+  return 0;
 }
 
 export function checkDailyLimit(

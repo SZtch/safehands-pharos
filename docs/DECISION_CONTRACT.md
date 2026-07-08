@@ -46,3 +46,10 @@ It has no `PREPARE_ONLY` because it never executes anything. When its threat-int
 ## Invariant
 
 Every layer is **fail-safe**: absence of a signal or an unrecognized value degrades toward confirmation/blocking, never toward a silent `ALLOW`.
+
+## Confirmation trust anchor (write paths)
+
+The soft tiers (`REQUIRE_CONFIRMATION` / `REQUIRE_TOKEN_REVIEW`) are confirmable, but *who* attests differs by surface — deliberately:
+
+- **MCP write tools** accept an explicit caller `confirm=true`. The trust anchor is the **MCP host / human operator** relaying the call — SafeHands treats the confirmation as caller-attested, not verified. Hard stops are never confirmable: `BLOCK`, `REQUIRE_FUNDING`, and missing token-security intel (`token_security_intel_missing` → `TOKEN_INTEL_UNAVAILABLE`): intel that never existed cannot be "reviewed away".
+- **The HTTP broadcast relay** (`src/api/broadcastRoutes.ts`) refuses `REQUIRE_CONFIRMATION` records outright: an anonymous HTTP client has no trusted confirmation channel, so a boolean in a request body proves nothing.
