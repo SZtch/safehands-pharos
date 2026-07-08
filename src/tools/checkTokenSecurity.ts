@@ -5,7 +5,6 @@
 import { z } from "zod";
 import { isAddress } from "viem";
 import { CHAIN_ID, IS_MAINNET, PHAROS_ENVIRONMENT, activeTokenMap } from "../lib/constants.js";
-import { fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { classifyExternalError, fail, ok } from "../lib/toolResponse.js";
 
 export const checkTokenSecuritySchema = z.object({
@@ -21,6 +20,48 @@ export const checkTokenSecurityTool = {
     "Check token contract security (honeypot, mintable, ownership privileges, tax) via GoPlus Security API.",
   inputSchema: checkTokenSecuritySchema,
 };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+async function fetchGoplus(url: string): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          accept: "application/json",
+          "user-agent": "SafeHands/2.3.0",
+        },
+      });
+
+      if (!isRetryableStatus(res.status) || attempt === 2) {
+        return res;
+      }
+
+      lastError = new Error(`GoPlus API returned status ${res.status}`);
+    } catch (err) {
+      lastError = err;
+      if (attempt === 2) throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    await sleep(300 * (attempt + 1));
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
 
 // ─── GoPlus schema parsing (P0-1 fail-closed) ───────────────────────────────
 // GoPlus's Pharos (chain 1672) support is new and its response schema is still
@@ -100,7 +141,7 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
   const url = `https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${address}`;
 
   try {
-    const res = await fetchWithTimeoutAndRetry(url, { timeoutMs: 10_000, retries: 2, retryDelayMs: 300 });
+    const res = await fetchGoplus(url);
     if (!res.ok) {
       throw new Error(`GoPlus API returned status ${res.status}`);
     }
