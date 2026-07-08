@@ -43,6 +43,22 @@ export function evaluateProductionPosture(env: NodeJS.ProcessEnv = process.env):
     });
   }
 
+  // 1b) FATAL — custody landmine: local x402 facilitator key in production.
+  // The standalone x402 server (`npm run start:x402`) signs settlements with
+  // X402_FACILITATOR_PRIVATE_KEY — a hot key on the host. The zero-custody
+  // production path is the Guardian API `/paid/*` gate with an EXTERNAL
+  // facilitator (X402_PAY_TO + X402_FACILITATOR_URL) and no local key.
+  const localFacilitatorKey = Boolean(env.X402_FACILITATOR_PRIVATE_KEY);
+  const allowLocalFacilitator = env.SAFEHANDS_ALLOW_LOCAL_FACILITATOR === "true";
+  if (localFacilitatorKey && !allowLocalFacilitator) {
+    issues.push({
+      level: "fatal",
+      code: "LOCAL_FACILITATOR_KEY_IN_PRODUCTION",
+      message:
+        "Refusing to start: X402_FACILITATOR_PRIVATE_KEY is set in production — the local x402 facilitator signs settlements with a hot key on the host (custody). The zero-custody profile serves paid endpoints through the Guardian API /paid/* gate with an external facilitator (X402_PAY_TO + X402_FACILITATOR_URL) and no local key. For an intentional dev/self-hosted single-tenant deployment, set SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true.",
+    });
+  }
+
   // 2) WARN — ephemeral state dir → durability loss on restart.
   const stateDirSet = Boolean(env.SAFEHANDS_STATE_DIR || env.STATE_DIR);
   const dir = env.SAFEHANDS_STATE_DIR || env.STATE_DIR || safeHandsStateDir();
@@ -57,7 +73,9 @@ export function evaluateProductionPosture(env: NodeJS.ProcessEnv = process.env):
   }
 
   // 3) WARN — x402 enabled + replay required but Upstash Redis not configured.
-  const x402Configured = Boolean(env.X402_PAY_TO && env.X402_FACILITATOR_PRIVATE_KEY);
+  // x402 counts as configured for EITHER profile: the zero-custody API gate
+  // (X402_FACILITATOR_URL) or the standalone local facilitator (private key).
+  const x402Configured = Boolean(env.X402_PAY_TO && (env.X402_FACILITATOR_URL || env.X402_FACILITATOR_PRIVATE_KEY));
   const replayRequired = env.SAFEHANDS_X402_REPLAY_REDIS_REQUIRED === "true";
   const upstash = Boolean(
     (env.UPSTASH_REDIS_REST_URL || env.SAFEHANDS_REDIS_REST_URL) &&

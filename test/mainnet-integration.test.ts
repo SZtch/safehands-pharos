@@ -125,6 +125,18 @@ describe("SafeHands Deterministic Policy Suite", () => {
       assert.ok(!issues.some((i) => i.level === "fatal"));
     });
 
+    it("fails fast on a local x402 facilitator key in production", () => {
+      const issues = evaluateProductionPosture({ ...base, WALLET_MODE: "none", X402_FACILITATOR_PRIVATE_KEY: "0x" + "11".repeat(32) });
+      const fatal = issues.find((i) => i.code === "LOCAL_FACILITATOR_KEY_IN_PRODUCTION");
+      assert.ok(fatal, "should flag a local facilitator key in production");
+      assert.strictEqual(fatal!.level, "fatal");
+    });
+
+    it("allows a local facilitator key with the explicit override", () => {
+      const issues = evaluateProductionPosture({ ...base, WALLET_MODE: "none", X402_FACILITATOR_PRIVATE_KEY: "0x" + "11".repeat(32), SAFEHANDS_ALLOW_LOCAL_FACILITATOR: "true" });
+      assert.ok(!issues.some((i) => i.level === "fatal"));
+    });
+
     it("warns on an ephemeral state dir in production", () => {
       const issues = evaluateProductionPosture({ NODE_ENV: "production", WALLET_MODE: "none", SAFEHANDS_CORS_ORIGIN: "https://app.example" } as NodeJS.ProcessEnv);
       assert.ok(issues.some((i) => i.code === "EPHEMERAL_STATE_DIR"));

@@ -25,6 +25,15 @@ import { getDodoRoute } from "./lib/dodoApi.js";
 import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, X402_PAYMENT_TOKEN_ADDRESS, PACIFIC_WPROS_ADDRESS, WPROS_ADDRESS, activeTokenDecimals, IS_MAINNET } from "./lib/constants.js";
 import { fail, ok } from "./lib/toolResponse.js";
 import { checkAndRecordX402Replay } from "./lib/x402ReplayStore.js";
+import { assertProductionPosture } from "./lib/productionGuards.js";
+
+// Fail-fast posture check (active only when NODE_ENV=production). This
+// standalone server is the DEV / self-hosted single-tenant profile: it signs
+// settlements locally with X402_FACILITATOR_PRIVATE_KEY (custody). In
+// production it refuses to start unless SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true
+// is set explicitly — the zero-custody path is the Guardian API /paid/* gate
+// with an external facilitator (X402_FACILITATOR_URL).
+assertProductionPosture();
 
 // Never leak internal error detail to clients on a 5xx in production; the raw
 // message may contain RPC URLs, signer state, or stack fragments.
