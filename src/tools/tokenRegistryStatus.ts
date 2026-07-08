@@ -16,6 +16,7 @@ import {
   PACIFIC_MAINNET_TOKEN_REGISTRY,
 } from "../lib/constants.js";
 import { getActiveNetwork } from "../lib/networks.js";
+import { fetchGoplusTokenIdentity } from "./checkTokenSecurity.js";
 
 export const tokenRegistryStatusSchema = z.object({
   token: z.string().optional().describe("Token symbol or exact contract address to classify"),
@@ -136,5 +137,29 @@ export function classifyTokenRegistryStatus(token: string) {
 
 export async function handleTokenRegistryStatus(raw: TokenRegistryStatusInput): Promise<ToolResponse<unknown>> {
   const input = tokenRegistryStatusSchema.parse(raw);
-  return ok(classifyTokenRegistryStatus(input.tokenAddress || input.token || ""));
+  const classification = classifyTokenRegistryStatus(input.tokenAddress || input.token || "");
+
+  // For custom/non-registry tokens, best-effort DISPLAY-ONLY identity enrichment.
+  // Purely additive: status/verificationStatus/symbol are never altered, metadata
+  // is never fed into policy or gates (those consume classifyTokenRegistryStatus
+  // directly), and a fetch failure leaves the response identical to before.
+  if (classification.status !== "CUSTOM_NON_REGISTRY" || !classification.normalizedAddress) {
+    return ok(classification);
+  }
+  const identity = await fetchGoplusTokenIdentity(classification.normalizedAddress);
+  if (!identity.tokenName && !identity.tokenSymbol) {
+    return ok(classification);
+  }
+  return ok({
+    ...classification,
+    tokenMetadata: {
+      tokenName: identity.tokenName,
+      tokenSymbol: identity.tokenSymbol,
+      source: "goplus_metadata",
+      verified: false,
+      displayOnly: true,
+      warning:
+        "Untrusted display-only metadata reported by a third-party API. It does NOT verify this token's identity and does NOT imply the token is safe. The token remains UNVERIFIED_CUSTOM_TOKEN; anyone can deploy a token with any name/symbol.",
+    },
+  });
 }
