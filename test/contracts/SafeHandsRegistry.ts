@@ -4,6 +4,19 @@ import { network } from "hardhat";
 import { keccak256, encodeAbiParameters, parseAbiParameters, getAddress, toFunctionSelector } from "viem";
 import { MerkleTree } from "merkletreejs";
 
+type HardhatViemRuntime = {
+  viem: {
+    deployContract: (name: string, args?: readonly unknown[]) => Promise<any>;
+    getWalletClients: () => Promise<Array<{ account: { address: `0x${string}` } }>>;
+  };
+};
+
+async function getViem() {
+  const connection = await network.create();
+  return (connection as unknown as HardhatViemRuntime).viem;
+}
+
+
 async function rejectsWithError(promise: Promise<unknown>, errorName: string): Promise<void> {
   const selector = toFunctionSelector(`${errorName}()`);
   await assert.rejects(promise, (err: unknown) => {
@@ -13,7 +26,7 @@ async function rejectsWithError(promise: Promise<unknown>, errorName: string): P
 }
 
 async function deployFixture() {
-  const { viem } = await network.create();
+  const viem = await getViem();
   const registry = await viem.deployContract("SafeHandsRegistry");
   const [ownerWallet, operatorWallet, userWallet] = await viem.getWalletClients();
   await registry.write.setOperator([operatorWallet.account.address, true]);
