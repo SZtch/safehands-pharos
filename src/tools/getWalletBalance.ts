@@ -1,11 +1,13 @@
 // ─── Tool: get_wallet_balance ──────────────────────────────────────────
-// Returns native PROS and active-network ERC-20 balances for a wallet using viem reads.
+// Returns native PROS and active-network ERC-20 balances for a wallet using
+// viem reads. USD valuation comes from the PriceResolver (Chainlink Push
+// Engine feeds); balances always succeed even when prices are unavailable.
 // ────────────────────────────────────────────────────────────────────────
 
 import { z } from "zod";
 import { publicClient } from "../lib/pharosClient.js";
-import { getDodoRoute } from "../lib/dodoApi.js";
 import { ERC20_ABI, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, activeTokenMap, activeTokenDecimals } from "../lib/constants.js";
+import { resolvePriceUsd } from "../lib/price/priceResolver.js";
 import { formatEther, formatUnits, isAddress } from "viem";
 import { classifyExternalError, fail, ok } from "../lib/toolResponse.js";
 
@@ -22,7 +24,15 @@ export const getWalletBalanceTool = {
   inputSchema: getWalletBalanceSchema,
 };
 
-const QUOTE_WALLET = "0x0000000000000000000000000000000000000001";
+type PriceLegStatus = "ok" | "rpc_degraded_cache" | "unavailable" | "not_needed";
+
+async function priceLeg(symbol: string): Promise<{ status: PriceLegStatus; priceUsd: number }> {
+  const result = await resolvePriceUsd(symbol);
+  if (result.ok) {
+    return { status: result.resolution.sourceStatus, priceUsd: result.resolution.priceUsdNumber };
+  }
+  return { status: "unavailable", priceUsd: 0 };
+}
 
 async function readTokenBalance(address: `0x${string}`, tokenAddress: `0x${string}`, decimals: number, symbol: string) {
   const raw = (await publicClient.readContract({
@@ -66,44 +76,67 @@ export async function handleGetWalletBalance(raw: GetWalletBalanceInput) {
     const usdcBalance = usdcResult && "formatted" in usdcResult ? usdcResult.formatted : "0";
     const usdtBalance = usdtResult && "formatted" in usdtResult ? usdtResult.formatted : "0";
 
-    let prosUsd = 0;
-    let priceSourceStatus = "unavailable";
-    try {
-      const quote = await getDodoRoute({
-        fromToken: "PROS",
-        toToken: "USDC",
-        amountHuman: "1",
-        walletAddress: QUOTE_WALLET,
-      });
-      if (quote.routeAvailable) {
-        prosUsd = parseFloat(quote.amountOut);
-        priceSourceStatus = "ok";
-      } else {
-        priceSourceStatus = "no_route_available";
-      }
-    } catch {
-      priceSourceStatus = "unavailable";
-    }
+    // Price legs run SEQUENTIALLY (never Promise.all — public RPC rate-limits
+    // parallel eth_call bursts) and only for assets that are actually held.
+    // PROS is always priced because prosPrice is a top-level response field.
+    const prosLeg = await priceLeg("PROS");
+    const usdcLeg =
+      usdcResult && "formatted" in usdcResult && parseFloat(usdcBalance) > 0
+        ? await priceLeg("USDC")
+        : { status: "not_needed" as const, priceUsd: 0 };
+    const usdtLeg =
+      usdtResult && "formatted" in usdtResult && parseFloat(usdtBalance) > 0
+        ? await priceLeg("USDT")
+        : { status: "not_needed" as const, priceUsd: 0 };
 
-    const prosValueUsd = parseFloat(prosBalance) * prosUsd;
-    const usdcValueUsd = parseFloat(usdcBalance);
-    const usdtValueUsd = usdtResult && "formatted" in usdtResult ? parseFloat(usdtBalance) : 0;
+    const prosValueUsd = parseFloat(prosBalance) * prosLeg.priceUsd;
+    const usdcValueUsd = parseFloat(usdcBalance) * usdcLeg.priceUsd;
+    const usdtValueUsd = parseFloat(usdtBalance) * usdtLeg.priceUsd;
     const totalUsd = (prosValueUsd + usdcValueUsd + usdtValueUsd).toFixed(4);
+
+    const attempted = [prosLeg, usdcLeg, usdtLeg].filter((leg) => leg.status !== "not_needed");
+    const failedCount = attempted.filter((leg) => leg.status === "unavailable").length;
+    const priceSourceStatus =
+      failedCount === attempted.length
+        ? "unavailable"
+        : failedCount > 0
+          ? "partial"
+          : attempted.some((leg) => leg.status === "rpc_degraded_cache")
+            ? "rpc_degraded_cache"
+            : "ok";
 
     return ok({
       walletAddress: input.walletAddress,
       balances: {
-        PROS: { balance: { value: prosBalance, unit: "PROS" }, valueUsd: { value: prosValueUsd.toFixed(4), unit: "USD" } },
+        PROS: {
+          balance: { value: prosBalance, unit: "PROS" },
+          valueUsd: { value: prosValueUsd.toFixed(4), unit: "USD" },
+          priceStatus: prosLeg.status,
+        },
         USDC: usdcResult && "formatted" in usdcResult
-          ? { balance: { value: usdcBalance, unit: "USDC" }, valueUsd: { value: usdcValueUsd.toFixed(4), unit: "USD" }, tokenAddress: usdcResult.tokenAddress, decimals: usdcResult.decimals }
+          ? {
+              balance: { value: usdcBalance, unit: "USDC" },
+              valueUsd: { value: usdcValueUsd.toFixed(4), unit: "USD" },
+              priceStatus: usdcLeg.status,
+              tokenAddress: usdcResult.tokenAddress,
+              decimals: usdcResult.decimals,
+            }
           : { supported: false, reason: `USDC is not configured for ${PHAROS_ENVIRONMENT} (${CHAIN_ID}).` },
         USDT: usdtResult && "formatted" in usdtResult
-          ? { balance: { value: usdtBalance, unit: "USDT" }, valueUsd: { value: usdtValueUsd.toFixed(4), unit: "USD" }, tokenAddress: usdtResult.tokenAddress, decimals: usdtResult.decimals }
+          ? {
+              balance: { value: usdtBalance, unit: "USDT" },
+              valueUsd: { value: usdtValueUsd.toFixed(4), unit: "USD" },
+              priceStatus: usdtLeg.status,
+              tokenAddress: usdtResult.tokenAddress,
+              decimals: usdtResult.decimals,
+            }
           : { supported: false, reason: `USDT is not configured for ${PHAROS_ENVIRONMENT} (${CHAIN_ID}); no fallback/testnet address was queried.` },
       },
       totalUsd: { value: totalUsd, unit: "USD" },
-      prosPrice: prosUsd > 0 ? { value: prosUsd.toFixed(4), unit: "USD" } : null,
+      prosPrice: prosLeg.priceUsd > 0 ? { value: prosLeg.priceUsd.toFixed(4), unit: "USD" } : null,
       priceSourceStatus,
+      priceDetail: { PROS: prosLeg.status, USDC: usdcLeg.status, USDT: usdtLeg.status },
+      priceSource: "chainlink_push_feed",
       chainId: CHAIN_ID,
       environment: PHAROS_ENVIRONMENT,
       isMainnet: IS_MAINNET,
