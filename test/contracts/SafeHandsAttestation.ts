@@ -3,6 +3,19 @@ import { describe, it } from "node:test";
 import { network } from "hardhat";
 import { keccak256, toHex, toFunctionSelector, zeroAddress } from "viem";
 
+type HardhatViemRuntime = {
+  viem: {
+    deployContract: (name: string, args?: readonly unknown[]) => Promise<any>;
+    getWalletClients: () => Promise<Array<{ account: { address: `0x${string}` } }>>;
+  };
+};
+
+async function getViem() {
+  const connection = await network.create();
+  return (connection as unknown as HardhatViemRuntime).viem;
+}
+
+
 const PREPARED_HASH = keccak256(toHex("prepared:1"));
 const TX_HASH = keccak256(toHex("tx:1"));
 const PREPARED_HASH_2 = keccak256(toHex("prepared:2"));
@@ -28,7 +41,7 @@ async function rejectsWithError(promise: Promise<unknown>, errorName: string): P
 }
 
 async function deployFixture() {
-  const { viem } = await network.create();
+  const viem = await getViem();
   const registry = await viem.deployContract("SafeHandsRegistry");
   const attestation = await viem.deployContract("SafeHandsAttestation", [registry.address]);
   const [ownerWallet, operatorWallet, nobodyWallet] = await viem.getWalletClients();
