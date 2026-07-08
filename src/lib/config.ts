@@ -109,7 +109,8 @@ export interface CapabilityFlags {
   metricsApiAvailable: boolean;
   structuredLoggingAvailable: boolean;
   requestIdAvailable: boolean;
-  // Not implemented (write / signing / managed wallet / custody) — always false here
+  // Write / signing / managed wallet / custody — env-gated, default OFF: these
+  // report false until the corresponding gates/env are explicitly enabled.
   prepareTxAvailable: boolean;
   // Attestation
   riskRegistryAvailable: boolean;
@@ -123,16 +124,18 @@ export interface CapabilityFlags {
   autoExecutionAvailable: boolean;
   onchainPublishingAvailable: boolean;
   custodyAvailable: boolean;
-  // Paid/premium surface — x402 service is active when receiver + facilitator signer are configured.
+  // Paid/premium surface — active when a receiver (X402_PAY_TO) plus a facilitator
+  // (X402_FACILITATOR_URL for the zero-custody gate, or X402_FACILITATOR_PRIVATE_KEY
+  // for the standalone dev server) are configured.
   premiumEndpointsAvailable: boolean;
   x402PaidEndpointsAvailable: boolean;
 }
 
 /**
  * Compute the honest capability flags. `true` ⇒ shipping read-only code exists;
- * the write/sign/custody group is hard-`false` because the SafeHands API has no such
- * path by construction. Pure: derives only from the network registry + which modules
- * ship — no env secrets, no side effects.
+ * the write/sign/custody group is env-gated and reports `false` until the
+ * corresponding opt-in gates are explicitly enabled. Derives only from the network
+ * registry + env gate booleans — no secrets are emitted, no side effects.
  */
 export function getCapabilityFlags(network: PharosNetwork = getActiveNetwork()): CapabilityFlags {
   const mainnet = NETWORKS["pacific-mainnet"];
@@ -184,8 +187,14 @@ export function getCapabilityFlags(network: PharosNetwork = getActiveNetwork()):
     autoExecutionAvailable: writeToolsEnabled() && process.env.WALLET_MODE === "managed-mainnet" && managedWalletEnabled(),
     onchainPublishingAvailable: writeToolsEnabled() && !!process.env.SAFEHANDS_REGISTRY_ADDRESS,
     custodyAvailable: process.env.WALLET_MODE === "managed-mainnet" && managedWalletEnabled(),
-    // Paid/premium endpoints are live in src/x402Server.ts when receiver + facilitator are configured.
-    premiumEndpointsAvailable: !!(process.env.X402_PAY_TO || process.env.WALLET_ADDRESS) && !!process.env.X402_FACILITATOR_PRIVATE_KEY,
-    x402PaidEndpointsAvailable: !!(process.env.X402_PAY_TO || process.env.WALLET_ADDRESS) && !!process.env.X402_FACILITATOR_PRIVATE_KEY,
+    // Paid/premium endpoints are live when a receiver plus a facilitator are configured:
+    // either the zero-custody API gate (api/x402Gate.ts, external X402_FACILITATOR_URL —
+    // recommended) or the standalone local-facilitator server (x402Server.ts, private key).
+    premiumEndpointsAvailable:
+      !!(process.env.X402_PAY_TO || process.env.WALLET_ADDRESS) &&
+      !!(process.env.X402_FACILITATOR_URL || process.env.X402_FACILITATOR_PRIVATE_KEY),
+    x402PaidEndpointsAvailable:
+      !!(process.env.X402_PAY_TO || process.env.WALLET_ADDRESS) &&
+      !!(process.env.X402_FACILITATOR_URL || process.env.X402_FACILITATOR_PRIVATE_KEY),
   };
 }

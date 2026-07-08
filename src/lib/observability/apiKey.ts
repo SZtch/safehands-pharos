@@ -1,7 +1,7 @@
 // ─── API Key Foundation (optional, access-control only) ────────────────
 // Optional identity / rate-limit / access-control foundation. NOT a payment
-// mechanism — future paid endpoints will use x402 gating (not implemented in
-// Phase 7). The public read API stays OPEN by default.
+// mechanism — paid endpoints use x402 gating (api/x402Gate.ts, env-gated via
+// X402_PAY_TO + X402_FACILITATOR_URL). The public read API stays OPEN by default.
 //
 // Behavior:
 //   • SAFEHANDS_API_KEYS unset/empty  ⇒ open; anonymous allowed everywhere.

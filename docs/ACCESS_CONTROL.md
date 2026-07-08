@@ -18,7 +18,7 @@ stays false). Everything here is in-memory, read-only; no signing/wallet/DB/exte
 | `api-key` | a valid API key presented (on a non-agent endpoint) |
 | `agent` | request to `POST /agent/check` |
 | `a2a` | request to `POST /agent/a2a/check` |
-| *(future)* `premium / x402` | not implemented — paid endpoints will use x402, not API keys |
+| `premium / x402` | paid endpoints use x402 payment gating (not API keys) — env-gated via the `/paid/*` gate; off until `X402_PAY_TO` + `X402_FACILITATOR_URL` are configured |
 
 ## 2. Public read API — open by default
 With `SAFEHANDS_REQUIRE_API_KEY=false` (default) **all** endpoints are open to anonymous
@@ -96,12 +96,14 @@ Reset`; a 429 adds `Retry-After` (the existing `RATE_LIMITED` body shape). `/hea
 ## 7. Capability flags
 `publicReadApiAvailable:true`, `apiKeyAuthAvailable:true`, **`scopedApiKeysAvailable:true`**,
 **`quotaControlsAvailable:true`**, **`prepareTxAvailable:true`** (P9 prepare-only — unsigned, no signing/broadcast).
-Unchanged: `premiumEndpointsAvailable:false`, `x402PaidEndpointsAvailable:false`,
-`signingAvailable:false`, `managedWalletAvailable:false`, `onchainPublishingAvailable:false`,
-`userSignedBroadcastAvailable:false`.
+Env-gated (default `false` until explicitly configured): `premiumEndpointsAvailable`,
+`x402PaidEndpointsAvailable` (true when `X402_PAY_TO` + a facilitator are set),
+`signingAvailable`, `managedWalletAvailable`, `onchainPublishingAvailable`,
+`userSignedBroadcastAvailable`.
 
 ## 8. Not payment
-API keys are **identity/access-control only**. SafeHands does not bill on keys. **Future paid
-endpoints will use x402 payment gating** — not implemented here; `x402PaidEndpointsAvailable`
-remains `false`.
+API keys are **identity/access-control only**. SafeHands does not bill on keys. **Paid
+endpoints use x402 payment gating**, served by the zero-custody `/paid/*` gate
+(`X402_PAY_TO` + external `X402_FACILITATOR_URL`); `x402PaidEndpointsAvailable` reports
+`false` until that config is present.
 
