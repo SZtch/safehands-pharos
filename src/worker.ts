@@ -9,6 +9,12 @@
 
 import "./lib/envLoader.js";
 import { retryPendingAttestations, startAttestationRetryLoop } from "./lib/pharos/attestationPublisher.js";
+import { assertProductionPosture } from "./lib/productionGuards.js";
+
+// Same fail-fast posture check as the API server (active only when
+// NODE_ENV=production) — the worker can hold an attester key, so it must not
+// silently boot into a custody-unsafe configuration either.
+assertProductionPosture();
 
 const intervalMs = Number(process.env.SAFEHANDS_WORKER_HEARTBEAT_MS || 60_000);
 

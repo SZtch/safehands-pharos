@@ -15,6 +15,7 @@ import { REQUIRE_AUTHORIZED_AGENT_FOR_X402 } from "../lib/constants.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
 import { validatePositiveAmount } from "../lib/validation.js";
+import { reserveDailyLimit, releaseReservation, estimateUsd } from "../lib/spendAccumulator.js";
 
 export const x402PayAndFetchSchema = z.object({
   url: z.string().describe("Target URL of the protected resource requiring x402 payment"),
@@ -140,6 +141,11 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
 
   const fetchOptions = buildFetchOptions(input);
 
+  // Daily-cap reservation state, hoisted above the try so the catch block can
+  // return the budget if the paying fetch throws after the reserve.
+  let reservedUsd = 0;
+  let reservedWallet: string | null = null;
+
   try {
     let initial: Response;
     try {
@@ -226,6 +232,24 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
     const paymentGate = enforceWriteDecision(paymentPolicy, { confirmed: input.confirm === true, toolName: "x402_pay_and_fetch" });
     if (paymentGate) return paymentGate;
 
+    // B2: x402 payments count toward the same per-wallet daily USD cap as
+    // send_payment / execute_swap — otherwise a looping agent could drain the
+    // wallet in per-call-cap increments. Reserve the payment BOUND
+    // (maxPaymentUsdc; the 402 challenge amount is validated to be ≤ this)
+    // atomically before the paying fetch, and release it if no payment settles.
+    const reserveUsd = estimateUsd(input.maxPaymentUsdc, "USDC");
+    const reservation = reserveDailyLimit(signer.address, reserveUsd);
+    if (!reservation.allowed) {
+      return fail(
+        "DAILY_SPEND_LIMIT_EXCEEDED",
+        `Daily spend limit reached. Spent $${reservation.currentUsd.toFixed(2)} of $${reservation.limitUsd.toFixed(2)} USD today. Remaining: $${reservation.remainingUsd.toFixed(2)}. Resets at UTC midnight.`,
+        false,
+        "x402_pay_and_fetch"
+      );
+    }
+    reservedUsd = reserveUsd;
+    reservedWallet = signer.address;
+
     const rpc = input.rpcUrl || process.env.PHAROS_RPC_URL || RPC_URL;
     const client = new x402Client();
     registerExactEvmScheme(client, {
@@ -271,6 +295,14 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
     const data = await readResponseBody(paidResponse);
     const paymentResponseHeader = paidResponse.headers.get("PAYMENT-RESPONSE");
 
+    if (!paymentResponseHeader) {
+      // No payment actually settled (e.g. the resource stopped charging) —
+      // return the reserved budget so unpaid fetches never consume the cap.
+      releaseReservation(signer.address, reservedUsd);
+      reservedUsd = 0;
+      reservedWallet = null;
+    }
+
     return ok({
       status: paidResponse.status,
       statusText: paidResponse.statusText,
@@ -294,6 +326,13 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
       source: "x402_fetch",
     });
   } catch (err) {
+    // A payment that failed in flight is ambiguous (it MAY have settled), but
+    // the x402 replay store makes a re-submission of the same authorization
+    // safe — release the reservation so a transient fetch error does not
+    // permanently consume the daily budget.
+    if (reservedWallet && reservedUsd > 0) {
+      releaseReservation(reservedWallet, reservedUsd);
+    }
     return fail(
       "X402_PAYMENT_FAILED",
       err instanceof Error ? err.message : String(err),

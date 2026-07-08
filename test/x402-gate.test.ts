@@ -223,4 +223,41 @@ describe("P13 · zero-custody production posture", () => {
     } as NodeJS.ProcessEnv);
     assert.strictEqual(issues.filter((i) => i.level === "fatal").length, 0);
   });
+
+  it("fires the replay-Redis warning for the zero-custody (URL-based) x402 config", () => {
+    const issues = evaluateProductionPosture({
+      NODE_ENV: "production",
+      WALLET_MODE: "none",
+      WRITE_TOOLS_ENABLED: "false",
+      X402_PAY_TO: PAY_TO,
+      X402_FACILITATOR_URL: "https://facilitator.example",
+      SAFEHANDS_X402_REPLAY_REDIS_REQUIRED: "true",
+      SAFEHANDS_STATE_DIR: "/data",
+      CORS_ORIGIN: "https://safehands.example",
+    } as NodeJS.ProcessEnv);
+    assert.ok(
+      issues.some((i) => i.code === "X402_REPLAY_REDIS_MISSING"),
+      "URL-configured x402 must count as configured for the replay-durability warning",
+    );
+  });
+
+  it("refuses a local facilitator key in production without the explicit override", () => {
+    const env = {
+      NODE_ENV: "production",
+      WALLET_MODE: "none",
+      WRITE_TOOLS_ENABLED: "false",
+      X402_PAY_TO: PAY_TO,
+      X402_FACILITATOR_PRIVATE_KEY: "0x" + "11".repeat(32),
+      SAFEHANDS_STATE_DIR: "/data",
+      CORS_ORIGIN: "https://safehands.example",
+    } as NodeJS.ProcessEnv;
+    assert.ok(
+      evaluateProductionPosture(env).some((i) => i.level === "fatal" && i.code === "LOCAL_FACILITATOR_KEY_IN_PRODUCTION"),
+      "local facilitator key must be fatal in production",
+    );
+    assert.ok(
+      !evaluateProductionPosture({ ...env, SAFEHANDS_ALLOW_LOCAL_FACILITATOR: "true" }).some((i) => i.level === "fatal"),
+      "explicit SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true opt-in must clear the fatal",
+    );
+  });
 });
