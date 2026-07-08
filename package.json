@@ -49,7 +49,7 @@
     "test:live-broadcast": "node scripts/live-broadcast-test.mjs",
     "test:all": "npm run build && npm run typecheck:test && npm test && npm run demo && npm run test:contracts",
     "package:anvita": "node scripts/package-anvita-safehands.mjs",
-    "test:contracts:hardhat": "npx hardhat test",
+    "test:contracts:hardhat": "npx hardhat test test/contracts/SafeHandsRegistry.ts test/contracts/SafeHandsAttestation.ts",
     "x402-server:dev": "tsx src/x402Server.ts",
     "start:x402": "node dist/x402Server.js",
     "start:worker": "node dist/worker.js",

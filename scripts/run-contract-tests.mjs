@@ -6,7 +6,12 @@ import { spawnSync } from 'node:child_process';
 // break / failing assertion would be masked as "passing".
 const strict = process.env.CI === 'true' || process.env.CONTRACT_TESTS_STRICT === '1';
 
-const hardhat = spawnSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['hardhat', 'test'], {
+const contractTestFiles = [
+  'test/contracts/SafeHandsRegistry.ts',
+  'test/contracts/SafeHandsAttestation.ts',
+];
+
+const hardhat = spawnSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['hardhat', 'test', ...contractTestFiles], {
   stdio: 'inherit',
   env: { ...process.env, HARDHAT_DISABLE_TELEMETRY_PROMPT: 'true' },
 });
