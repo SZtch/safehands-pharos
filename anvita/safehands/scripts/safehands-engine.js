@@ -152,9 +152,16 @@ async function goplusGet(pathname, timeoutMs = 10000) {
   } catch { return null; } finally { clearTimeout(t); }
 }
 const flag = (v) => v === "1" || v === 1 || v === true;
+// A GoPlus flag is "known" only if it decodes to a recognizable boolean. Absent/renamed
+// fields are NOT known → used to fail closed on schema drift instead of reading them false.
+const flagKnown = (v) => v === "1" || v === "0" || v === 1 || v === 0 || v === true || v === false;
 async function goplusToken(addr) {
   const r = await goplusGet(`/api/v1/token_security/${CHAIN_ID}?contract_addresses=${addr}`);
   const d = r && (r[addr.toLowerCase()] || r[addr]); if (!d) return { reachable: !!r, data: null };
+  // P0-1 fail-closed: result object present but the honeypot decision field is unreadable
+  // (renamed/retyped schema) → do NOT read every flag as false; signal drift so the caller
+  // applies the missing-threat-intel floor instead of silently under-reporting the token.
+  if (!flagKnown(d.is_honeypot)) return { reachable: true, data: null, schemaDrift: true, factors: [], add: 0 };
   const factors = []; let add = 0;
   if (flag(d.is_honeypot)) { factors.push("GoPlus: HONEYPOT — token cannot be sold"); add += 80; }
   if (flag(d.cannot_sell_all)) { factors.push("GoPlus: holders cannot sell all tokens"); add += 30; }
@@ -251,16 +258,21 @@ async function analyzeContract(addr) {
   if (p.codeSize < 100) { factors.push(`Suspiciously small bytecode (${p.codeSize} bytes) — possible proxy shell or stub`); score += 15; }
   const gp = await goplusToken(addr);
   if (gp.data && gp.factors.length) { factors.push(...gp.factors); score += gp.add; }
-  else if (gp.reachable && !gp.data && looksToken) { factors.push("Token not yet indexed by GoPlus — very new or obscure; extra caution advised"); score += 10; }
-  if (!gp.reachable && !canonicalVerified) {
-    factors.push("GoPlus threat intelligence unreachable — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed");
+  else if (gp.reachable && !gp.data && !gp.schemaDrift && looksToken) { factors.push("Token not yet indexed by GoPlus — very new or obscure; extra caution advised"); score += 10; }
+  // A drifted schema (result present but unreadable) is NOT a real verdict — treat it like
+  // an outage: floor the score and disclose, so an unrecognized GoPlus schema can never allow.
+  const gpVerified = gp.reachable && !gp.schemaDrift;
+  if (!gpVerified && !canonicalVerified) {
+    factors.push(gp.schemaDrift
+      ? "GoPlus returned an unrecognized token-security schema — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed"
+      : "GoPlus threat intelligence unreachable — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed");
     score = Math.max(score, THREAT_INTEL_UNAVAILABLE_FLOOR);
   }
   return report(score, factors, { type: "contract", address: addr }, {
     onChain: { isContract: true, codeSize: p.codeSize, token: looksToken ? t : null },
-    intel: gp.reachable ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unreachable)",
-    limits: gp.reachable ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
-      : "GoPlus unreachable for this call — heuristics only; honeypot status unknown.",
+    intel: gpVerified ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unverified)",
+    limits: gpVerified ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
+      : "GoPlus verdict unavailable for this call — heuristics only; honeypot status unknown.",
   });
 }
 

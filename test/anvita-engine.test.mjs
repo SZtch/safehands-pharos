@@ -129,4 +129,16 @@ describe("Anvita engine — decision logic (mock RPC + GoPlus)", () => {
     assert.notStrictEqual(out.recommendation, "allow"); // the core fix: no silent fail-open
     assert.ok(out.riskFactors.some((f) => /unreachable/i.test(f)), "should disclose the unreachable threat-intel");
   });
+
+  it("FAIL-CLOSED: never 'allow' when GoPlus returns a drifted/unrecognized schema", async () => {
+    const addr = "0x6666666666666666666666666666666666666666";
+    // GoPlus is reachable and returns an entry, but the honeypot field is renamed/retyped —
+    // the pre-fix engine would read every flag as false and 'allow'. Must floor to unverified.
+    mock = startMock({ symbol: "GOOD", goplusResult: { [addr.toLowerCase()]: { honeypot: "1", tax: "0" } } });
+    const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: addr }), { PHAROS_RPC_URL: mock.url, GOPLUS_API_BASE: mock.url });
+    mock.close();
+    assert.strictEqual(out.success, true);
+    assert.notStrictEqual(out.recommendation, "allow"); // schema drift must never fail open
+    assert.ok(out.riskFactors.some((f) => /unrecognized|schema|UNVERIFIED/i.test(f)), "should disclose the unreadable GoPlus schema");
+  });
 });

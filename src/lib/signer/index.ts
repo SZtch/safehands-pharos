@@ -6,6 +6,7 @@
 import { privateKeyToAccount } from "viem/accounts";
 import type { Account } from "viem";
 import { walletStore, decryptKey, getEffectiveEncryptionKey } from "../wallet/index.js";
+import { managedWalletEnabled } from "../config.js";
 
 export type SignerMode = "none" | "env" | "managed-mainnet" | "external-signer" | "x402-env";
 export type SignerPurpose = "write" | "x402";
@@ -52,6 +53,20 @@ function accountFromEnvKey(envName: "PRIVATE_KEY" | "X402_SIGNER_PRIVATE_KEY", m
 async function accountFromManagedWallet(agentId?: string): Promise<GetSignerResult | null> {
   const walletMode = process.env.WALLET_MODE || "none";
   if (walletMode !== "managed-mainnet" || !agentId) return null;
+
+  // Managed custody must be explicitly opted into. WALLET_MODE=managed-mainnet
+  // selects the signer source; MANAGED_WALLET_ENABLED=true is the required second
+  // gate (mirrors the MCP bootstrap gate + capability flags). Without it the stored
+  // managed wallet is NEVER used to sign — fail closed with a clear reason.
+  if (!managedWalletEnabled()) {
+    return {
+      error: {
+        code: "MANAGED_WALLET_DISABLED",
+        message:
+          "Managed-wallet signing requires MANAGED_WALLET_ENABLED=true in addition to WALLET_MODE=managed-mainnet. Enable it only for trusted managed execution.",
+      },
+    };
+  }
 
   if (process.env.WALLET_STORE_PATH && !process.env.WALLET_ENCRYPTION_KEY) {
     return {

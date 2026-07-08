@@ -44,6 +44,14 @@ export interface RiskAssessment {
   breakdown: RiskBreakdown;
   reasons: string[];
   suggestion: string;
+  /**
+   * True when a CRITICAL risk signal could not be evaluated (route/liquidity or
+   * balance fetch failed). Callers must fail-closed on this — never silently
+   * proceed on degraded data (H2). Market-condition gaps are non-critical and do
+   * NOT set this.
+   */
+  degraded: boolean;
+  degradedReasons: string[];
 }
 
 export interface RiskInput {
@@ -218,7 +226,7 @@ async function scoreCounterparty(input: RiskInput): Promise<{ score: number; rea
   return { score: 10, reasons };
 }
 
-async function scoreBalance(input: RiskInput): Promise<{ score: number; reasons: string[] }> {
+async function scoreBalance(input: RiskInput): Promise<{ score: number; reasons: string[]; degraded?: boolean }> {
   const reasons: string[] = [];
 
   try {
@@ -278,7 +286,7 @@ async function scoreBalance(input: RiskInput): Promise<{ score: number; reasons:
     return { score: 0, reasons: ["Balance check skipped"] };
   } catch (err) {
     reasons.push(`Balance check failed: ${(err as Error).message}`);
-    return { score: 50, reasons };
+    return { score: 50, reasons, degraded: true };
   }
 }
 
@@ -347,7 +355,30 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
 
   const riskScore = clamp(weightedAverage(breakdown));
   const riskLevel = computeRiskLevel(riskScore);
-  const recommendation = computeRecommendation(riskScore);
+  let recommendation = computeRecommendation(riskScore);
+
+  // H2 — fail-closed on missing CRITICAL data. A swap whose route/liquidity could
+  // not be fetched, or any action whose balance check threw, must NOT be scored as
+  // safe on degraded inputs. Mark degraded and refuse to "proceed" silently.
+  const degradedReasons: string[] = [];
+  if (input.action === "swap" && swapQuote === null) {
+    degradedReasons.push("Liquidity/slippage could not be assessed — swap route fetch failed.");
+  }
+  if (balance.degraded) {
+    degradedReasons.push("Wallet balance could not be verified — RPC unavailable.");
+  }
+  const degraded = degradedReasons.length > 0;
+  if (degraded && recommendation === "proceed") {
+    recommendation = "caution";
+  }
+
+  // H1 — defense-in-depth transfer block. A critically-risky counterparty
+  // (missing / invalid / zero recipient) hard-blocks via the risk engine too, not
+  // only via the policy engine. (Weighted heuristics alone can never cross the
+  // block threshold for a transfer, so this explicit escalation is required.)
+  if (input.action === "transfer" && counterparty.score >= 90) {
+    recommendation = "block";
+  }
 
   const reasons = [
     ...liquidity.reasons,
@@ -375,5 +406,7 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
     breakdown,
     reasons,
     suggestion,
+    degraded,
+    degradedReasons,
   };
 }

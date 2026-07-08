@@ -5,7 +5,7 @@
 // Write tools remain protected by the same env gates used by MCP handlers.
 // ────────────────────────────────────────────────────────────────────────
 
-import { fail, ok, type ToolResponse } from "../lib/toolResponse.js";
+import { fail, ok, productionSafeMessage, type ToolResponse } from "../lib/toolResponse.js";
 
 import { handleAssessRisk } from "../tools/assessRisk.js";
 import { handleSimulateTransaction } from "../tools/simulateTransaction.js";
@@ -148,6 +148,6 @@ export async function invokeHostedTool(toolName: string, params: unknown): Promi
       errorCode: "TOOL_EXECUTION_FAILED",
       durationMs: Date.now() - start,
     });
-    return fail("TOOL_EXECUTION_FAILED", message, false, toolName);
+    return fail("TOOL_EXECUTION_FAILED", productionSafeMessage(message, "Tool execution failed."), false, toolName);
   }
 }

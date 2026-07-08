@@ -140,7 +140,7 @@ Full copy-paste set: [`SAFEHANDS_REVIEWER_DEMO_SCRIPT.md`](./SAFEHANDS_REVIEWER_
 
 ## 5. Deployment (optional self-host)
 
-The hosted SafeHands Agent lives on **Anvita Flow** (<https://flow.anvita.xyz/home>) — this
+The hosted SafeHands Agent is being published to **Anvita Flow** (<https://flow.anvita.xyz/home>) (Agent Carnival Phase 2) — this
 `src/` backend is an **optional, self-hostable reference**, not the production service. To run
 it yourself: `npm start` runs the compiled read-only API on `0.0.0.0:$PORT`, no keys required,
 so it drops onto any container host (Docker / VPS / Fly) or an ephemeral host with no persistent

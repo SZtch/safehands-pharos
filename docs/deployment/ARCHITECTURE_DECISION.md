@@ -3,8 +3,8 @@
 **Status:** Accepted · **Scope:** Pharos Pacific Mainnet (chainId 1672) · **Profile:** Single-Instance Self-Host Profile
 
 > **Framing:** The SafeHands *hosted agent* is the **Anvita Flow skill**
-> ([flow.anvita.xyz/home](https://flow.anvita.xyz/home)) — that is what any Steward
-> Agent discovers and calls, and it depends on **none of our own backend or cloud**.
+> ([flow.anvita.xyz/home](https://flow.anvita.xyz/home)) — once published, that is what any Steward
+> Agent will discover and call, and it depends on **none of our own backend or cloud**.
 > The full TypeScript backend in `src/` is an **optional, self-hostable reference** —
 > not the production service. This ADR records how that reference backend is
 > structured when you choose to self-host it.

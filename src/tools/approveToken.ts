@@ -9,12 +9,15 @@ import { toWei } from "../lib/dodoApi.js";
 import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
+import { evaluateTokenSecurityGate } from "./checkTokenSecurity.js";
 import { validatePositiveAmount } from "../lib/validation.js";
 
 export const approveTokenSchema = z.object({
   token: z.enum(["USDC", "USDT"]).describe("ERC-20 token to approve"),
   amount: z.string().describe("Human-readable amount to approve, or 'max' for unlimited"),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
+  confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION / REQUIRE_TOKEN_REVIEW. Hard BLOCK / honeypot / unlimited / over-limit are never overridable."),
 }).strict();
 
 export type ApproveTokenInput = z.input<typeof approveTokenSchema>;
@@ -69,12 +72,20 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
   if (isManagedExecutionFailure(gate)) return gate;
   const { signer } = gate;
 
+  // H3: consult token-security (GoPlus) on the token being approved. Honeypot /
+  // extreme-tax → hard block; flagged/unavailable → REQUIRE_TOKEN_REVIEW.
+  const sec = await evaluateTokenSecurityGate(resolved.tokenAddress);
+  if (sec.verdict === "block") {
+    return fail("TOKEN_SECURITY_BLOCKED", `Approval blocked — ${sec.detail ?? "token failed security review"} ${sec.flags.join("; ")}`.trim(), false, "approve_token");
+  }
+
   const policy = evaluateActionPolicy({
     actionType: "approve_token",
     agentId: input.agentId,
     approvalAmount: input.amount,
     approvalToken: input.token,
     approvalUnlimited: input.amount === "max",
+    tokenSecurityStatus: sec.policyStatus,
     spender: DODO_APPROVE_ADDRESS,
     spenderVerified: true,
     chainId: CHAIN_ID,
@@ -84,10 +95,11 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
     requiresSigner: true,
     allowUnlimitedApproval: process.env.ALLOW_UNLIMITED_APPROVAL === "true",
   });
-  if (policy.decision === "BLOCK") {
-    const code = input.amount === "max" ? "UNLIMITED_APPROVAL_BLOCKED" : "POLICY_BLOCKED";
-    return fail(code, policy.reasons.join(" ") || "Approval blocked by SafeHands policy.", false, "approve_token");
+  if (policy.decision === "BLOCK" && input.amount === "max") {
+    return fail("UNLIMITED_APPROVAL_BLOCKED", policy.reasons.join(" ") || "Unlimited approval blocked by SafeHands policy.", false, "approve_token");
   }
+  const approvalGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "approve_token" });
+  if (approvalGate) return approvalGate;
 
   if (input.amount !== "max" && Number(input.amount) > Number(MAX_APPROVAL_AMOUNT_USDC)) {
     return fail("APPROVAL_LIMIT_EXCEEDED", `Approval amount exceeds the operator ceiling MAX_APPROVAL_AMOUNT_USDC (${MAX_APPROVAL_AMOUNT_USDC}), which bounds all agent policies. Raise MAX_APPROVAL_AMOUNT_USDC to allow larger mainnet approvals.`, false, "approve_token");

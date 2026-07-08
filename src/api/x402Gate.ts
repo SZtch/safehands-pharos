@@ -102,6 +102,23 @@ function unconfiguredGuard(_req: express.Request, res: express.Response): void {
   );
 }
 
+/**
+ * x402 X-PAYMENT is base64-encoded JSON. Reject obvious junk BEFORE recording it in
+ * the replay store (M3): each store write is an O(n) full-file rewrite, so without
+ * this an attacker could flood `/paid/*` with unique random headers and grow the
+ * store / burn CPU+disk. A malformed header would fail downstream verification
+ * anyway; dropping it here just avoids the write. Legitimate payments decode fine.
+ */
+function looksLikeX402Payment(header: string): boolean {
+  if (header.length > 8192) return false;
+  try {
+    const parsed = JSON.parse(Buffer.from(header, "base64").toString("utf-8"));
+    return !!parsed && typeof parsed === "object";
+  } catch {
+    return false;
+  }
+}
+
 /** Durable replay protection: reject a reused X-PAYMENT authorization before settlement. */
 function buildReplayMiddleware(cfg: X402GateConfig) {
   return function replayProtectionMiddleware(
@@ -111,6 +128,14 @@ function buildReplayMiddleware(cfg: X402GateConfig) {
   ): void {
     const paymentHeader = req.headers["x-payment"];
     if (typeof paymentHeader !== "string" || paymentHeader.length <= 10) return next();
+
+    // Pre-filter malformed headers so junk floods can't grow the O(n) replay store.
+    if (!looksLikeX402Payment(paymentHeader)) {
+      res
+        .status(400)
+        .json(fail("X402_PAYMENT_MALFORMED", "X-PAYMENT header is not a valid x402 payment payload.", false, SOURCE));
+      return;
+    }
 
     checkAndRecordX402Replay(paymentHeader, cfg.replayWindowMs)
       .then((result) => {

@@ -1,6 +1,6 @@
 # SafeHands full-enabled self-host design (reference backend)
 
-> **The hosted SafeHands service agent is the Anvita Flow skill** (https://flow.anvita.xyz/home) — discoverable and callable by any Steward Agent, with no backend of your own to run. The TypeScript backend in `src/` is an **optional, self-hostable reference**: nothing here is "the production service." Reach for this doc only if you want to run every endpoint, skill, and tool yourself on your own host.
+> **The hosted SafeHands service agent is the Anvita Flow skill** (https://flow.anvita.xyz/home) — once published, discoverable and callable by any Steward Agent, with no backend of your own to run. The TypeScript backend in `src/` is an **optional, self-hostable reference**: nothing here is "the production service." Reach for this doc only if you want to run every endpoint, skill, and tool yourself on your own host.
 
 This is the recommended layout when the goal is **all endpoints active, all skills active, all tools active** on a self-hosted backend (the horizontal scaling path — see [`ARCHITECTURE_DECISION.md`](./ARCHITECTURE_DECISION.md)). It is host-agnostic: any container host that can run a Node process and mount a persistent volume works (Docker, a VPS, Fly, etc.).
 

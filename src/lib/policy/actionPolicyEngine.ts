@@ -129,24 +129,35 @@ export function isUnlimitedApprovalAmount(value: string | undefined): boolean {
 
 function isSuspiciousUrl(rawUrl: string | undefined): boolean {
   if (!rawUrl) return false;
-  if (process.env.ALLOW_LOCAL_X402_FETCH === "true") return false;
+  let parsed: URL;
   try {
-    const parsed = new URL(rawUrl);
-    const host = parsed.hostname.toLowerCase();
-    if (!["http:", "https:"].includes(parsed.protocol)) return true;
-    if (host === "localhost" || host.endsWith(".localhost")) return true;
-    if (host === "127.0.0.1" || host.startsWith("127.") || host === "0.0.0.0") return true;
-    if (/^0\./.test(host)) return true;
-    if (host.startsWith("10.") || host.startsWith("192.168.")) return true;
-    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true;
-    if (host.startsWith("169.254.")) return true;
-    if (host === "[::1]" || host === "::1") return true;
-    if (host.startsWith("[fc") || host.startsWith("[fd") || host.startsWith("[fe80:")) return true;
-    if (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) return true;
-    return false;
+    parsed = new URL(rawUrl);
   } catch {
     return true;
   }
+  const host = parsed.hostname.toLowerCase();
+  if (!["http:", "https:"].includes(parsed.protocol)) return true;
+
+  // ALLOW_LOCAL_X402_FETCH relaxes ONLY loopback, and only outside production.
+  // Cloud-metadata / private / link-local ranges are ALWAYS suspicious — the flag
+  // can no longer wave through 169.254.169.254 or RFC1918 hosts.
+  const isLoopback =
+    host === "localhost" || host.endsWith(".localhost") ||
+    host === "127.0.0.1" || host.startsWith("127.") ||
+    host === "[::1]" || host === "::1";
+  const loopbackBypass =
+    process.env.ALLOW_LOCAL_X402_FETCH === "true" &&
+    (process.env.NODE_ENV || "").toLowerCase() !== "production";
+  if (isLoopback) return loopbackBypass ? false : true;
+
+  if (host === "0.0.0.0") return true;
+  if (/^0\./.test(host)) return true;
+  if (host.startsWith("10.") || host.startsWith("192.168.")) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true;
+  if (host.startsWith("169.254.")) return true;
+  if (host.startsWith("[fc") || host.startsWith("[fd") || host.startsWith("[fe80:")) return true;
+  if (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) return true;
+  return false;
 }
 
 function classifyRisk(checks: PolicyCheck[]): PolicyRiskLevel {

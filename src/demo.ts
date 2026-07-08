@@ -89,7 +89,7 @@ export async function runDemo() {
     section("1. Wallet Health");
     print("safehands_wallet_health", await handleSafeHandsWalletHealth({}));
 
-    section("2. Safe Payment Preflight: ALLOW");
+    section("2. Safe Payment Preflight: PREPARE_ONLY");
     print(
       "safehands_preflight_check",
       await handleSafeHandsPreflightCheck({

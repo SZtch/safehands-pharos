@@ -47,6 +47,15 @@ export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/**
+ * In production, never echo raw internal error text (DODO/RPC/viem internals) to
+ * clients — return a generic message instead. Outside production, keep the real
+ * message for debuggability. (M5: `/paid/*` + `/tools/*` info-leak fix.)
+ */
+export function productionSafeMessage(message: string, fallback = "Request could not be processed. Check parameters and try again."): string {
+  return (process.env.NODE_ENV || "").toLowerCase() === "production" ? fallback : message;
+}
+
 export function classifyExternalError(source: string, err: unknown): ToolFailure {
   const message = errorMessage(err);
   const lower = message.toLowerCase();
@@ -67,7 +76,10 @@ export function classifyExternalError(source: string, err: unknown): ToolFailure
   if (source === "goplus_api") code = isTimeout ? "GOPLUS_API_TIMEOUT" : "GOPLUS_API_UNAVAILABLE";
   if (source === "x402_fetch") code = isTimeout ? "X402_FETCH_TIMEOUT" : "X402_FETCH_FAILED";
 
-  return fail(code, message, isRetryable, source);
+  // M5: in production, never echo raw DODO/RPC/viem internals to the caller — keep
+  // the specific error CODE (RPC_TIMEOUT, DODO_API_UNAVAILABLE, …) but genericize the
+  // human message. Outside production the real message is retained for debuggability.
+  return fail(code, productionSafeMessage(message), isRetryable, source);
 }
 
 export function requireWriteToolsEnabled(toolName: string): ToolFailure | null {

@@ -154,7 +154,20 @@ describe("P13 · /paid/* gate — CONFIGURED", () => {
     await withApp(
       { X402_PAY_TO: PAY_TO, X402_FACILITATOR_URL: FACILITATOR_URL, SAFEHANDS_X402_REPLAY_STORE_PATH: REPLAY_STORE },
       async (base) => {
-        const payment = `test-payment-${process.pid}-${Date.now()}-` + "a".repeat(40);
+        // A genuine replay reuses a WELL-FORMED payment authorization. The gate now
+        // pre-filters malformed junk (looksLikeX402Payment → 400) BEFORE the O(n) replay
+        // store write, so the payload must be valid base64-JSON to reach replay logic.
+        const payment = Buffer.from(
+          JSON.stringify({
+            x402Version: 2,
+            scheme: "exact",
+            network: NETWORK,
+            payload: {
+              authorization: { nonce: `test-${process.pid}-${Date.now()}` },
+              signature: "0x" + "a".repeat(130),
+            },
+          }),
+        ).toString("base64");
         const url = `${base}/paid/token-price?token=PROS`;
         // First use: replay records the authorization; the mock facilitator rejects it (not 200).
         const first = await fetch(url, { headers: { "X-PAYMENT": payment } });

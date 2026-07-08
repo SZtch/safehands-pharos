@@ -7,7 +7,8 @@ import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { MAX_BALANCE_USAGE_PCT, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET } from "../lib/constants.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
-import { checkDailyLimit, recordSpend, estimateUsd } from "../lib/spendAccumulator.js";
+import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
+import { checkDailyLimit, reserveDailyLimit, releaseReservation, estimateUsd } from "../lib/spendAccumulator.js";
 import { validatePositiveAmount, validateNonZeroAddress, collectErrors } from "../lib/validation.js";
 
 export const sendPaymentSchema = z.object({
@@ -15,6 +16,7 @@ export const sendPaymentSchema = z.object({
   amount: z.string(),
   memo: z.string().optional(),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
+  confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION (e.g. unverified recipient). Hard BLOCK / denylist / over-limit are never overridable."),
 }).strict();
 
 export type SendPaymentInput = z.input<typeof sendPaymentSchema>;
@@ -62,9 +64,8 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     signerAvailable: true,
     requiresSigner: true,
   });
-  if (policy.decision === "BLOCK") {
-    return fail("POLICY_BLOCKED", policy.reasons.join(" ") || "Payment blocked by SafeHands policy.", false, "send_payment");
-  }
+  const paymentGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "send_payment" });
+  if (paymentGate) return paymentGate;
 
   if (Number(input.amount) > Number(MAX_TX_AMOUNT_PROS)) {
     return fail("TX_LIMIT_EXCEEDED", `Payment amount exceeds the operator ceiling MAX_TX_AMOUNT_PROS (${MAX_TX_AMOUNT_PROS} PROS), which bounds all agent policies. Raise MAX_TX_AMOUNT_PROS to allow larger mainnet payments.`, false, "send_payment");
@@ -117,8 +118,24 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     walletAddress,
   });
 
-  if (risk.riskScore > RISK_BLOCK_THRESHOLD) {
+  if (risk.riskScore > RISK_BLOCK_THRESHOLD || risk.recommendation === "block") {
     return fail("POLICY_BLOCKED", `Payment blocked — risk score ${risk.riskScore}/100: ${risk.suggestion}`, false, "send_payment");
+  }
+  // H2: never sign silently on degraded risk data — require explicit confirmation.
+  if (risk.degraded && input.confirm !== true) {
+    return fail("CONFIRMATION_REQUIRED", `Payment risk assessment is degraded — ${risk.degradedReasons.join(" ")} Re-invoke with confirm=true only after manual review.`, false, "send_payment");
+  }
+
+  // M2: atomically reserve the daily-spend budget immediately before broadcasting
+  // (no await between reserve and send), so concurrent calls can't both exceed the cap.
+  const reservation = reserveDailyLimit(walletAddress, amountUsd);
+  if (!reservation.allowed) {
+    return fail(
+      "DAILY_SPEND_LIMIT_EXCEEDED",
+      `Daily spend limit reached. Spent $${reservation.currentUsd.toFixed(2)} of $${reservation.limitUsd.toFixed(2)} USD today. Remaining: $${reservation.remainingUsd.toFixed(2)}. Resets at UTC midnight.`,
+      false,
+      "send_payment"
+    );
   }
 
   try {
@@ -130,10 +147,9 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
     if (receipt.status !== "success") {
+      releaseReservation(walletAddress, amountUsd);
       return fail("TX_REVERTED", "send_payment transaction was mined but reverted on-chain.", false, "send_payment");
     }
-
-    recordSpend(walletAddress, amountUsd);
 
     return ok({
       txHash,
@@ -151,6 +167,7 @@ export async function handleSendPayment(raw: SendPaymentInput) {
       source: "send_payment",
     });
   } catch (err) {
+    releaseReservation(walletAddress, amountUsd);
     return classifyExternalError("pharos_rpc", err);
   }
 }
