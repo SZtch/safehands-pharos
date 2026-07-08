@@ -1,11 +1,11 @@
 // ─── Tool: execute_swap ────────────────────────────────────────────────
 import { z } from "zod";
-import { isAddress } from "viem";
+import { isAddress, type Account } from "viem";
 import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
 import { getDodoRoute, isNativeToken, resolveTokenAddress, resolveTokenDecimals, toWei } from "../lib/dodoApi.js";
 import { assessRisk } from "../lib/riskEngine.js";
 import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
-import { ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist } from "../lib/constants.js";
+import { ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_SLIPPAGE_PCT, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist } from "../lib/constants.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
 import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
@@ -23,6 +23,54 @@ export const executeSwapSchema = z.object({
 }).strict();
 
 export type ExecuteSwapInput = z.input<typeof executeSwapSchema>;
+
+/**
+ * P1-1: hard, non-confirmable quote guards. An unfavorable price is embedded in
+ * the quote ITSELF — minReturn/slippage only protect against movement AFTER
+ * quoting — so a quote whose priceImpact exceeds the ceiling must hard-stop
+ * here, before any signing. The ceiling is the caller's slippageTolerance or
+ * MAX_SLIPPAGE_PCT, whichever is larger. Pure + exported for offline tests.
+ */
+export function evaluateSwapQuoteGuards(
+  quote: { priceImpact: number; amountOut: string },
+  slippageTolerance?: number
+): { code: string; message: string } | null {
+  const ceilingPct = Math.max(slippageTolerance ?? 0, MAX_SLIPPAGE_PCT);
+  const impact = Math.abs(quote.priceImpact);
+  if (!Number.isFinite(impact) || impact > ceilingPct) {
+    return {
+      code: "PRICE_IMPACT_TOO_HIGH",
+      message: `Swap blocked — quoted price impact ${Number.isFinite(impact) ? impact.toFixed(2) : "unknown"}% exceeds the ${ceilingPct}% ceiling (max of slippageTolerance and MAX_SLIPPAGE_PCT ${MAX_SLIPPAGE_PCT}%). The unfavorable price is in the quote itself, so slippage protection cannot mitigate it; this is a hard stop and is never confirmable. Reduce the trade size or use a deeper route.`,
+    };
+  }
+  const amountOut = Number.parseFloat(quote.amountOut);
+  if (!Number.isFinite(amountOut) || amountOut <= 0) {
+    return {
+      code: "INVALID_QUOTE_AMOUNT_OUT",
+      message: `Swap blocked — DODO quote returned a non-positive amountOut (${quote.amountOut}). Broadcasting would spend tokenIn for nothing; this is a hard stop and is never confirmable.`,
+    };
+  }
+  return null;
+}
+
+/**
+ * P1-4: simulate the exact swap call via eth_call and return the revert reason,
+ * or null when the call succeeds. The final broadcast passes an explicit
+ * `gas: quote.gasLimit`, which bypasses viem's implicit estimateGas revert
+ * check — without this a reverting route would burn gas on-chain. Takes the
+ * client structurally so it is unit-testable offline.
+ */
+export async function simulateSwapCalldata(
+  client: { call(args: { account: Account | `0x${string}`; to: `0x${string}`; value: bigint; data: `0x${string}` }): Promise<unknown> },
+  args: { account: Account | `0x${string}`; to: `0x${string}`; value: bigint; data: `0x${string}` }
+): Promise<string | null> {
+  try {
+    await client.call(args);
+    return null;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+}
 
 export const executeSwapTool = {
   name: "execute_swap",
@@ -134,6 +182,11 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
       return fail("NO_ROUTE_AVAILABLE", "No swap route available — insufficient liquidity", true, "dodo_api");
     }
 
+    const quoteGuard = evaluateSwapQuoteGuards(quote, input.slippageTolerance);
+    if (quoteGuard) {
+      return fail(quoteGuard.code, quoteGuard.message, false, "execute_swap");
+    }
+
     if (!isAddress(quote.to) || !isAllowedDodoRouter(quote.to)) {
       return fail(
         "UNTRUSTED_DODO_ROUTER",
@@ -191,6 +244,24 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
         });
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
       }
+    }
+
+    // P1-4: pre-broadcast simulation of the exact calldata (after the approval
+    // above so the allowance is visible to eth_call). A reverting route fails
+    // here for free instead of burning gas on-chain.
+    const simulationError = await simulateSwapCalldata(publicClient, {
+      account: signer.account,
+      to: quote.to as `0x${string}`,
+      value: BigInt(quote.value),
+      data: quote.calldata as `0x${string}`,
+    });
+    if (simulationError !== null) {
+      return fail(
+        "SWAP_SIMULATION_REVERTED",
+        `Pre-broadcast simulation of the swap calldata reverted — broadcasting would only burn gas. ${simulationError}`,
+        true,
+        "execute_swap"
+      );
     }
 
     // M2: atomically reserve the daily-spend budget immediately before the swap

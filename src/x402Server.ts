@@ -26,6 +26,7 @@ import { CHAIN_ID, PHAROS_ENVIRONMENT, RPC_URL, X402_PAYMENT_TOKEN_ADDRESS, PACI
 import { fail, ok } from "./lib/toolResponse.js";
 import { checkAndRecordX402Replay } from "./lib/x402ReplayStore.js";
 import { assertProductionPosture } from "./lib/productionGuards.js";
+import { replayStoreUnavailableMessage } from "./api/x402Gate.js";
 
 // Fail-fast posture check (active only when NODE_ENV=production). This
 // standalone server is the DEV / self-hosted single-tenant profile: it signs
@@ -230,8 +231,10 @@ function replayProtectionMiddleware(req: express.Request, res: express.Response,
       return next();
     })
     .catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      return res.status(503).json(fail("X402_REPLAY_STORE_UNAVAILABLE", `x402 replay store unavailable: ${message}`, true, "x402_server"));
+      // P1-3: raw store errors (Upstash detail, Redis hostname, fs paths) stay in
+      // server logs; production clients get a generic message.
+      console.error("[SafeHands x402] replay store unavailable:", err instanceof Error ? err.message : String(err));
+      return res.status(503).json(fail("X402_REPLAY_STORE_UNAVAILABLE", replayStoreUnavailableMessage(err), true, "x402_server"));
     });
 }
 // ────────────────────────────────────────────────────────────────────────

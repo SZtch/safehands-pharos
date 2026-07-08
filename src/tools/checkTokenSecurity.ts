@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { isAddress } from "viem";
-import { CHAIN_ID, PHAROS_ENVIRONMENT, activeTokenMap } from "../lib/constants.js";
+import { CHAIN_ID, IS_MAINNET, PHAROS_ENVIRONMENT, activeTokenMap } from "../lib/constants.js";
 import { fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { classifyExternalError, fail, ok } from "../lib/toolResponse.js";
 
@@ -67,6 +67,23 @@ export function interpretGoplusTokenResult(details: unknown): GoplusTokenProfile
     isProxy: goplusTruthy(d.is_proxy),
     ownerAddress: (typeof d.owner_address === "string" && d.owner_address) || zero,
     creatorAddress: (typeof d.creator_address === "string" && d.creator_address) || zero,
+  };
+}
+
+/**
+ * P1-5: network metadata for the tool response, derived from the ACTIVE network
+ * instead of a hardcoded `isMainnet: true` (which misreported on
+ * atlantic-testnet). Unknown chains report false. Pure + exported for tests.
+ */
+export function tokenSecurityNetworkMetadata(chainId: number): {
+  chainId: number;
+  environment: string;
+  isMainnet: boolean;
+} {
+  return {
+    chainId,
+    environment: chainId === CHAIN_ID ? PHAROS_ENVIRONMENT : "custom-chain",
+    isMainnet: chainId === CHAIN_ID ? IS_MAINNET : false,
   };
 }
 
@@ -140,9 +157,7 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
     const safetyScore = Math.max(0, 100 - riskScore);
 
     return ok({
-      chainId,
-      environment: chainId === CHAIN_ID ? PHAROS_ENVIRONMENT : "custom-chain",
-      isMainnet: true, // GoPlus works on Pharos Mainnet
+      ...tokenSecurityNetworkMetadata(chainId),
       tokenAddress: address,
       securityProfile: {
         safetyScore,

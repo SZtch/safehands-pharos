@@ -119,6 +119,22 @@ function looksLikeX402Payment(header: string): boolean {
   }
 }
 
+/**
+ * P1-3: client-facing message for a replay-store failure. Raw store errors can
+ * carry internals — Upstash REST error strings, the Redis hostname from a DNS
+ * failure, or state-dir filesystem paths — so production gets a generic
+ * message; the detail stays in server-side logs (and in dev responses).
+ * Exported for offline tests.
+ */
+export function replayStoreUnavailableMessage(
+  err: unknown,
+  production: boolean = process.env.NODE_ENV === "production",
+): string {
+  if (production) return "x402 replay store is temporarily unavailable.";
+  const message = err instanceof Error ? err.message : String(err);
+  return `x402 replay store unavailable: ${message}`;
+}
+
 /** Durable replay protection: reject a reused X-PAYMENT authorization before settlement. */
 function buildReplayMiddleware(cfg: X402GateConfig) {
   return function replayProtectionMiddleware(
@@ -149,10 +165,10 @@ function buildReplayMiddleware(cfg: X402GateConfig) {
         next();
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err);
+        console.error("[SafeHands x402] replay store unavailable:", err instanceof Error ? err.message : String(err));
         res
           .status(503)
-          .json(fail("X402_REPLAY_STORE_UNAVAILABLE", `x402 replay store unavailable: ${message}`, true, SOURCE));
+          .json(fail("X402_REPLAY_STORE_UNAVAILABLE", replayStoreUnavailableMessage(err), true, SOURCE));
       });
   };
 }
