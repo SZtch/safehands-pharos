@@ -17,7 +17,7 @@ SafeHands is:
 2. **Risk analysis**: Produce structured risk evidence, human-readable reports, and risk-score explanations.
 3. **Pacific Mainnet token checks**: Classify tokens using the active Pharos network registry. Unsupported Pacific Mainnet tokens fail clearly instead of falling back to Atlantic/testnet addresses.
 4. **x402 safety**: Validate URL, chain, token, payment limit, and signer readiness. Default Pacific Mainnet x402 token is USDC; WPROS/PROS-compatible wrapped payment is also supported. **Permissionless-first**: `safehands_x402_preflight` needs no key and no authorization, and self-signed x402 payments (the agent's own `X402_SIGNER_PRIVATE_KEY`) require no SafeHandsRegistry authorization — only the optional managed/custodial wallet path can be allowlist-gated.
-5. **Gated execution**: Optional write tools for swaps, payments, approvals, x402 fetches, and risk publishing are disabled by default and require explicit operator configuration.
+5. **Gated execution**: Optional write tools for swaps, payments, approvals, x402 fetches, and risk publishing are disabled by default and require explicit operator configuration. These write tools are experimental and unaudited; they are opt-in, self-hosted, single-tenant only.
 6. **On-chain layer**: Includes `SafeHandsRegistry` and `SafeHandsAttestation` contracts for registry and proof workflows when configured.
 
 ## What SafeHands refuses by default

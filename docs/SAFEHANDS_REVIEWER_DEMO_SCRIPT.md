@@ -97,7 +97,7 @@ npm run demo          # or: npx safehands-pharos --demo
 ### Test suites
 
 ```bash
-npm test               # 12 deterministic smoke tests (no wallet or RPC needed)
+npm test               # hermetic deterministic suite (no wallet, no RPC, no network needed)
 npm run demo           # 12 non-destructive demo scenarios
 npm run test:contracts # 25 Hardhat Solidity tests (offline smoke fallback without a compiler)
 npm run test:all       # all combined

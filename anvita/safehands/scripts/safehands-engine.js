@@ -257,15 +257,19 @@ async function analyzeContract(addr) {
   }
   if (p.codeSize < 100) { factors.push(`Suspiciously small bytecode (${p.codeSize} bytes) — possible proxy shell or stub`); score += 15; }
   const gp = await goplusToken(addr);
+  const gpUnindexedToken = gp.reachable && !gp.data && !gp.schemaDrift && looksToken; // GoPlus answered but has never vetted THIS token
   if (gp.data && gp.factors.length) { factors.push(...gp.factors); score += gp.add; }
-  else if (gp.reachable && !gp.data && !gp.schemaDrift && looksToken) { factors.push("Token not yet indexed by GoPlus — very new or obscure; extra caution advised"); score += 10; }
-  // A drifted schema (result present but unreadable) is NOT a real verdict — treat it like
-  // an outage: floor the score and disclose, so an unrecognized GoPlus schema can never allow.
-  const gpVerified = gp.reachable && !gp.schemaDrift;
+  else if (gpUnindexedToken) { factors.push("Token not yet indexed by GoPlus — very new or obscure; extra caution advised"); score += 10; }
+  // A drifted schema (result present but unreadable) or a reachable-but-unindexed token is
+  // NOT a real verdict — treat both like an outage: floor the score and disclose, so a token
+  // GoPlus has never actually vetted (the classic fresh-rug window) can never read "allow".
+  const gpVerified = gp.reachable && !gp.schemaDrift && !gpUnindexedToken;
   if (!gpVerified && !canonicalVerified) {
     factors.push(gp.schemaDrift
       ? "GoPlus returned an unrecognized token-security schema — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed"
-      : "GoPlus threat intelligence unreachable — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed");
+      : gpUnindexedToken
+        ? "Not yet indexed by GoPlus — honeypot status UNVERIFIED; treat as unsafe-until-confirmed"
+        : "GoPlus threat intelligence unreachable — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed");
     score = Math.max(score, THREAT_INTEL_UNAVAILABLE_FLOOR);
   }
   return report(score, factors, { type: "contract", address: addr }, {
