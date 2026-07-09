@@ -8,6 +8,8 @@ node scripts/safehands-engine.js <health|analyze|query> ['<json-or-address>']
 
 Output is always a single JSON object on stdout; exit code 0 = success, 1 = failure. Chain access is read-only JSON-RPC to Pharos pacific-mainnet (chainId 1672, RPC `https://rpc.pharos.xyz`, overridable via `PHAROS_RPC_URL`). Score bands: **allow ≤ 30 < warn < 70 ≤ block**.
 
+**Output format:** for meaningful checks (analyze wallet/contract/intent, allowance, transaction introspection), render the engine JSON as the **SafeHands Safety Report** defined in `assets/output-template.md`; compact single-value reads and structured errors stay concise.
+
 ---
 
 ## §A — Health Check
