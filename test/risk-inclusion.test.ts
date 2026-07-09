@@ -122,8 +122,10 @@ describe("L1 Merkle inclusion read-path", () => {
   });
 
   it("verifyRiskInclusion is fail-closed & keyless when the registry is unconfigured", async () => {
-    // In the test env SAFEHANDS_REGISTRY_ADDRESS is unset → no chain, no network touched.
-    const result = await verifyRiskInclusion({ target: A });
+    // The Pacific-mainnet registry address is now a baked read-path default, so we
+    // force the unconfigured address explicitly → no chain, no network touched.
+    // Proves the fail-closed neutral path still holds when no address resolves.
+    const result = await verifyRiskInclusion({ target: A }, { registryAddress: "" });
     assert.equal(result.configured, false);
     assert.equal(result.committed, false);
     assert.equal(result.verifiedOnchain, null);

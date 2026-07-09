@@ -68,6 +68,15 @@ describe("feed registry & aliases", () => {
     assert.strictEqual(lookup.feed.pair, "ETH/USD");
   });
 
+  it("maps PHAROS (the ecosystem name) to the PROS/USD feed", () => {
+    const lookup = resolveFeedSymbol("PHAROS");
+    assert.ok(lookup);
+    assert.strictEqual(lookup.canonical, "PROS");
+    assert.strictEqual(lookup.feed.pair, "PROS/USD");
+    assert.strictEqual(lookup.aliased, true);
+    assert.strictEqual(lookup.feed.feedAddress, PACIFIC_MAINNET_PRICE_FEEDS.PROS.feedAddress);
+  });
+
   it("WBTC keeps its own dedicated feed (not aliased to BTC)", () => {
     const lookup = resolveFeedSymbol("WBTC");
     assert.ok(lookup);
@@ -82,10 +91,10 @@ describe("feed registry & aliases", () => {
 
   it("lists all mainnet feed symbols plus aliases", () => {
     const symbols = pricedSymbolsForActiveNetwork();
-    for (const s of ["PROS", "WPROS", "ETH", "WETH", "BTC", "WBTC", "USDC", "USDT", "LINK", "BNB", "SOL", "XRP"]) {
+    for (const s of ["PROS", "WPROS", "ETH", "WETH", "BTC", "WBTC", "USDC", "USDT", "LINK", "BNB", "SOL", "XRP", "PHAROS"]) {
       assert.ok(symbols.includes(s), `missing ${s}`);
     }
-    assert.strictEqual(symbols.length, 12);
+    assert.strictEqual(symbols.length, 13);
   });
 });
 
