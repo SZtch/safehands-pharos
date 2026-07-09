@@ -6,7 +6,7 @@
 
 **A transaction-safety gateway for AI agents on Pharos Pacific Mainnet — the compliance checkpoint Real-Fi needs before any tokenized-asset transaction is signed.**
 
-An AI agent can sign almost anything: an unlimited token approval, a swap on the wrong chain, a payment to a malicious x402 endpoint, a transfer of a tokenized asset to an unvetted counterparty. SafeHands is the check that runs *before* the signature. A deterministic policy engine evaluates every action and returns one of four decisions (`ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATION`, `PREPARE_ONLY`) with a plain-English reason — and every relayed verified broadcast is attested on-chain, building a privacy-preserving audit trail and reputation layer. You act on your own wallet; SafeHands never holds keys and never signs for you.
+An AI agent can sign almost anything: an unlimited token approval, a swap on the wrong chain, a payment to a malicious x402 endpoint, a transfer of a tokenized asset to an unvetted counterparty. SafeHands is the check that runs *before* the signature. A deterministic policy engine evaluates every action and returns one of four decisions (`ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATION`, `PREPARE_ONLY`) with a plain-English reason — and when SafeHands relays a verified broadcast (an opt-in path, off by default), it attests that broadcast on-chain, building a privacy-preserving audit trail and a composable reputation layer. You act on your own wallet; SafeHands never holds keys and never signs for you.
 
 It ships as an MCP server, an HTTP API, and a CLI, exposing 33 tools that any agent in the Pharos ecosystem can call.
 
@@ -168,16 +168,17 @@ The decision is **deterministic**: the policy engine decides, not a model. An LL
 
 ## Why this matters for Real-Fi & RWA
 
-Pharos is a Real-Fi chain, and tokenized real-world assets carry real-world obligations that memecoins do not: asset legitimacy, transfer restrictions, audit trails, settlement discipline, counterparty trust. SafeHands provides that layer — live on mainnet today, not as a mock:
+Pharos is a Real-Fi chain, and tokenized real-world assets carry real-world obligations that memecoins do not: asset legitimacy, transfer restrictions, audit trails, settlement discipline, counterparty trust. SafeHands provides that layer on mainnet today — the read/policy path is live, and the write-side attestation path is a working opt-in. The table marks each honestly:
 
-| RWA requirement | SafeHands capability (live) |
-|---|---|
-| Asset legitimacy | Token-registry classification + GoPlus security checks (mint backdoors, honeypots) |
-| Transfer restrictions | Deterministic per-agent policy: caps, approval limits, human-in-the-loop `REQUIRE_CONFIRMATION` |
-| Audit trail | On-chain attestation of every relayed verified broadcast — hash-only, privacy-preserving |
-| Composable risk memory | Merkle risk roots + `verifyRiskRecord` on-chain view + keyless inclusion proofs |
-| Counterparty trust | `get_agent_reputation` — on-chain verified-safe track record per address |
-| Settlement discipline | x402/USDC rails with SSRF guards, token allowlist, per-call and daily caps |
+| RWA requirement | SafeHands capability | Status |
+|---|---|---|
+| Asset legitimacy | Token-registry classification + GoPlus security checks (mint backdoors, honeypots) | **Live** — GoPlus Pharos (1672) coverage is still new, so tokens it hasn't indexed return fail-closed / `UNVERIFIED`, never "safe" |
+| Transfer restrictions | Deterministic per-agent policy: caps, approval limits, human-in-the-loop `REQUIRE_CONFIRMATION` | **Live** |
+| Audit trail | On-chain attestation of every relayed verified broadcast — hash-only, privacy-preserving | **Live, opt-in** — the relayed-broadcast path is off by default (verify-only) until `SAFEHANDS_USER_SIGNED_BROADCAST_ENABLED=true` |
+| Composable risk memory | Merkle risk roots + `verifyRiskRecord` on-chain view + keyless inclusion proofs | **Live** |
+| Counterparty trust | `get_agent_reputation` — on-chain verified-safe track record per address | **Live** — the oracle is live; records accrue from the opt-in attested-broadcast path, so a fresh address reads as zero until it has attested actions |
+| Settlement discipline | x402/USDC rails with SSRF guards, token allowlist, per-call and daily caps | **Live** |
+| Compliance screening (TRM Labs) · cross-chain settlement (Circle CCTP) | — | **Roadmap — not integrated** |
 
 Demo scenarios 11–12 show the RWA flows end-to-end. Full mapping, with an honest live-vs-roadmap split: **[docs/REALFI_RWA_ALIGNMENT.md](docs/REALFI_RWA_ALIGNMENT.md)**.
 
@@ -448,7 +449,7 @@ See [.env.example](.env.example) for the full reference.
 
 - Managed-wallet encryption is AES-256-GCM, not KMS/Vault-grade — not intended for custody of large amounts.
 - User-signed broadcast (`POST /broadcast/signed`) is live but disabled by default; without `SAFEHANDS_USER_SIGNED_BROADCAST_ENABLED=true` it runs verify-only.
-- GoPlus token security does not cover Pharos testnet (`688689`).
+- GoPlus token security does not cover Pharos testnet (`688689`). On Pharos Pacific Mainnet (`1672`) GoPlus coverage is still new: tokens it has not yet indexed return a fail-closed `UNVERIFIED` result (never "safe"), so asset-legitimacy checks depend on GoPlus's indexing progress.
 - Canonical token prices come from Chainlink Push Engine feeds on Pharos Pacific Mainnet. If the public RPC is temporarily rate-limited, SafeHands may serve a clearly flagged bounded cached oracle value; stale feeds fail closed.
 - DODO / FaroSwap route checks can occasionally lack liquidity for exotic pairs; this affects pool/route/swap tooling, not canonical `get_token_price`.
 
