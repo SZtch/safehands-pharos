@@ -58,7 +58,7 @@ AI agents making on-chain transactions need guardrails. Without safety checks, a
 - Pay x402 invoices to SSRF targets
 - Move a tokenized asset to an unvetted counterparty with no audit trail
 
-SafeHands sits between the agent and the blockchain. Every action goes through preflight, risk scoring, policy checks, and authorization gates before execution is allowed — and relayed broadcasts are attested on-chain.
+SafeHands sits between the agent and the blockchain. Every action goes through preflight, risk scoring, policy checks, and authorization gates before execution is allowed — and, on the opt-in relayed-broadcast path (off by default), the broadcasts it relays are attested on-chain.
 
 ## 4. Execution modes
 

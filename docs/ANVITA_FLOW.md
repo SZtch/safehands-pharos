@@ -57,7 +57,7 @@ The `safehands_preflight_check` returns a strict JSON decision: `ALLOW`, `BLOCK`
 
 ## 4. Why This Wins Phase 2 (The Blockchain Edge)
 
-**Real-Fi & RWA fit.** Pharos is a Real-Fi chain, and this agent is the compliance checkpoint those flows need: it verifies asset legitimacy before an agent touches a tokenized asset (token registry + GoPlus security checks), enforces transfer restrictions deterministically (per-agent caps, human-in-the-loop `REQUIRE_CONFIRMATION`), caps stablecoin settlements on the x402 rail, and writes a privacy-preserving audit record on-chain for every relayed verified broadcast. See [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) for the full live-vs-roadmap mapping.
+**Real-Fi & RWA fit.** Pharos is a Real-Fi chain, and this agent is the compliance checkpoint those flows need: it verifies asset legitimacy before an agent touches a tokenized asset (token registry + GoPlus security checks), enforces transfer restrictions deterministically (per-agent caps, human-in-the-loop `REQUIRE_CONFIRMATION`), caps stablecoin settlements on the x402 rail, and — on the opt-in relayed-broadcast path (off by default) — writes a privacy-preserving audit record on-chain for every verified broadcast it relays. See [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) for the full live-vs-roadmap mapping.
 
 Unlike traditional agents that rely solely on LLM hallucinations, the SafeHands Agent uses **deterministic on-chain data**:
 - It pulls live liquidity from **FaroSwap**.
