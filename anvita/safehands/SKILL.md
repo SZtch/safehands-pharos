@@ -1,15 +1,15 @@
 ---
 name: safehands
-description: Pre-execution security layer for autonomous agent finance on Pharos. Use this skill to analyze wallet, token, contract, or transaction intent risk before execution, query on-chain SafeHands risk records and agent reputation, check whether an address, wallet, token, or contract is safe or a scam before a swap, transfer, or approval, or protect autonomous finance agents from unsafe on-chain actions.
+description: Zero-custody transaction-safety gateway for autonomous agent finance on Pharos. Use this skill to analyze wallet, token, contract, or transaction intent risk before execution, query on-chain SafeHands risk records and agent reputation, check whether an address, wallet, token, or contract is safe or a scam before a swap, transfer, or approval, or protect autonomous finance agents from unsafe on-chain actions.
 ---
 
 # SafeHands
 
 ## Overview
 
-SafeHands is a pre-execution security layer for autonomous agent finance on **Pharos Pacific Mainnet (chainId 1672)**. Before an agent signs, approves, swaps, pays, or calls a contract, this Skill checks the proposed action and returns a structured risk report: a **riskScore (0–100)**, an **allow / warn / block** recommendation, detected **riskFactors**, a plain-English **explanation**, and a suggested **nextAction**.
+SafeHands is a **zero-custody transaction-safety gateway** for Pharos AI agents on **Pharos Pacific Mainnet (chainId 1672)**. It runs before swaps, approvals, transfers, contract calls, and x402 payments, returning deterministic allow/warn/block verdicts before anything is signed. Each check produces a structured risk report: a **riskScore (0–100)**, an **allow / warn / block** recommendation, detected **riskFactors**, a plain-English **explanation**, and a suggested **nextAction**.
 
-This Skill is **fully hosted**: it reads Pharos directly via public JSON-RPC (`https://rpc.pharos.xyz`) using the bundled engine at `scripts/safehands-engine.js`. Contract analysis cross-checks the **official Pharos Token Registry and Canonical Contracts** (baked into `assets/safehands/known-pharos.json`) to catch token impersonation (fake USDC/WPROS/WETH/LINK) and recognize canonical infrastructure. It is further enriched with **GoPlus threat intelligence** (public keyless API: honeypot, buy/sell tax, hidden owner, malicious-address flags) with graceful fallback to on-chain heuristics if GoPlus is unreachable. It requires no backend, holds no keys, and performs **read-only** chain access exclusively (`eth_call`, `eth_get*`). It never signs, never pays, never custodies.
+This Skill is **fully hosted**: it reads Pharos directly via public JSON-RPC (`https://rpc.pharos.xyz`) using the bundled engine at `scripts/safehands-engine.js`. Contract analysis cross-checks the **official Pharos Token Registry and Canonical Contracts** (baked into `assets/safehands/known-pharos.json`) to catch token impersonation (fake USDC/WPROS/WETH/LINK) and recognize canonical infrastructure. It is further enriched with **GoPlus threat intelligence** (public keyless API: honeypot, buy/sell tax, hidden owner, malicious-address flags) with graceful fallback to on-chain heuristics if GoPlus is unreachable. SafeHands is **non-custodial by design**: a pre-execution security checkpoint — a transaction firewall that sits in front of wallet signing, not behind it. It requires no backend, holds no keys, never signs, never broadcasts, never executes, and never custodies funds. Its on-chain access is verification-only (`eth_call`, `eth_get*`): it can inspect everything and touch nothing, so the checkpoint can never become the attack surface it guards against.
 
 ## When to use this Skill
 
@@ -35,7 +35,7 @@ If a required input is missing, ask a follow-up question before running the engi
 
 ## Safety rules (non-negotiable)
 
-1. Never sign, broadcast, pay, or execute anything. This Skill is analysis and read-only queries ONLY.
+1. Never sign, broadcast, pay, or execute anything. This Skill is a zero-custody pre-execution checkpoint: verdicts and verification reads ONLY.
 2. Never request, accept, store, or forward private keys, seed phrases, or mnemonics. The engine rejects key-like input (`KEY_MATERIAL_REJECTED`).
 3. Only Pharos pacific-mainnet (chainId **1672**) is supported. Refuse other chains (`CHAIN_NOT_SUPPORTED`).
 4. Report scores and factors EXACTLY as the engine returns them. Never invent, soften, or inflate a score.
@@ -68,7 +68,7 @@ For every operation, read `references/safehands.md` and follow the matching sect
 ## Unsupported requests
 
 Politely decline and explain:
-- **Publishing risk records or attestations on-chain** — requires the SafeHands operator backend, which is not part of this hosted deployment. Analysis and read-only queries only.
+- **Publishing risk records or attestations on-chain** — requires the SafeHands operator backend, which is not part of this hosted deployment. This deployment is the checkpoint before the signature, not the executor: verdicts and verification reads only.
 - Executing, signing, or preparing any transaction; recovering funds; financial advice; guaranteeing an asset is safe.
 - Any chain other than Pharos pacific-mainnet (1672).
 - Full source-code audits (recommend deeper review for high-value actions; honeypot/tax flags ARE covered via GoPlus when reachable).

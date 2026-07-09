@@ -8,7 +8,7 @@ SafeHands
 
 ## One-sentence introduction
 
-Pre-execution security agent that checks on-chain actions before autonomous finance agents execute them.
+Zero-custody pre-execution security checkpoint that vets on-chain actions before autonomous finance agents sign or execute them.
 
 ## Capability description
 
@@ -35,7 +35,7 @@ Structured risk report including risk score, allow/warn/block recommendation, de
 
 ## Range not supported
 
-SafeHands does not provide financial advice, guarantee asset safety, recover lost funds, execute transactions, sign transactions, custody funds, handle private keys, or publish new on-chain records in this deployment. This deployment is focused on analysis and read-only queries.
+SafeHands does not provide financial advice, guarantee asset safety, recover lost funds, execute transactions, sign transactions, custody funds, handle private keys, or publish new on-chain records in this deployment. It is non-custodial by design — a transaction firewall that issues verdicts before signing and never touches keys, signatures, or funds.
 
 ## Estimated execution duration
 
