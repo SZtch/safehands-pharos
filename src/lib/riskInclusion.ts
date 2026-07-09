@@ -162,9 +162,14 @@ async function fetchBatch(dataURI: string): Promise<unknown> {
  */
 export async function verifyRiskInclusion(
   match: { target: string; actionHash?: string },
-  opts: { verifyOnchain?: boolean } = {}
+  opts: { verifyOnchain?: boolean; registryAddress?: string } = {}
 ): Promise<RiskInclusionResult> {
-  const address = registryAddress();
+  // An explicit registryAddress override (incl. "") lets callers/tests exercise the
+  // fail-closed branch deterministically without touching env or the network.
+  const address =
+    opts.registryAddress !== undefined
+      ? (opts.registryAddress && isAddress(opts.registryAddress) ? (opts.registryAddress as `0x${string}`) : null)
+      : registryAddress();
   if (!address) {
     return neutral({ source: "unconfigured", error: "SAFEHANDS_REGISTRY_ADDRESS not configured." });
   }

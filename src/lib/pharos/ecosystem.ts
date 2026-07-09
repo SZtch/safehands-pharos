@@ -76,7 +76,7 @@ export const ECOSYSTEM_PROVIDERS: EcosystemEntry[] = [
     aliases: ["chainlink", "chainlink-pe", "chainlink price feed", "cre"],
     addresses: [
       { network: "pacific-mainnet", chainId: 1672, address: "0xc71f7d98d3d9a000Fdfe307fBdb9d94AbD56424B", label: "Chainlink price-feed cache (Pacific)" },
-      { network: "pacific-mainnet", chainId: 688689, address: "0x5456fD07A1622d33969f833d52aA5AD2c68C3Fa2", label: "Chainlink price-feed cache (Atlantic)" },
+      { network: "atlantic-testnet", chainId: 688689, address: "0x5456fD07A1622d33969f833d52aA5AD2c68C3Fa2", label: "Chainlink price-feed cache (Atlantic)" },
     ],
     officialDocsUrl: DOCS.chainlink,
     source: "official_docs",

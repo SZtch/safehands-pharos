@@ -45,6 +45,9 @@ export const ATLANTIC_TESTNET_PRICE_FEEDS: Record<string, PriceFeedConfig> = {};
 export const PRICE_FEED_ALIASES: Record<string, string> = {
   WPROS: "PROS",
   WETH: "ETH",
+  // Pharos is the network/ecosystem; PROS is the token. Priced via the PROS/USD
+  // feed. Matches supported-assets.json + the Anvita engine.
+  PHAROS: "PROS",
 };
 
 export function activePriceFeeds(): Record<string, PriceFeedConfig> {

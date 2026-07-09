@@ -437,12 +437,35 @@ export const AUTO_AUTHORIZE_AGENT_WALLET =
   process.env.AUTO_AUTHORIZE_AGENT_WALLET === "true";
 
 // ─── SafeHands on-chain layer (2-contract architecture) ────────────────
-// SafeHandsRegistry    — trust + reputation oracle (replaces SafeHandsRegistry)
+// SafeHandsRegistry    — trust + reputation oracle
 // SafeHandsAttestation — immutable proof ledger (see pharos/attestationPublisher.ts)
-// Addresses come from env (set after the mainnet deploy); empty until deployed.
+// Deployed on Pharos Pacific mainnet (chainId 1672) and baked as READ-path
+// defaults below. Env vars still override; a chainId guard keeps the baked
+// defaults Pacific-only (any other chain resolves to "" → fail-closed). Write
+// availability is gated separately (WRITE_TOOLS_ENABLED + attester key) via
+// process.env reads, so baking these read defaults never enables a write.
 
-export const SAFEHANDS_REGISTRY_ADDRESS = process.env.SAFEHANDS_REGISTRY_ADDRESS || "";
-export const SAFEHANDS_ATTESTATION_ADDRESS = process.env.SAFEHANDS_ATTESTATION_ADDRESS || "";
+const SAFEHANDS_REGISTRY_ADDRESS_PACIFIC = "0x428e02bf85412e7242d991cd6725ec59e8b06c8d";
+const SAFEHANDS_ATTESTATION_ADDRESS_PACIFIC = "0x71a7a87b3b1ab6d86204cad691bb32fd75b4588c";
+const PACIFIC_MAINNET_CHAIN_ID = 1672;
+
+/** Read-path resolver: env override → Pacific-mainnet baked default → "" (chainId-guarded, fail-closed). */
+export function resolveSafeHandsRegistryAddress(chainId: number = CHAIN_ID): string {
+  const env = process.env.SAFEHANDS_REGISTRY_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS || "";
+  if (env) return env;
+  return chainId === PACIFIC_MAINNET_CHAIN_ID ? SAFEHANDS_REGISTRY_ADDRESS_PACIFIC : "";
+}
+
+/** Read-path resolver: env override → Pacific-mainnet baked default → "" (chainId-guarded, fail-closed). */
+export function resolveSafeHandsAttestationAddress(chainId: number = CHAIN_ID): string {
+  const env = process.env.SAFEHANDS_ATTESTATION_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS || "";
+  if (env) return env;
+  return chainId === PACIFIC_MAINNET_CHAIN_ID ? SAFEHANDS_ATTESTATION_ADDRESS_PACIFIC : "";
+}
+
+// Back-compat consts — existing reporting consumers keep importing these unchanged.
+export const SAFEHANDS_REGISTRY_ADDRESS = resolveSafeHandsRegistryAddress();
+export const SAFEHANDS_ATTESTATION_ADDRESS = resolveSafeHandsAttestationAddress();
 
 /** Sentinel returned by SafeHandsRegistry.riskScoreOf when no valid record exists. */
 export const NO_RISK_SCORE = 255;

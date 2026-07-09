@@ -1,6 +1,7 @@
 import { createPublicClient, defineChain, http, isAddress, parseAbi } from "viem";
 import { fetchWithTimeoutAndRetry } from "./http.js";
 import { getActiveNetwork, resolveRpcUrl } from "./networks.js";
+import { resolveSafeHandsAttestationAddress } from "./constants.js";
 
 export interface GoldskyConfigStatus {
   enabled: boolean;
@@ -301,7 +302,8 @@ export async function lookupLatestRiskRootInGoldsky(): Promise<GoldskyLookupResu
 }
 
 function attestationAddress(): `0x${string}` | null {
-  const raw = process.env.SAFEHANDS_ATTESTATION_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS || "";
+  // Read-path: env override → Pacific-mainnet baked default → "" (chainId-guarded).
+  const raw = resolveSafeHandsAttestationAddress();
   return isAddress(raw) ? (raw as `0x${string}`) : null;
 }
 

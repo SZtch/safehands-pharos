@@ -460,6 +460,14 @@ describe("Anvita engine — RealFi intents (fail-closed)", () => {
     assert.strictEqual(out.vaultProviderData.apy, null);
   });
 
+  it("vault_deposit to an unknown (non-canonical) vault with code → does not allow", async () => {
+    mock = startMock({ symbol: "GOOD", goplusResult: {} });
+    const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "vault_deposit", walletAddress: "0x1111111111111111111111111111111111111111", token: "0x2222222222222222222222222222222222222222", vault: "0x4444444444444444444444444444444444444444" }), envFor(mock));
+    mock.close();
+    assert.strictEqual(out.success, true);
+    assert.notStrictEqual(out.recommendation, "allow");
+  });
+
   it("staking intent to an unknown (non-canonical) contract → at least warn", async () => {
     mock = startMock({ symbol: "GOOD", goplusResult: {} });
     const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "staking", walletAddress: "0x1111111111111111111111111111111111111111", stakingContract: "0x3333333333333333333333333333333333333333" }), envFor(mock));
@@ -473,6 +481,7 @@ describe("Anvita engine — RealFi intents (fail-closed)", () => {
     const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "tokenized_asset", walletAddress: "0x1111111111111111111111111111111111111111", market: "0x3333333333333333333333333333333333333333" }), envFor(mock));
     mock.close();
     assert.ok(out.intentNotes.some((n) => /backing|offering documents/i.test(n)));
+    assert.notStrictEqual(out.recommendation, "allow");
   });
 
   it("fiat_ramp intent flags a non-HTTPS local URL and needs no wallet", async () => {
