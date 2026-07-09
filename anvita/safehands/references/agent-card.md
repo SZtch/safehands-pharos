@@ -8,11 +8,11 @@ SafeHands
 
 ## One-sentence introduction
 
-Zero-custody pre-execution security checkpoint that vets on-chain actions before autonomous finance agents sign or execute them.
+SafeHands is the transaction firewall for autonomous finance agents on Pharos — safety infrastructure that checks token, approval, contract, bridge, vault, staking, tokenized-asset, gas, transaction, and x402 payment risk before an agent signs or moves capital.
 
 ## Capability description
 
-SafeHands is a zero-custody, read-only pre-execution safety layer. It evaluates wallet, token, contract, and transaction-intent risk — including RealFi actions (bridges, vault/yield deposits, staking, tokenized assets, x402 payments) — and returns a structured risk score, detected risk factors, explanation, and an allow/warn/block verdict for autonomous agent finance on Pharos Pacific Mainnet. It also serves read-only market and network data: live Chainlink Push token prices, gas price, ERC-20 allowances and approval risk, transaction status, gas estimates, and `eth_call` simulations. Token checks are enriched with GoPlus threat intelligence (honeypot, sell tax, hidden owner, malicious-address flags). Unknown or unverified targets fail closed; unconfigured providers return a structured NOT_CONFIGURED response rather than invented data.
+SafeHands is safety infrastructure — the transaction firewall — for autonomous finance agents on Pharos. It checks token, approval, contract, bridge, vault, staking, tokenized asset, gas, transaction, and x402 payment risks before an agent signs or moves capital. Zero-custody and read-only, it evaluates wallet, token, contract, and transaction-intent risk — including RealFi actions (bridges, vault/yield deposits, staking, tokenized assets, x402 payments) — and returns a structured risk score, detected risk factors, explanation, and an allow/warn/block verdict for autonomous agent finance on Pharos Pacific Mainnet. It also serves read-only market and network data: live Chainlink Push token prices, gas price, ERC-20 allowances and approval risk, transaction status, gas estimates, and `eth_call` simulations. Token checks are enriched with GoPlus threat intelligence (honeypot, sell tax, hidden owner, malicious-address flags). Unknown or unverified targets fail closed; unconfigured providers return a structured NOT_CONFIGURED response rather than invented data.
 
 ## Example tasks
 
