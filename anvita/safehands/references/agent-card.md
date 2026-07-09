@@ -12,7 +12,7 @@ Zero-custody pre-execution security checkpoint that vets on-chain actions before
 
 ## Capability description
 
-SafeHands evaluates wallet, token, contract, and transaction-intent risk before execution. It returns a structured risk score, detected risk factors, explanation, and an allow/warn/block recommendation for autonomous agent finance on Pharos. For token checks, SafeHands can enrich analysis with GoPlus threat intelligence such as honeypot signals, sell tax, hidden owner, and malicious-address flags.
+SafeHands is a zero-custody, read-only pre-execution safety layer. It evaluates wallet, token, contract, and transaction-intent risk — including RealFi actions (bridges, vault/yield deposits, staking, tokenized assets, x402 payments) — and returns a structured risk score, detected risk factors, explanation, and an allow/warn/block verdict for autonomous agent finance on Pharos Pacific Mainnet. It also serves read-only market and network data: live Chainlink Push token prices, gas price, ERC-20 allowances and approval risk, transaction status, gas estimates, and `eth_call` simulations. Token checks are enriched with GoPlus threat intelligence (honeypot, sell tax, hidden owner, malicious-address flags). Unknown or unverified targets fail closed; unconfigured providers return a structured NOT_CONFIGURED response rather than invented data.
 
 ## Example tasks
 
@@ -20,10 +20,13 @@ SafeHands evaluates wallet, token, contract, and transaction-intent risk before 
 - Analyze this token contract before my agent swaps into it: `0x...`
 - Is this token a honeypot or does it have a hidden sell tax? `0x...`
 - Is this the real USDC on Pharos or a fake? `0x...`
-- Review this proposed transaction intent and tell me whether to allow, warn, or block it.
-- Score the risk of this DeFi action before execution.
-- Query the latest SafeHands risk record for this address: `0x...`
-- What is the on-chain reputation of this agent? How many verified actions does it have? `0x...`
+- Before my agent bridges USDC through this router, check the risk.
+- Before my agent deposits PROS into this vault/staking contract, check the risk.
+- Run SafeHands preflight before this agent pays this x402 API.
+- What's the PROS/USD price? (harga 1 pharos berapa?)
+- What's the current gas price, and does this spender have an unlimited approval? `0x...`
+- What's the status of this transaction? `0x...`
+- Query the latest SafeHands risk record / on-chain reputation for this address: `0x...`
 
 ## Information required from customer
 
@@ -35,7 +38,7 @@ Structured risk report including risk score, allow/warn/block recommendation, de
 
 ## Range not supported
 
-SafeHands does not provide financial advice, guarantee asset safety, recover lost funds, execute transactions, sign transactions, custody funds, handle private keys, or publish new on-chain records in this deployment. It is non-custodial by design — a transaction firewall that issues verdicts before signing and never touches keys, signatures, or funds.
+SafeHands does not provide financial or trading advice, guarantee asset/vault/campaign safety, recover lost funds, or execute anything — it never signs, broadcasts, approves, swaps, bridges, deposits, stakes, pays, creates/manages wallets, handles private keys, or publishes on-chain records in this deployment. It does not fetch arbitrary URLs, use API keys/pass-keys, or treat DEX quotes as canonical prices. It is non-custodial by design — a transaction firewall that issues verdicts before signing and never touches keys, signatures, or funds. Where data is unavailable (unconfigured provider, unsupported RPC method, stale feed), it says so rather than inventing an answer.
 
 ## Estimated execution duration
 

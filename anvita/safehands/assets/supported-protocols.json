@@ -1,0 +1,52 @@
+{
+  "network": "pacific-mainnet",
+  "chainId": 1672,
+  "note": "Optional public data providers for enrichment. An endpoint may ONLY be configured here if it is public, verified, requires NO API key / pass-key / auth header / cookie, and resolves over DNS. When an endpoint is null, the matching engine command returns a structured *_NOT_CONFIGURED error instead of inventing data.",
+  "forbidden": [
+    "DODO API keys or any keyed quote API",
+    "FaroSwap pass-key or internal frontend endpoints",
+    "GraphQL hosts that do not resolve over public DNS (e.g. backend.faroswap.xyz/graphql at the time of writing)",
+    "Scraping websites or block explorers",
+    "Treating any DEX/pool/route quote as a canonical price — canonical pricing is Chainlink Push feeds only (see supported-assets.json)"
+  ],
+  "providers": {
+    "goldsky": {
+      "endpoint": null,
+      "providerStatus": "not_configured",
+      "kind": "graphql-subgraph",
+      "note": "Set to a public Goldsky subgraph GraphQL URL (https, keyless) to enable query_goldsky_subgraph."
+    },
+    "executionHistory": {
+      "endpoint": null,
+      "providerStatus": "not_configured",
+      "kind": "json-indexer",
+      "note": "Set to a public, keyless indexer URL to enable get_execution_history. Explorer scraping is not an acceptable substitute."
+    },
+    "poolInfo": {
+      "endpoint": null,
+      "providerStatus": "not_configured",
+      "kind": "json-api",
+      "note": "Set to a verified public, keyless pool-info URL to enable get_pool_info. Pool/route data is context only — never a canonical price."
+    },
+    "vaultStatus": {
+      "endpoint": null,
+      "providerStatus": "not_configured",
+      "kind": "json-api",
+      "note": "Set to a verified public, keyless vault-status URL to enrich vault_deposit / yield_deposit intents with TVL/cap/paused data. Without it, those fields are reported as unavailable — never invented."
+    }
+  },
+  "protocols": {
+    "stargate": {
+      "verificationStatus": "unverified",
+      "note": "No officially published Stargate router address for Pharos Pacific Mainnet is bundled. Bridge intents to unlisted routers fail closed (warn/block)."
+    },
+    "faroswap": {
+      "verificationStatus": "unverified",
+      "note": "No officially published FaroSwap contract addresses are bundled. Internal frontend endpoints and pass-keys are prohibited."
+    },
+    "stpros-premint": {
+      "verificationStatus": "unverified",
+      "note": "No officially published stPROS Pre-Mint contract address is bundled. Yield-deposit intents to unlisted contracts fail closed (warn/block)."
+    }
+  }
+}
