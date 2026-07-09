@@ -430,7 +430,7 @@ SAFEHANDS_ATTESTATION_ADDRESS=0x71a7a87b3b1ab6d86204cad691bb32fd75b4588c
 
 # Price oracle
 # get_token_price uses Chainlink Push Engine feeds on Pharos Pacific Mainnet.
-# No API key is required for canonical PROS/USDC/USDT/WBTC/ETH/WETH/LINK/BNB/SOL/XRP prices.
+# No API key is required for canonical PROS/USDC/USDT/BTC/WBTC/ETH/WETH/LINK/BNB/SOL/XRP prices.
 
 # Self-hosted managed execution (opt-in)
 WALLET_MODE=managed-mainnet     # none | env | managed-mainnet
