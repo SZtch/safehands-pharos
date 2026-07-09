@@ -142,14 +142,27 @@ async function erc20Probe(addr) {
 }
 
 // ── GoPlus threat intelligence (public API, keyless, graceful fallback) ──
+// Transient failures (rate-limit/5xx/timeout) retry with linear backoff, mirroring the
+// self-hosted analyzer's fetchGoplus: a momentary GoPlus hiccup must not push a clean
+// subject onto the missing-threat-intel floor. Exhausted retries still return null —
+// the caller's fail-closed floor remains the last line of defense.
+const GOPLUS_RETRYABLE = new Set([408, 425, 429, 500, 502, 503, 504]);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function goplusGet(pathname, timeoutMs = 10000) {
-  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
-  try {
-    const res = await fetch(GOPLUS_BASE + pathname, { signal: ctl.signal, headers: { accept: "application/json" } });
-    if (!res.ok) return null;
-    const j = await res.json();
-    return j && (j.code === 1 || j.code === "1") ? j.result : null;
-  } catch { return null; } finally { clearTimeout(t); }
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    if (attempt > 0) await sleep(300 * attempt);
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const res = await fetch(GOPLUS_BASE + pathname, {
+        signal: ctl.signal, headers: { accept: "application/json", "user-agent": "SafeHands/2.3.0" },
+      });
+      if (GOPLUS_RETRYABLE.has(res.status) && attempt < 2) continue;
+      if (!res.ok) return null;
+      const j = await res.json();
+      return j && (j.code === 1 || j.code === "1") ? j.result : null;
+    } catch { if (attempt === 2) return null; } finally { clearTimeout(t); }
+  }
+  return null;
 }
 const flag = (v) => v === "1" || v === 1 || v === true;
 // A GoPlus flag is "known" only if it decodes to a recognizable boolean. Absent/renamed
@@ -162,6 +175,11 @@ async function goplusToken(addr) {
   // (renamed/retyped schema) → do NOT read every flag as false; signal drift so the caller
   // applies the missing-threat-intel floor instead of silently under-reporting the token.
   if (!flagKnown(d.is_honeypot)) return { reachable: true, data: null, schemaDrift: true, factors: [], add: 0 };
+  // Display-only identity from the SAME security payload (no extra fetch). Untrusted
+  // external strings: trim + cap at 128 chars. Never used in scoring or the verdict.
+  const optStr = (v) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 128) : undefined);
+  const identity = (optStr(d.token_name) || optStr(d.token_symbol))
+    ? { tokenName: optStr(d.token_name), tokenSymbol: optStr(d.token_symbol) } : null;
   const factors = []; let add = 0;
   if (flag(d.is_honeypot)) { factors.push("GoPlus: HONEYPOT — token cannot be sold"); add += 80; }
   if (flag(d.cannot_sell_all)) { factors.push("GoPlus: holders cannot sell all tokens"); add += 30; }
@@ -178,7 +196,7 @@ async function goplusToken(addr) {
   if (flag(d.is_blacklisted)) { factors.push("GoPlus: owner can blacklist holders"); add += 15; }
   if (flag(d.is_proxy)) { factors.push("GoPlus: upgradeable proxy — logic can change"); add += 10; }
   if (d.is_open_source !== undefined && !flag(d.is_open_source)) { factors.push("GoPlus: source code not verified"); add += 20; }
-  return { reachable: true, data: d, factors, add: Math.min(add, 90) };
+  return { reachable: true, data: d, factors, add: Math.min(add, 90), identity };
 }
 async function goplusAddress(addr) {
   const r = await goplusGet(`/api/v1/address_security/${addr}?chain_id=${CHAIN_ID}`);
@@ -274,6 +292,7 @@ async function analyzeContract(addr) {
   }
   return report(score, factors, { type: "contract", address: addr }, {
     onChain: { isContract: true, codeSize: p.codeSize, token: looksToken ? t : null },
+    ...(gp.identity ? { goplusTokenIdentity: gp.identity } : {}), // display-only, never scored
     intel: gpVerified ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unverified)",
     limits: gpVerified ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
       : "GoPlus verdict unavailable for this call — heuristics only; honeypot status unknown.",

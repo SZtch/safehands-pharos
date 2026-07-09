@@ -56,7 +56,7 @@ node scripts/safehands-engine.js analyze '{"subjectType":"intent","action":"swap
 | walletAddress | 0x-address | intent (all) | Acting wallet — required for balance/history checks. |
 | chainId | number | optional | If present must be 1672. |
 
-**Output Parsing:** top-level `{success:true, riskScore, recommendation, riskLevel, riskFactors[], explanation, nextAction, analysisDepth, subject, onChain?/components?}`. For intents, `components` holds per-part sub-reports (recipient / tokenIn / tokenOut) — cite the dominant factor, don't dump raw JSON.
+**Output Parsing:** top-level `{success:true, riskScore, recommendation, riskLevel, riskFactors[], explanation, nextAction, analysisDepth, subject, onChain?/components?, goplusTokenIdentity?}`. For intents, `components` holds per-part sub-reports (recipient / tokenIn / tokenOut) — cite the dominant factor, don't dump raw JSON. `goplusTokenIdentity` (contract analysis, when GoPlus reports it) is display-only `{tokenName?, tokenSymbol?}` — identity context for the user, never part of the score.
 
 **Error Handling:** `VALIDATION_ERROR` → fix the input (message says which field) — never guess addresses; `CHAIN_NOT_SUPPORTED` → refuse, mainnet-only; `KEY_MATERIAL_REJECTED` → tell the user secrets must never be shared, do not retry with the secret; `PHAROS_RPC_UNAVAILABLE`/`RPC_TIMEOUT` → run §A, retry once, then report outage.
 
