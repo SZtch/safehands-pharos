@@ -32,9 +32,10 @@ SafeHands is packaged as a **fully-hosted, zero-infrastructure Service Agent** f
 ```
 User → Steward Agent → Anvita Flow marketplace → SafeHands (hosted skill)
                                                       │
-                                     reads Pharos mainnet (1672) directly via public RPC
+                                     deterministic Pharos mainnet policy pack:
                                      + official Pharos Token & Canonical-Contract registries
-                                     + GoPlus threat intelligence (hackathon sponsor)
+                                     + URL / payment / token / wallet intent checks
+                                     + optional caller-supplied live evidence
                                                       │
                                      deterministic verdict: riskScore 0–100 · allow / warn / block
 ```
@@ -43,12 +44,12 @@ User → Steward Agent → Anvita Flow marketplace → SafeHands (hosted skill)
 
 | Capability | How it decides |
 |---|---|
-| **Token impersonation detection** | live on-chain `symbol()` cross-checked against the **official Pharos Token Registry** — catches fake USDC/WPROS/WETH/LINK that clean-looking threat feeds miss |
-| Honeypot / sell-tax / hidden-owner | **GoPlus threat intelligence** (keyless public API, graceful fallback) |
-| Malicious wallet flags | GoPlus address security: phishing, stealing, cybercrime |
+| **Token impersonation detection** | Official Pharos Token Registry checks, canonical-token aliases, and optional on-chain `symbol()` evidence — catches fake USDC/WPROS/WETH/LINK patterns that clean-looking names can hide |
+| Honeypot / sell-tax / hidden-owner | GoPlus token-security evidence when available in the full backend; hosted skill remains fail-closed / review-oriented when live evidence is unavailable |
+| Malicious wallet flags | Caller-supplied or backend-enriched address-security signals for phishing, stealing, cybercrime, and unverified counterparties |
 | Canonical infrastructure recognition | 14 official Pharos canonical contracts (Safe, Permit2, EntryPoint 4337…) |
-| Transfer / swap intent review | live balance, history & counterparty checks before execution |
-| On-chain risk records & agent reputation | reads the SafeHands Registry & Attestation contracts via `eth_call` |
+| Transfer / swap intent review | Amount, chain, recipient/spender, token, approval, signer, and counterparty-verification checks before execution |
+| On-chain risk records & agent reputation | Full backend reads the SafeHands Registry & Attestation contracts via `eth_call`; hosted skill can evaluate supplied registry/risk context without custody |
 
 Every verdict is **computed by code, not guessed by an LLM** — the AI layer only handles conversation. Every analysis links to [Pharosscan](https://www.pharosscan.xyz) so users verify the evidence themselves. The engine is deterministic and dependency-free, so identical inputs always yield an identical verdict.
 
@@ -283,10 +284,10 @@ Every tool returns the same envelope: `{ "success": true, "data": { … }, "erro
 
 | Tool | What it does |
 |------|--------------|
-| `get_token_price` | Token price via DODO |
+| `get_token_price` | Canonical USD price via Chainlink Push Engine feeds on Pharos Pacific Mainnet, with bounded degraded cache on transient RPC failure |
 | `get_wallet_balance` | PROS / USDC / USDT balances |
 | `get_gas_price` | Current gas price |
-| `get_pool_info` | Pool info via DODO |
+| `get_pool_info` | Pool / route info via DODO / FaroSwap |
 | `get_transaction_status` | Transaction status by hash |
 | `get_execution_history` | Wallet transfer history |
 | `query_goldsky_subgraph` | Query indexed attestation / registry events (Goldsky) |
@@ -427,10 +428,16 @@ WRITE_TOOLS_ENABLED=false
 SAFEHANDS_REGISTRY_ADDRESS=0x428e02bf85412e7242d991cd6725ec59e8b06c8d
 SAFEHANDS_ATTESTATION_ADDRESS=0x71a7a87b3b1ab6d86204cad691bb32fd75b4588c
 
+# Price oracle
+# get_token_price uses Chainlink Push Engine feeds on Pharos Pacific Mainnet.
+# No API key is required for canonical PROS/USDC/USDT/WBTC/ETH/WETH/LINK/BNB/SOL/XRP prices.
+
 # Self-hosted managed execution (opt-in)
 WALLET_MODE=managed-mainnet     # none | env | managed-mainnet
 WRITE_TOOLS_ENABLED=true
-DODO_API_KEY=                   # required for price / pool / swap
+
+# Optional route/swap provider config
+DODO_API_KEY=                   # optional; used for DODO/FaroSwap route, pool, and swap tooling — not canonical token price
 ```
 
 See [.env.example](.env.example) for the full reference.
@@ -442,7 +449,8 @@ See [.env.example](.env.example) for the full reference.
 - Managed-wallet encryption is AES-256-GCM, not KMS/Vault-grade — not intended for custody of large amounts.
 - User-signed broadcast (`POST /broadcast/signed`) is live but disabled by default; without `SAFEHANDS_USER_SIGNED_BROADCAST_ENABLED=true` it runs verify-only.
 - GoPlus token security does not cover Pharos testnet (`688689`).
-- DODO reverse routes can occasionally lack liquidity for exotic pairs.
+- Canonical token prices come from Chainlink Push Engine feeds on Pharos Pacific Mainnet. If the public RPC is temporarily rate-limited, SafeHands may serve a clearly flagged bounded cached oracle value; stale feeds fail closed.
+- DODO / FaroSwap route checks can occasionally lack liquidity for exotic pairs; this affects pool/route/swap tooling, not canonical `get_token_price`.
 
 ---
 
