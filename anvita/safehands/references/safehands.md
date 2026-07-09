@@ -49,7 +49,7 @@ node scripts/safehands-engine.js analyze '{"subjectType":"intent","action":"swap
 |---|---|---|---|
 | subjectType | wallet\|contract\|intent | all | tx-hash analysis is NOT supported fully-hosted. |
 | address | 0x-address | wallet, contract | Subject to analyze. |
-| action | transfer\|swap | intent | |
+| action | transfer\|swap\|bridge\|yield_deposit\|vault_deposit\|staking\|tokenized_asset\|fiat_ramp\|reward_campaign\|x402_payment | intent | transfer/swap below; RealFi actions in `references/realfi-intents.md`. |
 | toAddress | 0x-address | transfer | Recipient. |
 | amount | decimal string | transfer (optional) | e.g. `"1.5"` PROS; checked against acting wallet balance. |
 | tokenIn / tokenOut | 0x-address | swap | Both required. |
@@ -75,7 +75,7 @@ node scripts/safehands-engine.js query '<0xADDRESS>'
 
 **Output Parsing:** `{success:true, subject, registry:{configured, contractAddress?, currentMerkleRoot?, hasCommittedRoot?, currentDataURI?, isAuthorizedAgent?}, records[], recordsSource, reputation:{configured, verifiedActionCount?, lastVerifiedActionAt?, interpretation?}}`. Each record: `{riskScore, riskLevel, recommendation, expiresAt, expired}` — flag expired records as historical.
 
-**Error Handling:** `registry.configured:false` / top-level `note` → contract addresses not baked into `assets/safehands/contracts.json`; say on-chain queries are unavailable but analysis still works. `recordsSource:"dataURI-unreachable"` → root exists but batch file couldn't be fetched; report registry state without records. RPC errors → §A flow.
+**Error Handling:** `registry.configured:false` / top-level `note` → contract addresses not baked into `assets/contracts.json`; say on-chain queries are unavailable but analysis still works. `recordsSource:"dataURI-unreachable"` → root exists but batch file couldn't be fetched; report registry state without records. RPC errors → §A flow.
 
 **Agent Guidelines:** empty records = **neutral**, phrase as "no SafeHands record found", never "verified safe"; `verifiedActionCount:0` is also neutral; when a record exists, lead with its recommendation and whether it's expired.
 
@@ -84,6 +84,80 @@ node scripts/safehands-engine.js query '<0xADDRESS>'
 ## §D — Explaining allow / warn / block
 
 No engine call needed. **allow** (score ≤ 30): no adverse signals at heuristic depth — proceed with normal caution. **warn** (31–69): concrete risk factors found — get explicit user confirmation before proceeding, list the factors. **block** (≥ 70): serious signals — advise against; do not help execute the action anyway. Always remind that SafeHands informs the decision, it does not guarantee outcomes.
+
+---
+
+## §G — Market & network reads (gas, token price)
+
+**Overview:** live read-only market data. Gas from `eth_gasPrice`; token price from **Chainlink Push Engine** feeds read via `eth_call` (`latestAnswer()` + `latestTimestamp()`). Feed addresses, aliases, and heartbeat live in `assets/supported-assets.json`. **Never hardcode a price, including stablecoins.**
+
+**Command Templates:**
+```bash
+node scripts/safehands-engine.js get_gas_price
+node scripts/safehands-engine.js get_token_price PROS
+node scripts/safehands-engine.js get_token_price '{"symbol":"PHAROS"}'
+```
+
+**Supported symbols:** PROS, BTC, ETH, WBTC, USDT, USDC, LINK, BNB, SOL, XRP. **Aliases:** `WPROS`→PROS, `WETH`→ETH, `PHAROS`→PROS (leading `$` stripped). **USDT is feed-only** — price is supported, but there is no official Pacific token address, so do NOT claim USDT wallet-balance or token-contract analysis.
+
+**Output Parsing:** `get_gas_price` → `{wei, gwei, source}`. `get_token_price` (ok) → `{price, requestedSymbol, symbol, pair, aliased, aliasNote?, feedAddress, feedDecimals, answerRaw, updatedAt, feedAgeSeconds, heartbeatSeconds, stale:false, sourceStatus:"ok"}`.
+
+**Error Handling:** `FEED_NOT_CONFIGURED` → symbol has no configured feed (offer `supportedSymbols`, do not guess); `FEED_STALE` → heartbeat violated (report as stale; `lastKnownAnswer` is NOT a current price); `PROVIDER_UNAVAILABLE` → feed answered non-positive/unreadable; RPC errors → §A flow. **Price-staleness rule:** stale means the feed heartbeat was violated — nothing else.
+
+**Agent Guidelines:** for "harga 1 pharos berapa?" / "PROS price" / "$PROS", call `get_token_price` with `PHAROS`/`PROS` and state plainly that Pharos is the network and PROS is the token. Quote the `price` and `pair` verbatim; if the call errors, report the error — never a guessed number.
+
+---
+
+## §H — Transaction introspection (allowance, status, estimate, simulate, proof)
+
+**Overview:** read-only inspection of approvals, transactions, and would-be transactions. **Nothing here signs, broadcasts, or changes state.**
+
+**Command Templates:**
+```bash
+node scripts/safehands-engine.js check_allowance '{"token":"0x…","owner":"0x…","spender":"0x…"}'
+node scripts/safehands-engine.js get_transaction_status 0x<64-hex-tx-hash>
+node scripts/safehands-engine.js estimate_gas '{"from":"0x…","to":"0x…","data":"0x…","value":"1.5"}'
+node scripts/safehands-engine.js simulate_transaction '{"to":"0x…","data":"0x…"}'
+node scripts/safehands-engine.js get_spv_proof '{"address":"0x…","storageKeys":["0x…"]}'
+```
+
+**Output Parsing:**
+- `check_allowance` → `{allowanceRaw, allowanceFormatted?, tokenSymbol?, tokenDecimals?, approvalRisk:"none"|"scoped"|"unlimited", approvalRiskHint}`. **unlimited** (≥2²⁵⁵) is high risk — spender controls the whole balance.
+- `get_transaction_status` → `{status:"pending"|"success"|"failed"|"not_found", blockNumber?, gasUsed?, from?, to?, explorer}`.
+- `estimate_gas` → `{estimatedGas, broadcast:false}` or `ESTIMATE_FAILED` (`reverted?`, sanitized reason).
+- `simulate_transaction` → `{reverted:false, returnData, broadcast:false}` or `SIMULATION_REVERTED` (sanitized reason).
+- `get_spv_proof` → `{proof}` or `NOT_SUPPORTED` when the RPC lacks `eth_getProof`.
+
+**Value fields:** `value` is decimal PROS (e.g. `"1.5"`); `valueWei` is a base-10 integer string. `data` must be 0x-even-length hex.
+
+**Error Handling:** `VALIDATION_ERROR` → fix the named field (only a 0x+64-hex **transaction hash** goes to `get_transaction_status`, never a key); `ESTIMATE_FAILED`/`SIMULATION_REVERTED` → the action would fail on-chain, treat as unsafe; `NOT_SUPPORTED` → the endpoint can't produce a proof — never fabricate one; RPC errors → §A flow.
+
+**Agent Guidelines:** a reverting simulation or failed estimate is decisive evidence the action would fail — surface it and advise against executing as-is. Never broadcast; these are dry runs.
+
+---
+
+## §I — Provider-gated reads (subgraph, history, pool)
+
+**Overview:** optional public data. An endpoint is honored ONLY if it is configured in `assets/supported-protocols.json`, public, verified, **keyless** (https, no API key / pass-key / auth header / cookie), and DNS-resolvable. Today all are unset → these commands return `*_NOT_CONFIGURED`.
+
+**Command Templates:**
+```bash
+node scripts/safehands-engine.js query_goldsky_subgraph '{"query":"{ tokens { id } }"}'
+node scripts/safehands-engine.js get_execution_history '{"address":"0x…"}'
+node scripts/safehands-engine.js get_pool_info '{"poolAddress":"0x…"}'
+```
+
+**Output Parsing:** configured → `{provider, endpoint, data}`. Unconfigured → `{success:false, error.code:"GOLDSKY_NOT_CONFIGURED"|"HISTORY_PROVIDER_NOT_CONFIGURED"|"PROVIDER_NOT_CONFIGURED", provider, providerStatus:"not_configured", safeFallback}`.
+
+**Error Handling:** `*_NOT_CONFIGURED` → say the data is unavailable in this deployment; do NOT scrape explorers, invent history, or substitute a DEX quote. `PROVIDER_UNAVAILABLE` → configured endpoint failed; report unavailable. Secret/auth fields in the input are rejected (`VALIDATION_ERROR`).
+
+**Agent Guidelines:** pool/route data is liquidity context only — **never a canonical price** (use §G). Never treat a DODO/FaroSwap quote as authoritative pricing.
+
+---
+
+## §J — RealFi intents
+
+**Overview:** natural-language RealFi requests (bridge, yield deposit, vault deposit, staking, tokenized asset, fiat ramp, reward campaign, x402 payment) route to `analyze subjectType:"intent"` with the matching `action`. Each intent composes the real read-only checks above; missing inputs are reported in `missingInputs`, and unknown/unverified target contracts fail closed (warn/block). Full per-intent parameters, evidence composition, and examples (EN + ID) are in **`references/realfi-intents.md`**. Vault/yield intents add `vaultRiskScore` (interaction risk, not APY) and never invent TVL/cap/paused/APY when no provider is configured.
 
 ---
 
@@ -107,7 +181,7 @@ cast balance <0xADDR> --rpc-url $RPC                           # wei
 cast nonce <0xADDR> --rpc-url $RPC                             # tx count
 cast code <0xADDR> --rpc-url $RPC                              # 0x = not a contract
 cast call <0xTOKEN> "symbol()(string)" --rpc-url $RPC          # ERC-20 probes: name()/decimals()/totalSupply()
-# SafeHands contracts (only if addresses configured in assets/safehands/contracts.json):
+# SafeHands contracts (only if addresses configured in assets/contracts.json):
 cast call <REGISTRY> "currentMerkleRoot()(bytes32)" --rpc-url $RPC
 cast call <REGISTRY> "currentDataURI()(string)" --rpc-url $RPC
 cast call <REGISTRY> "isAuthorizedAgent(address)(bool)" <0xADDR> --rpc-url $RPC

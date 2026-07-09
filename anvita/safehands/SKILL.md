@@ -1,74 +1,113 @@
 ---
 name: safehands
-description: Zero-custody transaction-safety gateway for autonomous agent finance on Pharos. Use this skill to analyze wallet, token, contract, or transaction intent risk before execution, query on-chain SafeHands risk records and agent reputation, check whether an address, wallet, token, or contract is safe or a scam before a swap, transfer, or approval, or protect autonomous finance agents from unsafe on-chain actions.
+description: Zero-custody pre-execution safety layer for Pharos agents. Use this skill to check wallets, tokens, contracts, approvals, swaps, transfers, bridges, vault deposits, staking, tokenized-asset actions, and x402 payments before anything is signed; read token prices, gas, allowances, and transaction status; and return deterministic allow/warn/block guidance. Read-only on Pharos Pacific Mainnet (chainId 1672) — never signs, broadcasts, approves, swaps, bridges, deposits, stakes, pays, or custodies.
 ---
 
 # SafeHands
 
 ## Overview
 
-SafeHands is a **zero-custody transaction-safety gateway** for Pharos AI agents on **Pharos Pacific Mainnet (chainId 1672)**. It runs before swaps, approvals, transfers, contract calls, and x402 payments, returning deterministic allow/warn/block verdicts before anything is signed. Each check produces a structured risk report: a **riskScore (0–100)**, an **allow / warn / block** recommendation, detected **riskFactors**, a plain-English **explanation**, and a suggested **nextAction**.
+SafeHands is a **zero-custody pre-execution safety layer for Pharos agents**. It checks wallets, tokens, contracts, approvals, swaps, transfers, bridges, vault deposits, staking intents, tokenized market actions, and x402 payments before anything is signed, then returns deterministic **allow / warn / block** guidance. It is the security checkpoint before an AI agent touches money on Pharos — not a trading, yield, bridge, staking, or wallet-management agent.
 
-This Skill is **fully hosted**: it reads Pharos directly via public JSON-RPC (`https://rpc.pharos.xyz`) using the bundled engine at `scripts/safehands-engine.js`. Contract analysis cross-checks the **official Pharos Token Registry and Canonical Contracts** (baked into `assets/safehands/known-pharos.json`) to catch token impersonation (fake USDC/WPROS/WETH/LINK) and recognize canonical infrastructure. It is further enriched with **GoPlus threat intelligence** (public keyless API: honeypot, buy/sell tax, hidden owner, malicious-address flags) with graceful fallback to on-chain heuristics if GoPlus is unreachable. SafeHands is **non-custodial by design**: a pre-execution security checkpoint — a transaction firewall that sits in front of wallet signing, not behind it. It requires no backend, holds no keys, never signs, never broadcasts, never executes, and never custodies funds. Its on-chain access is verification-only (`eth_call`, `eth_get*`): it can inspect everything and touch nothing, so the checkpoint can never become the attack surface it guards against.
+This Skill is **fully hosted** and reads **Pharos Pacific Mainnet (chainId 1672)** directly via public JSON-RPC (`https://rpc.pharos.xyz`) using the bundled engine at `scripts/safehands-engine.js`. It is **non-custodial by design**: a transaction firewall that sits in front of wallet signing, not behind it. It holds no keys, never signs, never broadcasts, never executes, and never custodies funds. On-chain access is verification-only (`eth_call`, `eth_get*`, `eth_gasPrice`, `eth_estimateGas`) so the checkpoint can never become the attack surface it guards against.
 
-## When to use this Skill
+Every command prints a single JSON object to stdout. Completed checks return `riskScore`, `recommendation`, `riskFactors`, `explanation`, `nextAction` (and, for intents, `evidenceUsed` / `missingInputs`). Failures return a structured `{success:false, error:{code,message}, provider?, reason?, safeFallback?}` — never invented data.
 
-Use SafeHands when the user or a calling agent wants to:
-- Check whether a wallet address is safe to interact with before sending funds or transacting.
-- Vet a token or contract address before an agent swaps into it or calls it.
-- Review a proposed transfer or swap intent and get an allow/warn/block verdict before execution.
-- Query existing SafeHands on-chain risk records or an agent's verified-action reputation.
-- Understand what an allow/warn/block recommendation means and what to do next.
+## Read-only data sources
+
+SafeHands may perform read-only calls to these approved public sources only:
+- **Pharos Pacific Mainnet RPC** — JSON-RPC reads only (`eth_call`, `eth_get*`, `eth_gasPrice`, `eth_estimateGas`).
+- **Chainlink Push Engine feeds** — token prices read live through Pharos RPC `eth_call` (feed addresses in `assets/supported-assets.json`).
+- **GoPlus public token-security API** — keyless honeypot / tax / owner / malicious-address intelligence.
+- **Bundled registries** — canonical contracts and the official Pharos Token Registry (`assets/known-pharos.json`).
+- **Configured public providers** — subgraph / indexer / pool endpoints **only if present in `assets/supported-protocols.json`, public, verified, and keyless**. When absent, the matching command returns a structured `*_NOT_CONFIGURED` error.
+
+It never fetches arbitrary user-provided URLs (payment/campaign links are analyzed as strings, never retrieved), never uses API keys / pass-keys / auth headers / cookies, never scrapes explorers or websites, and never treats a DEX/pool quote as a canonical price (canonical pricing is Chainlink Push only). See `references/capability-scope.md`.
+
+## Capability Index
+
+Analysis & records:
+
+| Capability | Command | Reference |
+|---|---|---|
+| Engine & RPC health | `health` | safehands.md §A |
+| Wallet risk | `analyze {"subjectType":"wallet","address":…}` | safehands.md §B |
+| Token/contract risk | `analyze {"subjectType":"contract","address":…}` | safehands.md §B |
+| Transfer/swap intent | `analyze {"subjectType":"intent","action":"transfer"|"swap",…}` | safehands.md §B |
+| RealFi intents | `analyze {"subjectType":"intent","action":"bridge"|"yield_deposit"|"vault_deposit"|"staking"|"tokenized_asset"|"fiat_ramp"|"reward_campaign"|"x402_payment",…}` | realfi-intents.md |
+| On-chain records & reputation | `query <address>` | safehands.md §C |
+
+Market & network reads:
+
+| Capability | Command | Reference |
+|---|---|---|
+| Gas price | `get_gas_price` | safehands.md §G |
+| Token price (Chainlink Push) | `get_token_price <symbol>` | safehands.md §G |
+| ERC-20 allowance & approval risk | `check_allowance {"token","owner","spender"}` | safehands.md §H |
+| Transaction status | `get_transaction_status <txhash>` | safehands.md §H |
+| Gas estimate (dry run) | `estimate_gas {"to","data?","value?"}` | safehands.md §H |
+| Transaction simulation (`eth_call`) | `simulate_transaction {"to","data?","value?"}` | safehands.md §H |
+| SPV / account proof | `get_spv_proof {"address","storageKeys?"}` | safehands.md §H |
+
+Provider-gated (return `*_NOT_CONFIGURED` unless an endpoint is set in `assets/supported-protocols.json`):
+
+| Capability | Command | Reference |
+|---|---|---|
+| Subgraph query | `query_goldsky_subgraph {"query"}` | safehands.md §I |
+| Execution history | `get_execution_history {"address"}` | safehands.md §I |
+| Pool info | `get_pool_info {"poolAddress?"}` | safehands.md §I |
+
+For every operation, read `references/safehands.md` and follow the matching section exactly — it contains command templates, parameter tables, output parsing, error handling, and agent guidelines.
 
 ## Required inputs
 
 | Input | Needed for | Notes |
 |---|---|---|
-| wallet address | wallet analysis | 0x + 40 hex chars. |
-| token/contract address | contract analysis, swap intent | 0x + 40 hex chars. |
-| action (`transfer` or `swap`) | intent analysis | Plus `toAddress` (transfer) or `tokenIn`/`tokenOut` (swap). |
-| amount | transfer intent (optional) | Human-readable decimal string, e.g. `"1.5"`. |
-| acting wallet address | intent analysis (required) | The wallet that would execute — required so balance checks are real. |
-| subject address | query | Address whose risk records / reputation to look up. |
+| wallet / token / contract address | wallet, contract, price*, allowance, most intents | 0x + 40 hex. |
+| symbol | `get_token_price` | e.g. `PROS`, `USDC`, `ETH`; aliases `WPROS`/`WETH`/`PHAROS`. |
+| txHash | `get_transaction_status` | 0x + 64 hex — a TRANSACTION hash, never a key. |
+| tx object (`to`,`data?`,`value?`) | `estimate_gas`, `simulate_transaction`, intent simulation | `value` is decimal PROS, or `valueWei`. |
+| acting wallet address | fund-moving intents (transfer/swap/bridge/yield/vault/staking/tokenized) | Required so balance/exposure checks are real. |
+| url | `fiat_ramp` / `reward_campaign` / `x402_payment` intents | Analyzed as a string; never fetched. |
 
-If a required input is missing, ask a follow-up question before running the engine.
+If a required input is missing, ask a single, specific follow-up for exactly what is missing, then run the engine.
 
-## Safety rules (non-negotiable)
+## Hard safety rules (non-negotiable)
 
-1. Never sign, broadcast, pay, or execute anything. This Skill is a zero-custody pre-execution checkpoint: verdicts and verification reads ONLY.
-2. Never request, accept, store, or forward private keys, seed phrases, or mnemonics. The engine rejects key-like input (`KEY_MATERIAL_REJECTED`).
-3. Only Pharos pacific-mainnet (chainId **1672**) is supported. Refuse other chains (`CHAIN_NOT_SUPPORTED`).
-4. Report scores and factors EXACTLY as the engine returns them. Never invent, soften, or inflate a score.
-5. A **block** verdict means stop: advise the user against the action. Do not suggest workarounds.
-6. Be honest about depth: the engine combines on-chain heuristics with GoPlus threat intelligence (honeypot, taxes, hidden owner, malicious-address flags) when GoPlus is reachable — check the `intel` field and say when it was unreachable. Bespoke sell-simulation and source-level audits are still not performed.
-7. Publishing new risk records or attestations on-chain is **not available** in this hosted deployment (see Unsupported requests).
+1. **Never** sign, broadcast, approve, swap, bridge, deposit, stake, pay an x402 resource, create or manage a wallet, or publish a risk record / attestation. This Skill is verdicts and verification reads ONLY.
+2. Never request, accept, store, or forward private keys, seed phrases, mnemonics, signatures, cookies, auth headers, or API keys. The engine rejects key-like input (`KEY_MATERIAL_REJECTED`).
+3. Only Pharos Pacific Mainnet (chainId **1672**). Refuse other chains (`CHAIN_NOT_SUPPORTED`).
+4. Report scores, verdicts, and factors EXACTLY as the engine returns them. Never invent, soften, or inflate.
+5. A **block** verdict means stop: advise against the action, offer no workaround.
+6. Never hallucinate missing data. If evidence is incomplete, say so and list `missingInputs`. If a provider is not configured, report `NOT_CONFIGURED`; if unavailable, `PROVIDER_UNAVAILABLE`; if an RPC method is unsupported, `NOT_SUPPORTED`.
+7. If a target contract is unknown or unverified, fail closed (warn or block) — never allow by default.
+8. Never hardcode a price (including stablecoins). Prices come only from live Chainlink Push feed reads; a stale feed is reported as `FEED_STALE`, never quoted as current.
+9. All provider failures return structured JSON — no free-text guesses.
 
-## Capability Index
+## Natural-language behavior
 
-| # | Capability | How | Reference |
-|---|---|---|---|
-| 1 | Check engine & RPC health | `node scripts/safehands-engine.js health` | safehands.md §A |
-| 2 | Analyze wallet risk | `analyze {"subjectType":"wallet","address":…}` | safehands.md §B |
-| 3 | Analyze token/contract risk | `analyze {"subjectType":"contract","address":…}` | safehands.md §B |
-| 4 | Analyze transfer/swap intent before execution | `analyze {"subjectType":"intent",…}` | safehands.md §B |
-| 5 | Query on-chain SafeHands risk records | `query <address>` | safehands.md §C |
-| 6 | Query agent reputation (verified actions) | `query <address>` (same call) | safehands.md §C |
-| 7 | Explain allow/warn/block recommendation | No engine call needed | safehands.md §D |
+- Sound calm, concise, human, and security-first. No marketing tone, no emoji by default.
+- Do not over-help: answer what was asked. Don't volunteer fallback tutorials, trade ideas, yield strategies, or "you could also…" unless asked.
+- Ask only for the specific required input that is missing — nothing more.
+- Respond in the user's language naturally (including Indonesian).
+- Never claim provider data you don't have. If something is unsupported, say so briefly and honestly, e.g. *"I can't verify that from the hosted SafeHands engine right now."* Do not invent an answer.
 
-For every operation, read `references/safehands.md` and follow the matching section exactly — it contains command templates, parameter tables, output parsing, error handling, and agent guidelines.
+**Price aliasing.** If the user asks *"harga 1 pharos berapa?"*, *"price of Pharos"*, *"1 Pharos to USD"*, *"PROS price"*, or *"$PROS price"*, treat it as a **PROS/USD** request via `get_token_price`, and be precise: *"Pharos is the network/ecosystem; PROS is the token. I'll check the PROS/USD price."* Use the live Chainlink Push feed; if it is unavailable, stale, or missing, return the structured error and do not guess.
 
 ## Flows
 
-**Analyze flow:** collect inputs → run `safehands-engine.js analyze '<json>'` → parse JSON from stdout → present riskScore, recommendation, riskFactors, explanation, nextAction. On `block`, stop and advise against.
+**Analyze flow:** collect inputs → run `analyze '<json>'` → present riskScore, recommendation, riskFactors, explanation, nextAction (and evidenceUsed / missingInputs for intents). On `block`, stop and advise against.
 
-**Query flow:** validate address → run `safehands-engine.js query '<address>'` → present registry status, matching records (with `expired` flags), and reputation. An empty result is neutral ("no record"), not proof of safety.
+**Market/tx flow:** run the specific command → present the parsed fields plainly. On a structured error, report the error code and the safe fallback; never substitute a guess.
 
-**Health flow:** run `safehands-engine.js health` → confirm `ok:true` and `chainId:1672`. Run this first if any other call fails with an RPC error.
+**Query flow:** validate address → run `query '<address>'` → present registry status, matching records (with `expired` flags), and reputation. An empty result is neutral ("no record"), not proof of safety.
+
+**Health flow:** run `health` → confirm `ok:true` and `chainId:1672`. Run this first if any other call fails with an RPC error.
 
 ## Unsupported requests
 
 Politely decline and explain:
-- **Publishing risk records or attestations on-chain** — requires the SafeHands operator backend, which is not part of this hosted deployment. This deployment is the checkpoint before the signature, not the executor: verdicts and verification reads only.
-- Executing, signing, or preparing any transaction; recovering funds; financial advice; guaranteeing an asset is safe.
-- Any chain other than Pharos pacific-mainnet (1672).
-- Full source-code audits (recommend deeper review for high-value actions; honeypot/tax flags ARE covered via GoPlus when reachable).
+- **Executing, signing, approving, swapping, bridging, depositing, staking, or paying** anything; creating/managing wallets; recovering funds; financial or trading advice; guaranteeing an asset, campaign, or vault is safe.
+- **Publishing risk records or attestations on-chain** — requires the SafeHands operator backend, not part of this hosted deployment. This deployment is the checkpoint before the signature, not the executor.
+- Any chain other than Pharos Pacific Mainnet (1672).
+- Full source-code audits, sell-simulation, or off-chain RWA-backing verification (recommend deeper review for high-value actions; honeypot/tax flags ARE covered via GoPlus when reachable).

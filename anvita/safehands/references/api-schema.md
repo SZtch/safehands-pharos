@@ -18,6 +18,7 @@ In (one of):
 { "subjectType": "intent", "action": "transfer", "toAddress": "0x…", "amount": "1.5", "walletAddress": "0x…" }
 { "subjectType": "intent", "action": "swap", "tokenIn": "0x…", "tokenOut": "0x…", "walletAddress": "0x…" }
 ```
+RealFi intent actions (`bridge`, `yield_deposit`, `vault_deposit`, `staking`, `tokenized_asset`, `fiat_ramp`, `reward_campaign`, `x402_payment`) share the intent shape and add per-action fields (target contract key, `url`, `payTo`, optional tx object). Their output adds `evidenceUsed[]`, `missingInputs[]`, `intentNotes[]`, and — for vault/yield — `vaultRiskScore` + `vaultProviderData`. Full spec: `references/realfi-intents.md`.
 Out (success):
 ```json
 { "success": true, "riskScore": 45, "recommendation": "warn", "riskLevel": "medium",
@@ -45,14 +46,37 @@ Out (success):
                   "interpretation": "…" },
   "network": "pacific-mainnet", "chainId": 1672, "timestamp": "…" }
 ```
-If `assets/safehands/contracts.json` addresses are empty, `registry.configured`/`reputation.configured` are false and a top-level `note` explains — analysis features are unaffected.
+If `assets/contracts.json` addresses are empty, `registry.configured`/`reputation.configured` are false and a top-level `note` explains — analysis features are unaffected.
+
+## Market & network read commands
+```text
+get_gas_price                    → { wei, gwei, source }
+get_token_price <symbol|json>    → { price, pair, symbol, aliased, aliasNote?, feedAddress, feedDecimals,
+                                     answerRaw, updatedAt, feedAgeSeconds, heartbeatSeconds, stale, sourceStatus }
+check_allowance {token,owner,spender}
+                                 → { allowanceRaw, allowanceFormatted?, tokenSymbol?, tokenDecimals?,
+                                     approvalRisk:"none|scoped|unlimited", approvalRiskHint }
+get_transaction_status <txhash>  → { status:"pending|success|failed|not_found", blockNumber?, gasUsed?, from?, to?, explorer }
+estimate_gas {from?,to,data?,value?|valueWei?}
+                                 → { estimatedGas, estimatedGasHex, broadcast:false }
+simulate_transaction {…tx…}      → { reverted:false, returnData, broadcast:false }
+get_spv_proof {address,storageKeys?,blockTag?}
+                                 → { proof, blockTag, storageKeys }
+query_goldsky_subgraph {query,variables?}   → { provider, endpoint, data }   (gated)
+get_execution_history {address,limit?}      → { provider, endpoint, data }   (gated)
+get_pool_info {poolAddress?,tokenA?,tokenB?} → { provider, endpoint, data }   (gated)
+```
+Symbols/aliases and the feed-staleness rule: see `references/safehands.md` §G. Gated commands return `*_NOT_CONFIGURED` until an endpoint is set in `assets/supported-protocols.json`.
 
 ## Failure envelope (all commands)
 ```json
-{ "success": false, "error": { "code": "VALIDATION_ERROR|CHAIN_NOT_SUPPORTED|CHAIN_MISMATCH|KEY_MATERIAL_REJECTED|PHAROS_RPC_UNAVAILABLE|RPC_TIMEOUT|ENGINE_ERROR|USAGE",
-  "message": "…" }, "retryable": true, "chainId": 1672, "timestamp": "…" }
+{ "success": false,
+  "error": { "code": "VALIDATION_ERROR|CHAIN_NOT_SUPPORTED|CHAIN_MISMATCH|KEY_MATERIAL_REJECTED|FEED_NOT_CONFIGURED|FEED_STALE|PROVIDER_UNAVAILABLE|NOT_SUPPORTED|ESTIMATE_FAILED|SIMULATION_REVERTED|GOLDSKY_NOT_CONFIGURED|HISTORY_PROVIDER_NOT_CONFIGURED|PROVIDER_NOT_CONFIGURED|PHAROS_RPC_UNAVAILABLE|RPC_TIMEOUT|ENGINE_ERROR|USAGE",
+    "message": "…" },
+  "provider": "…?", "providerStatus": "not_configured?", "reason": "…?", "safeFallback": "…?",
+  "retryable": true, "chainId": 1672, "timestamp": "…" }
 ```
-`retryable:true` appears only on RPC availability/timeout errors.
+`retryable:true` appears only on RPC availability/timeout errors. `provider`/`providerStatus`/`reason`/`safeFallback` appear on provider/feed failures. No failure ever carries fabricated data.
 
 ## Not part of this deployment
-Publishing risk records/attestations (operator backend write path), tx-hash deep analysis, honeypot sell-simulation. The engine performs read-only `eth_call`/`eth_get*` exclusively and never handles key material.
+Publishing risk records/attestations (operator backend write path), tx-hash deep analysis, honeypot sell-simulation, and any signing/execution/bridging/deposit/staking/payment. The engine performs read-only `eth_call`/`eth_get*`/`eth_gasPrice`/`eth_estimateGas` exclusively and never handles key material. Arbitrary URLs are never fetched; provider endpoints are keyless or absent.

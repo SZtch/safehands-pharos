@@ -1,0 +1,37 @@
+{
+  "source": "Chainlink Push Engine Feeds on Pharos Pacific Mainnet (docs.pharos.xyz)",
+  "network": "pacific-mainnet",
+  "chainId": 1672,
+  "quote": "USD",
+  "provider": "chainlink-push",
+  "feedDecimalsDefault": 18,
+  "heartbeatSeconds": 3600,
+  "note": "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price — including stablecoins.",
+  "feeds": {
+    "PROS": { "pair": "PROS/USD", "feedAddress": "0x9356C87a48F913d11C87a0d4b8cD16CD04624BF3" },
+    "BTC": { "pair": "BTC/USD", "feedAddress": "0x6BFcd14b164de6c8C4dA2d065d511055A589EB20" },
+    "ETH": { "pair": "ETH/USD", "feedAddress": "0x092ff0175Be8B2e83Ca5740d3EB13C6225901fa7" },
+    "WBTC": { "pair": "WBTC/USD", "feedAddress": "0x22E1db75084B7f0393896bc7046E64eFdC34b729" },
+    "USDT": {
+      "pair": "USDT/USD",
+      "feedAddress": "0x84B06e38C70DD1f0039bA25E017CAe7cFcDE53b0",
+      "feedOnly": true,
+      "note": "Feed-only: no official USDT token address exists in the Pharos Pacific Mainnet token registry. Price reads are supported; wallet-balance and token-contract analysis for USDT are NOT claimed."
+    },
+    "USDC": { "pair": "USDC/USD", "feedAddress": "0x8d08eA83A55ad1e805b5660F5eC76C99C6aF5eaf" },
+    "LINK": { "pair": "LINK/USD", "feedAddress": "0xCb87D7B02AC34B0aC5C3472467AB67E1de655C0A" },
+    "BNB": { "pair": "BNB/USD", "feedAddress": "0x2eaB341Db05503c73A1274f1EFbD5d4560767229" },
+    "SOL": { "pair": "SOL/USD", "feedAddress": "0x9c9FccaEf0851298321B813Ce2530c67e20F9C10" },
+    "XRP": { "pair": "XRP/USD", "feedAddress": "0x43CeBa953FF0165840f35342F6a6Bc1B923bc5FF" }
+  },
+  "aliases": {
+    "WPROS": "PROS",
+    "WETH": "ETH",
+    "PHAROS": "PROS"
+  },
+  "aliasNotes": {
+    "PHAROS": "Pharos is the network/ecosystem; PROS is the token. Checking the PROS/USD price.",
+    "WPROS": "WPROS is wrapped PROS; priced via the PROS/USD feed.",
+    "WETH": "WETH is wrapped ETH; priced via the ETH/USD feed."
+  }
+}
