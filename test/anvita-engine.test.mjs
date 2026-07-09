@@ -24,7 +24,9 @@ const SEL = { name: "0x06fdde03", symbol: "0x95d89b41", decimals: "0x313ce567", 
 const CODE = "0x" + "60".repeat(120); // 120-byte bytecode → isContract, no small-bytecode penalty
 
 // Start a mock that answers Pharos JSON-RPC (POST) and GoPlus (GET) on one port.
-function startMock({ symbol = "GOOD", goplusResult = null } = {}) {
+// goplusTransientFailures: answer 429 to the first N GoPlus GETs, then serve normally.
+function startMock({ symbol = "GOOD", goplusResult = null, goplusTransientFailures = 0 } = {}) {
+  let goplusHits = 0;
   const server = http.createServer((req, res) => {
     if (req.method === "POST") {
       let body = "";
@@ -50,6 +52,11 @@ function startMock({ symbol = "GOOD", goplusResult = null } = {}) {
       return;
     }
     // GET → GoPlus
+    if (goplusHits++ < goplusTransientFailures) {
+      res.statusCode = 429;
+      res.end("rate limited");
+      return;
+    }
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify(goplusResult ? { code: 1, result: goplusResult } : { code: 0, message: "no data" }));
   });
@@ -141,6 +148,31 @@ describe("Anvita engine — decision logic (mock RPC + GoPlus)", () => {
     assert.notStrictEqual(out.recommendation, "allow"); // unvetted token must never read "allow"
     assert.ok(out.riskScore > 30, `score must leave the allow band, got ${out.riskScore}`);
     assert.ok(out.riskFactors.some((f) => /not yet indexed/i.test(f) && /UNVERIFIED/i.test(f)), "should disclose unindexed-unverified status");
+  });
+
+  it("retries a transient GoPlus 429 and keeps the verified verdict (no false warn-floor)", async () => {
+    const addr = "0x8888888888888888888888888888888888888888";
+    // First GoPlus GET is rate-limited; the retry succeeds with a clean verdict. A clean
+    // token must come back "allow" with GoPlus intel — not floored as unreachable.
+    mock = startMock({ symbol: "GOOD", goplusTransientFailures: 1, goplusResult: { [addr.toLowerCase()]: { is_honeypot: "0" } } });
+    const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: addr }), { PHAROS_RPC_URL: mock.url, GOPLUS_API_BASE: mock.url });
+    mock.close();
+    assert.strictEqual(out.success, true);
+    assert.strictEqual(out.recommendation, "allow");
+    assert.ok(!out.riskFactors.some((f) => /unreachable/i.test(f)), "transient 429 must not read as unreachable");
+    assert.match(out.intel, /GoPlus threat intelligence/);
+  });
+
+  it("exposes display-only GoPlus token identity without affecting the verdict", async () => {
+    const addr = "0x9999999999999999999999999999999999999999";
+    const longName = "N".repeat(200); // must be trimmed and capped at 128
+    mock = startMock({ symbol: "GOOD", goplusResult: { [addr.toLowerCase()]: { is_honeypot: "0", token_name: `  ${longName}  `, token_symbol: "GOOD" } } });
+    const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: addr }), { PHAROS_RPC_URL: mock.url, GOPLUS_API_BASE: mock.url });
+    mock.close();
+    assert.strictEqual(out.success, true);
+    assert.strictEqual(out.goplusTokenIdentity.tokenSymbol, "GOOD");
+    assert.strictEqual(out.goplusTokenIdentity.tokenName.length, 128);
+    assert.strictEqual(out.recommendation, "allow"); // identity metadata never scores
   });
 
   it("FAIL-CLOSED: never 'allow' when GoPlus returns a drifted/unrecognized schema", async () => {
