@@ -4,6 +4,16 @@ import { defineConfig } from "hardhat/config";
 
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin],
+  paths: {
+    // Hardhat runs ONLY the EVM contract tests. The unit/policy suite in test/
+    // runs via `npm test` (tsx --test), which isolates each file in its own
+    // process — sweeping those files into hardhat's single shared process lets
+    // process.env mutations (and dotenv values loaded above) leak across files
+    // and produces false failures.
+    tests: {
+      nodejs: "test/contracts",
+    },
+  },
   solidity: {
     profiles: {
       default: {
