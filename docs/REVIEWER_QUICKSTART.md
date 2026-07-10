@@ -69,7 +69,7 @@ Pacific Mainnet token-aware tools must use Pacific Mainnet token addresses. If a
 | `contracts/SafeHandsRegistry.sol` | operator/agent registry and risk-score lookup |
 | `contracts/SafeHandsAttestation.sol` | immutable proof ledger |
 | `anvita/safehands/SKILL.md` | Anvita hosted Skill metadata |
-| `anvita/safehands/assets/safehands/` | Skill Engine network/token/contract assets |
+| `anvita/safehands/assets/` | Skill Engine network/token/contract assets |
 
 ## 5. Default network
 
