@@ -126,6 +126,10 @@ export async function handleSimulateTransaction(raw: SimulateTransactionInput) {
       warnings,
     });
   } catch (err) {
-    return fail("SIMULATION_FAILED", (err as Error).message, true, "simulate_transaction");
+    const message = (err as Error).message;
+    if (message.includes("SWAP_LIQUIDITY_NOT_CONFIGURED")) {
+      return fail("SWAP_LIQUIDITY_NOT_CONFIGURED", message, false, "dodo_api");
+    }
+    return fail("SIMULATION_FAILED", message, true, "simulate_transaction");
   }
 }

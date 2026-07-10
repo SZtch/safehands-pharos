@@ -52,6 +52,10 @@ const RPC_URL = process.env.PHAROS_RPC_URL || NET.rpcUrl || "https://rpc.pharos.
 const CHAIN_ID = 1672; // mainnet lock — never analyze/report for other chains
 const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
+// Engine version — MUST equal the repo package.json version. Enforced by
+// scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
+const ENGINE_VERSION = "2.3.0";
+const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
 const REGISTRY_ADDR = process.env.SAFEHANDS_REGISTRY_ADDRESS
@@ -114,7 +118,7 @@ function rejectKeyLike(obj, ignore64HexKeys = []) {
   }
   return null;
 }
-async function rpc(method, params = [], timeoutMs = 15000) {
+async function rpcRaw(method, params = [], timeoutMs = 15000) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
@@ -127,6 +131,30 @@ async function rpc(method, params = [], timeoutMs = 15000) {
     if (j.error) throw new Error(`RPC ${j.error.code}: ${j.error.message}`);
     return j.result;
   } finally { clearTimeout(t); }
+}
+// Chain-identity guard: the first RPC use in a run verifies eth_chainId === 1672
+// before any other read is trusted, so the `chainId: 1672` every command stamps
+// is a CHECKED claim, not an assumption (previously only `health` validated).
+// Memoized in-flight so parallel first reads share one eth_chainId call; reset
+// on failure so a transient error can retry.
+let chainIdentityCheck = null;
+function ensureChainIdentity() {
+  if (!chainIdentityCheck) {
+    chainIdentityCheck = rpcRaw("eth_chainId").then((cid) => {
+      const n = Number(decUint(cid));
+      if (n !== CHAIN_ID) {
+        const err = new Error(`RPC reports chainId ${n}, expected ${CHAIN_ID} (Pharos pacific-mainnet). Refusing to report reads from an unexpected chain.`);
+        err.safehandsCode = "CHAIN_MISMATCH";
+        throw err;
+      }
+    });
+    chainIdentityCheck.catch(() => { chainIdentityCheck = null; });
+  }
+  return chainIdentityCheck;
+}
+async function rpc(method, params = [], timeoutMs = 15000) {
+  if (method !== "eth_chainId") await ensureChainIdentity();
+  return rpcRaw(method, params, timeoutMs);
 }
 const pad32 = (hexNo0x) => hexNo0x.toLowerCase().padStart(64, "0");
 const encAddr = (a) => pad32(a.slice(2));
@@ -236,7 +264,7 @@ async function goplusGet(pathname, timeoutMs = 10000) {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
     try {
       const res = await fetch(GOPLUS_BASE + pathname, {
-        signal: ctl.signal, headers: { accept: "application/json", "user-agent": "SafeHands/2.3.0" },
+        signal: ctl.signal, headers: { accept: "application/json", "user-agent": ENGINE_UA },
       });
       if (GOPLUS_RETRYABLE.has(res.status) && attempt < 2) continue;
       if (!res.ok) return null;
@@ -1052,6 +1080,8 @@ const run = cmd === "health" ? cmdHealth()
 run.then((r) => { console.log(JSON.stringify(r, null, 2)); process.exit(r.success ? 0 : 1); })
    .catch((e) => {
      const msg = String(e && e.message || e);
-     const code = /abort/i.test(msg) ? "RPC_TIMEOUT" : /HTTP|fetch|network/i.test(msg) ? "PHAROS_RPC_UNAVAILABLE" : "ENGINE_ERROR";
-     console.log(JSON.stringify(fail(code, msg, { retryable: code !== "ENGINE_ERROR" }), null, 2)); process.exit(1);
+     const code = e && e.safehandsCode ? e.safehandsCode
+       : /abort/i.test(msg) ? "RPC_TIMEOUT" : /HTTP|fetch|network/i.test(msg) ? "PHAROS_RPC_UNAVAILABLE" : "ENGINE_ERROR";
+     const retryable = code === "RPC_TIMEOUT" || code === "PHAROS_RPC_UNAVAILABLE";
+     console.log(JSON.stringify(fail(code, msg, { retryable }), null, 2)); process.exit(1);
    });

@@ -125,7 +125,12 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     chainId: 1672,
     ecosystemStatus: "VERIFIED",
     verificationStatus: "VERIFIED",
-    evidenceSources: [{ type: "official_docs", ref: PHAROS_TOKEN_REGISTRY_DOC, verifiedAt: null }],
+    evidenceSources: [
+      { type: "official_docs", ref: PHAROS_TOKEN_REGISTRY_DOC, verifiedAt: null },
+      // Circle's own contract-addresses page lists 0xC879… as "Pharos" (mainnet)
+      // USDC — independent second source confirming the Pharos docs entry.
+      { type: "official_docs", ref: "https://developers.circle.com/stablecoins/usdc-contract-addresses", verifiedAt: "2026-07-10" },
+    ],
     contracts: [
       { address: "0xc879c018db60520f4355c26ed1a6d572cdac1815", label: "USDC", role: "token", deterministic: false, verificationStatus: "VERIFIED", symbol: "USDC", decimals: 6 },
     ],

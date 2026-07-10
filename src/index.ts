@@ -454,7 +454,7 @@ server.tool(
 
 server.tool(
   "get_token_price",
-  "Fetch real-time price of PROS, USDC, or USDT on Pharos using DODO liquidity quotes.",
+  "Fetch the live token price on Pharos from Chainlink Push Engine feeds read on-chain via eth_call (heartbeat-staleness checked; a stale feed is reported, never quoted as current).",
   getTokenPriceSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetTokenPrice, params, "get_token_price"))
 );

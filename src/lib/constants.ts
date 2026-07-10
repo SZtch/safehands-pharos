@@ -1,10 +1,15 @@
 // ─── SafeHands Constants ───────────────────────────────────────────────
 // Pharos Pacific Mainnet-first defaults with Atlantic Testnet compatibility.
-// Official references reviewed during QA:
+// Official references reviewed during QA (USDC re-verified against Circle's
+// contract-addresses page on 2026-07-10):
 // - Pharos Hardhat guide: Atlantic Testnet chain ID 688689, RPC https://atlantic.dplabs-internal.com
 // - Official Pharos Skill Engine tokens.json: USDC = 0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8
-// - Circle USDC contract addresses page: Pharos Mainnet = 0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B
-// - For Pharos Skill Engine compatibility, SafeHands defaults to the Skill Engine token list.
+// - Circle USDC contract addresses page (developers.circle.com/stablecoins/usdc-contract-addresses):
+//     Pharos (Mainnet) = 0xC879C018dB60520F4355C26eD1a6D572cdAC1815 (= PACIFIC_USDC_ADDRESS)
+//     Pharos Testnet   = 0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B (= CIRCLE_USDC_ADDRESS)
+//   (An earlier comment here mislabeled 0xcfC8… as mainnet — it is Circle's TESTNET USDC.)
+// - For Pharos Skill Engine testnet compatibility, the Atlantic token list defaults to the
+//   Skill Engine list; the mainnet canonical USDC is the Circle/Pharos-docs 0xC879… address.
 // ────────────────────────────────────────────────────────────────────────
 
 // ─── Network ───────────────────────────────────────────────────────────
@@ -37,20 +42,19 @@ export const CHAIN_REGISTRY = {
 } as const;
 
 // ─── Token Addresses ───────────────────────────────────────────────────
-// The official Pharos Skill Engine (pharos-skill-engine-0.1.0) assets/tokens.json
-// lists 0xE0BE... as USDC for pacific-mainnet.
-// Circle's USDC contract addresses page lists 0xcfC8... for Pharos Mainnet.
-// For Skill Engine hackathon compatibility, SafeHands defaults to the Skill Engine list.
-// Both addresses are documented; neither is deleted.
+// These are the ATLANTIC-TESTNET / Skill-Engine-compat addresses (activeTokenMap
+// switches to the Pacific registry on mainnet). The one evidenced canonical
+// mainnet USDC is PACIFIC_USDC_ADDRESS (0xC879…), confirmed by BOTH the Pharos
+// docs token registry AND Circle's contract-addresses page (re-checked 2026-07-10).
 
 /** Native PROS — sentinel address used by DODO API for native token */
 export const PROS_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" as const;
 export const USDT_ADDRESS = "0xE7E84B8B4f39C507499c40B4ac199B050e2882d5" as const;
 
-/** Primary USDC for Pharos Skill Engine (from official tokens.json) */
+/** Skill-Engine-compat USDC (official pharos-skill-engine tokens.json); testnet compat list only. */
 export const USDC_ADDRESS = "0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8" as const;
 
-/** Alternate USDC listed by Circle's contract addresses page (not in Skill Engine tokens.json) */
+/** Circle's Pharos TESTNET USDC (per Circle's contract-addresses page). Used only as the Atlantic alt-USDC route fallback — never a mainnet claim. */
 export const CIRCLE_USDC_ADDRESS = "0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B" as const;
 
 /** @deprecated Use USDC_ADDRESS instead. Kept for backward compatibility. */
@@ -96,9 +100,9 @@ export const TOKEN_REGISTRY = {
     isMainnet: false,
     isCanonical: true,
     isTestToken: true,
-    purpose: "Alternate USDC listed by Circle contract addresses page and Pharos docs token registry; not the primary token in Skill Engine tokens.json",
-    docsSource: "https://developers.circle.com/stablecoins/usdc-contract-addresses and https://docs.pharos.xyz/getting-started/token-registry",
-    verificationStatus: "CIRCLE_REFERENCED_USDC",
+    purpose: "Circle's Pharos TESTNET USDC (Circle contract-addresses page, re-checked 2026-07-10); Atlantic alt-USDC route fallback, not the primary Skill-Engine token",
+    docsSource: "https://developers.circle.com/stablecoins/usdc-contract-addresses",
+    verificationStatus: "CIRCLE_DOCS_VERIFIED_TESTNET",
   },
   USDT: {
     symbol: "USDT",
@@ -160,7 +164,9 @@ export const TOKEN_REGISTRY = {
 // recognition is by registry address; it is NOT a safety guarantee for an action.
 // Decimals follow the ERC-20 standard for each token type (USDC = 6; wrapped = 18).
 export const PACIFIC_WPROS_ADDRESS = "0x52c48d4213107b20bc583832b0d951fb9ca8f0b0" as const;
-export const PACIFIC_USDC_ADDRESS = "0xc879c018db60520f4355c26ed1a6d572cdac1815" as const; // Circle-deployed
+// Circle-deployed — dual-evidenced: Pharos docs token registry AND Circle's own
+// contract-addresses page list this address for Pharos (Mainnet). Re-checked 2026-07-10.
+export const PACIFIC_USDC_ADDRESS = "0xc879c018db60520f4355c26ed1a6d572cdac1815" as const;
 export const PACIFIC_LINK_ADDRESS = "0x51e2A24742Db77604B881d6781Ee16B5b8fcBE29" as const;
 export const PACIFIC_WETH_ADDRESS = "0x1f4b7011Ee3d53969bb67F59428a9ec0477856E9" as const;
 
@@ -186,7 +192,7 @@ export const PACIFIC_MAINNET_TOKEN_REGISTRY = {
     environment: "pacific-mainnet",
     isMainnet: true,
     isCanonical: true,
-    docsSource: "https://docs.pharos.xyz/getting-started/token-registry",
+    docsSource: "https://docs.pharos.xyz/getting-started/token-registry and https://developers.circle.com/stablecoins/usdc-contract-addresses",
     verificationStatus: "DOCS_VERIFIED",
   },
   LINK: {
@@ -301,6 +307,14 @@ export function activeX402AllowedTokenAddresses(): `0x${string}`[] {
 }
 
 // ─── FaroSwap / DODO Protocol ──────────────────────────────────────────
+// PROVENANCE: these addresses originate from the pre-registry Atlantic-testnet
+// FaroSwap integration and are NOT in the canonical ecosystem registry — the
+// registry's FaroSwap mainnet entry (protocol:pacific-mainnet:faroswap) is
+// UNVERIFIED with no bundled contracts. They are RESTRICTION-ONLY values: the
+// write path uses them as allowlists that constrain which router/spender a DODO
+// quote may execute against (fail-closed containment). They must NEVER be used
+// as trust/"known"/verified signals — spender/counterparty trust comes only from
+// addressTrustEvidence() in lib/ecosystemRegistry.ts.
 
 export const DODO_APPROVE_ADDRESS = "0x4Cf317b8918FbE8A890c01eDAb7d548555Ac2cE9" as const;
 export const DODO_ROUTE_PROXY_ADDRESS = "0x819829e5CF6e19F9fED92F6b4CC1edF45a2cC4A2" as const;
@@ -459,9 +473,14 @@ export function resolveSafeHandsRegistryAddress(chainId: number = CHAIN_ID): str
   return chainId === PACIFIC_MAINNET_CHAIN_ID ? SAFEHANDS_REGISTRY_ADDRESS_PACIFIC : "";
 }
 
-/** Read-path resolver: env override → Pacific-mainnet baked default → "" (chainId-guarded, fail-closed). */
+/**
+ * Read-path resolver: env override → Pacific-mainnet baked default → "" (chainId-guarded, fail-closed).
+ * NOTE: the legacy SAFEHANDS_RISK_REGISTRY_ADDRESS var aliases the REGISTRY contract only and is
+ * deliberately NOT accepted here — the attestation ledger is a different contract, and aliasing
+ * both to one address produced ABI-mismatch reads.
+ */
 export function resolveSafeHandsAttestationAddress(chainId: number = CHAIN_ID): string {
-  const env = process.env.SAFEHANDS_ATTESTATION_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS || "";
+  const env = process.env.SAFEHANDS_ATTESTATION_ADDRESS || "";
   if (env) return env;
   return chainId === PACIFIC_MAINNET_CHAIN_ID ? SAFEHANDS_ATTESTATION_ADDRESS_PACIFIC : "";
 }
@@ -470,13 +489,9 @@ export function resolveSafeHandsAttestationAddress(chainId: number = CHAIN_ID): 
 export const SAFEHANDS_REGISTRY_ADDRESS = resolveSafeHandsRegistryAddress();
 export const SAFEHANDS_ATTESTATION_ADDRESS = resolveSafeHandsAttestationAddress();
 
-/**
- * Sentinel meaning "no valid on-chain risk score exists". The current
- * Merkle-batched SafeHandsRegistry has no per-record `riskScoreOf` read — this
- * sentinel is used by off-chain enrichment (src/agent/agentEnrich.ts) to
- * represent the absence of a score; it is never fabricated into a real one.
- */
-export const NO_RISK_SCORE = 255;
+// NOTE: the former NO_RISK_SCORE = 255 sentinel was removed — the Merkle-batched
+// SafeHandsRegistry has no per-record riskScoreOf read, and no code path consumed
+// the sentinel (its last import in agentEnrich.ts was dead).
 
 export const SAFEHANDS_REGISTRY_ABI = parseAbi([
   "function owner() view returns (address)",

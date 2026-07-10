@@ -10,6 +10,7 @@
 import { isAddress, keccak256 } from "viem";
 import { MerkleTree } from "merkletreejs";
 import { publicClient } from "./pharosClient.js";
+import { fetchWithTimeoutAndRetry } from "./http.js";
 import { buildMerkleTree, computeRiskLeaf, type RiskRecordInput } from "./merkleBatcher.js";
 import { SAFEHANDS_REGISTRY_ADDRESS, SAFEHANDS_REGISTRY_ABI } from "./constants.js";
 
@@ -147,7 +148,12 @@ async function fetchBatch(dataURI: string): Promise<unknown> {
       `Unsupported data-availability URI scheme: ${dataURI}. Only http(s) batch pointers are resolvable by this read-path.`
     );
   }
-  const res = await fetch(dataURI, { signal: AbortSignal.timeout(10_000) });
+  // dataURI is operator-controlled (read from chain), so fetch through the
+  // SSRF-guarded layer (DNS-pinned lookup, blocked internal ranges, redirect
+  // re-validation) — a malicious/compromised operator must not be able to point
+  // this read-path at internal endpoints. The Merkle-root comparison downstream
+  // already detects content tampering; this guards the request itself.
+  const res = await fetchWithTimeoutAndRetry(dataURI, { timeoutMs: 10_000, retries: 0 });
   if (!res.ok) throw new Error(`DA fetch failed: HTTP ${res.status} for ${dataURI}`);
   return res.json();
 }

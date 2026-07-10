@@ -12,7 +12,8 @@
 
 import { decodeFunctionData, getAddress, isAddress } from "viem";
 import { isUnlimitedApprovalAmount } from "../policy/actionPolicyEngine.js";
-import { DODO_APPROVE_ADDRESS, DODO_ROUTE_PROXY_ADDRESS } from "../constants.js";
+import { CHAIN_ID } from "../constants.js";
+import { addressTrustEvidence } from "../ecosystemRegistry.js";
 import { isDenylistedRecipient } from "../recipientSafety.js";
 import { analyzeApproval, APPROVE_SELECTOR } from "./approval.js";
 import { canonicalContractEvidence, type CanonicalContractEvidence } from "./contractIntel.js";
@@ -140,17 +141,25 @@ const EMPTY_DETAILS: CalldataAnalysisDetails = {
   canonicalContractEvidence: null, tokenRegistryEvidence: null,
 };
 
-/** Recognize a spender/operator as a known canonical or configured address. */
+/**
+ * Recognize a spender/operator — registry-driven only. "known" requires canonical
+ * metadata or a VERIFIED allow_eligible registry contract on the active chain.
+ * Non-verified registry matches yield a label suffixed "recognition only" and
+ * NEVER set known (the former hardcoded DODO/FaroSwap entries relaxed risk with
+ * testnet-provenance addresses and are gone).
+ */
 function classifyKnown(addr: string): { known: boolean; label: string | null; canonical: CanonicalContractEvidence | null } {
   const canonical = isAddress(addr) ? canonicalContractEvidence(addr) : null;
   if (canonical) return { known: true, label: canonical.name, canonical };
   const lower = addr.toLowerCase();
   if (lower === PERMIT2_ADDRESS) return { known: true, label: "Permit2", canonical: null };
-  const configured: Record<string, string> = {
-    [DODO_APPROVE_ADDRESS.toLowerCase()]: "DODO/FaroSwap approve proxy (testnet)",
-    [DODO_ROUTE_PROXY_ADDRESS.toLowerCase()]: "DODO/FaroSwap route proxy (testnet)",
-  };
-  if (configured[lower]) return { known: true, label: configured[lower], canonical: null };
+  const registry = isAddress(addr) ? addressTrustEvidence(addr, CHAIN_ID) : null;
+  if (registry?.verifiedCanonical) {
+    return { known: true, label: registry.contractLabel ?? registry.itemName, canonical: null };
+  }
+  if (registry?.recognized) {
+    return { known: false, label: `${registry.contractLabel} (${registry.verificationStatus} — recognition only)`, canonical: null };
+  }
   return { known: false, label: null, canonical: null };
 }
 

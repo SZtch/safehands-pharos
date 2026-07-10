@@ -11,6 +11,7 @@ import {
   resolveTokenAddress,
   resolveTokenDecimals,
   toWei,
+  DodoNotConfiguredError,
   type DodoQuote,
 } from "./dodoApi.js";
 import {
@@ -19,8 +20,9 @@ import {
   MAX_SLIPPAGE_PCT,
   MAX_BALANCE_USAGE_PCT,
   ERC20_ABI,
-  DODO_ROUTE_PROXY_ADDRESS,
+  CHAIN_ID,
 } from "./constants.js";
+import { addressTrustEvidence } from "./ecosystemRegistry.js";
 import { formatEther, isAddress, parseEther } from "viem";
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -51,6 +53,12 @@ export interface RiskAssessment {
    */
   degraded: boolean;
   degradedReasons: string[];
+  /**
+   * Structural (not transient): the swap liquidity provider is not configured/
+   * verified for the active chain (SWAP_LIQUIDITY_NOT_CONFIGURED). Liquidity and
+   * slippage dimensions were scored fail-closed without live route data.
+   */
+  swapProviderNotConfigured?: boolean;
 }
 
 export interface RiskInput {
@@ -97,28 +105,35 @@ function weightedAverage(breakdown: RiskBreakdown): number {
 /**
  * Pre-fetches the DODO route quote once for swap actions.
  * Both scoreLiquidity and scoreSlippage use this cached result.
+ * `notConfigured` distinguishes the structural provider-not-configured state
+ * (SWAP_LIQUIDITY_NOT_CONFIGURED) from a transient fetch failure.
  */
-async function fetchSwapQuote(input: RiskInput): Promise<DodoQuote | null> {
-  if (input.action !== "swap") return null;
+async function fetchSwapQuote(input: RiskInput): Promise<{ quote: DodoQuote | null; notConfigured: boolean }> {
+  if (input.action !== "swap") return { quote: null, notConfigured: false };
   try {
-    return await getDodoRoute({
+    const quote = await getDodoRoute({
       fromToken: input.tokenIn!,
       toToken: input.tokenOut!,
       amountHuman: input.amount,
       walletAddress: input.walletAddress,
     });
-  } catch {
-    return null;
+    return { quote, notConfigured: false };
+  } catch (err) {
+    return { quote: null, notConfigured: err instanceof DodoNotConfiguredError };
   }
 }
 
-function scoreLiquidity(input: RiskInput, quote: DodoQuote | null): { score: number; reasons: string[] } {
+function scoreLiquidity(input: RiskInput, quote: DodoQuote | null, notConfigured: boolean): { score: number; reasons: string[] } {
   const reasons: string[] = [];
 
   if (input.action !== "swap") return { score: 0, reasons };
 
   if (!quote) {
-    reasons.push("Failed to fetch liquidity data");
+    reasons.push(
+      notConfigured
+        ? `Swap liquidity provider is not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED) — liquidity cannot be verified on this network.`
+        : "Failed to fetch liquidity data — route provider unavailable."
+    );
     return { score: 70, reasons };
   }
 
@@ -141,13 +156,17 @@ function scoreLiquidity(input: RiskInput, quote: DodoQuote | null): { score: num
   return { score: clamp(impact * 15), reasons };
 }
 
-function scoreSlippage(input: RiskInput, quote: DodoQuote | null): { score: number; reasons: string[] } {
+function scoreSlippage(input: RiskInput, quote: DodoQuote | null, notConfigured: boolean): { score: number; reasons: string[] } {
   const reasons: string[] = [];
 
   if (input.action !== "swap") return { score: 0, reasons };
 
   if (!quote) {
-    reasons.push("Slippage estimation failed");
+    reasons.push(
+      notConfigured
+        ? `Slippage cannot be estimated — swap route provider not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED).`
+        : "Slippage estimation failed — route provider unavailable."
+    );
     return { score: 60, reasons };
   }
 
@@ -166,13 +185,33 @@ function scoreSlippage(input: RiskInput, quote: DodoQuote | null): { score: numb
   return { score: clamp(impact * 16), reasons };
 }
 
-async function scoreCounterparty(input: RiskInput): Promise<{ score: number; reasons: string[] }> {
+async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Promise<{ score: number; reasons: string[] }> {
   const reasons: string[] = [];
 
   if (input.action === "swap") {
-    // For swaps, counterparty is the DODO protocol — trusted
-    reasons.push("Swap routed through DODO protocol (known)");
-    return { score: 5, reasons };
+    // Registry-driven counterparty trust ONLY. The former unconditional
+    // "DODO protocol (known) → 5" relaxed risk with a testnet-provenance claim
+    // that holds on no network per the ecosystem registry.
+    const router = quote?.routeAvailable && isAddress(quote.to) ? quote.to : null;
+    if (!router) {
+      reasons.push("Swap counterparty (router) could not be determined — no route data to evaluate.");
+      return { score: 55, reasons };
+    }
+    const evidence = addressTrustEvidence(router, CHAIN_ID);
+    if (evidence.verifiedCanonical) {
+      reasons.push(`Swap router ${evidence.contractLabel ?? router} is VERIFIED in the SafeHands ecosystem registry.`);
+      return { score: 5, reasons };
+    }
+    if (evidence.recognized) {
+      reasons.push(
+        `Swap router matches ecosystem-registry entry "${evidence.contractLabel}" (${evidence.verificationStatus}) — recognition only, not a safety signal.`
+      );
+      return { score: 40, reasons };
+    }
+    reasons.push(
+      `Swap router ${router} is not in the SafeHands ecosystem registry — unverified counterparty (the execution allowlist still constrains which router may execute at write time).`
+    );
+    return { score: 55, reasons };
   }
 
   // For transfers, check the recipient address
@@ -332,17 +371,17 @@ async function scoreMarketCondition(_input: RiskInput): Promise<{ score: number;
 // ─── Main Risk Assessment ──────────────────────────────────────────────
 
 export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
-  // Fetch DODO route once and share between liquidity + slippage scorers
-  const swapQuote = await fetchSwapQuote(input);
+  // Fetch DODO route once and share between liquidity + slippage + counterparty scorers
+  const { quote: swapQuote, notConfigured: swapProviderNotConfigured } = await fetchSwapQuote(input);
 
   const [counterparty, balance, market] = await Promise.all([
-    scoreCounterparty(input),
+    scoreCounterparty(input, swapQuote),
     scoreBalance(input),
     scoreMarketCondition(input),
   ]);
 
-  const liquidity = scoreLiquidity(input, swapQuote);
-  const slippage = scoreSlippage(input, swapQuote);
+  const liquidity = scoreLiquidity(input, swapQuote, swapProviderNotConfigured);
+  const slippage = scoreSlippage(input, swapQuote, swapProviderNotConfigured);
 
   const breakdown: RiskBreakdown = {
     liquidityRisk: liquidity.score,
@@ -361,7 +400,11 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
   // safe on degraded inputs. Mark degraded and refuse to "proceed" silently.
   const degradedReasons: string[] = [];
   if (input.action === "swap" && swapQuote === null) {
-    degradedReasons.push("Liquidity/slippage could not be assessed — swap route fetch failed.");
+    degradedReasons.push(
+      swapProviderNotConfigured
+        ? `Swap liquidity provider is not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED) — this is a permanent configuration state on this network, not a transient outage.`
+        : "Liquidity/slippage could not be assessed — swap route fetch failed."
+    );
   }
   if (balance.degraded) {
     degradedReasons.push("Wallet balance could not be verified — RPC unavailable.");
@@ -407,5 +450,6 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
     suggestion,
     degraded,
     degradedReasons,
+    ...(input.action === "swap" ? { swapProviderNotConfigured } : {}),
   };
 }

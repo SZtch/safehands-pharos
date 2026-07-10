@@ -92,7 +92,7 @@ export async function handleCheckAllowance(raw: CheckAllowanceInput) {
     tokenAddress,
     walletAddress: input.walletAddress,
     spender: DODO_APPROVE_ADDRESS,
-    spenderRecognition: { recognized: Boolean(spenderCanonical), label: spenderCanonical?.label ?? "DODO/FaroSwap approve proxy (mainnet, project-configured)" },
+    spenderRecognition: { recognized: Boolean(spenderCanonical), label: spenderCanonical?.label ?? "DODO/FaroSwap approve proxy (project-configured allowlist target; not registry-verified)" },
     allowance: allowanceFormatted,
     allowanceRaw: allowanceRaw.toString(),
     isApproved,

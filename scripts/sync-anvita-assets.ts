@@ -7,6 +7,13 @@
 //   npx tsx scripts/sync-anvita-assets.ts          # rewrite the asset files
 //   npx tsx scripts/sync-anvita-assets.ts --check  # CI drift check (exit 1 on diff)
 //
+// Both modes also run verifyAnvitaEngineConsistency(): the bundled ABI files
+// must cover every method contracts.json claims, the engine's precomputed
+// selectors must match selectors computed from those ABIs, and the engine's
+// ENGINE_VERSION (User-Agent) must equal package.json's version. These cannot
+// be auto-rewritten (the engine is a manual-sync artifact), so violations fail
+// the run in either mode.
+//
 // The builders are exported so test/anvita-asset-sync.test.ts can run the same
 // drift check inside `npm test`. Presentation-only strings (notes, forbidden
 // list, engine block) live in the templates below; every address/endpoint
@@ -16,12 +23,15 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { toFunctionSelector, type AbiFunction } from "viem";
 import { ECOSYSTEM_REGISTRY_ITEMS } from "../src/data/ecosystemRegistry.data.js";
 import type { EcosystemItem } from "../src/lib/ecosystemRegistry.js";
 import { NETWORKS } from "../src/lib/networks.js";
 import { PRICE_FEED_ALIASES } from "../src/lib/price/feedRegistry.js";
 
 const ASSETS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../anvita/safehands/assets");
+const ENGINE_PATH = path.resolve(ASSETS_DIR, "../scripts/safehands-engine.js");
+const PACKAGE_JSON_PATH = path.resolve(ASSETS_DIR, "../../../package.json");
 
 function requireItem(id: string): EcosystemItem {
   const item = ECOSYSTEM_REGISTRY_ITEMS.find((i) => i.id === id);
@@ -227,6 +237,78 @@ export function renderAsset(name: string): string {
   return `${JSON.stringify(builder(), null, 2)}\n`;
 }
 
+/**
+ * Consistency checks for the manual-sync engine artifacts that CANNOT be
+ * regenerated from the registry (safehands-engine.js and the bundled ABI
+ * JSONs). Returns human-readable violations (empty = consistent):
+ *   1. ENGINE_VERSION (the engine's User-Agent) must equal package.json version.
+ *   2. Every method contracts.json advertises must exist in the bundled ABI.
+ *   3. The engine's precomputed 4-byte selectors must equal selectors computed
+ *      from the bundled ABI functions of the same name (catches silent ABI edits).
+ */
+export function verifyAnvitaEngineConsistency(): string[] {
+  const errors: string[] = [];
+
+  let engineSrc: string;
+  try {
+    engineSrc = readFileSync(ENGINE_PATH, "utf8");
+  } catch (e) {
+    return [`engine: cannot read ${ENGINE_PATH}: ${(e as Error).message}`];
+  }
+
+  const pkg = JSON.parse(readFileSync(PACKAGE_JSON_PATH, "utf8")) as { version?: string };
+  const versionMatch = engineSrc.match(/const ENGINE_VERSION = "([^"]+)"/);
+  if (!versionMatch) {
+    errors.push('engine: ENGINE_VERSION constant not found — the User-Agent drift guard requires `const ENGINE_VERSION = "<pkg version>"`.');
+  } else if (pkg.version && versionMatch[1] !== pkg.version) {
+    errors.push(`engine: ENGINE_VERSION "${versionMatch[1]}" != package.json version "${pkg.version}" — update the engine constant with the release.`);
+  }
+
+  const selBlock = engineSrc.match(/const SEL = \{([\s\S]*?)\};/);
+  const engineSelectors = new Map<string, string>();
+  if (!selBlock) {
+    errors.push("engine: SEL selector block not found — selector cross-check impossible.");
+  } else {
+    for (const m of selBlock[1].matchAll(/(\w+):\s*"(0x[0-9a-fA-F]{8})"/g)) {
+      engineSelectors.set(m[1], m[2].toLowerCase());
+    }
+  }
+
+  const contractsAsset = buildContracts() as {
+    contracts: Record<string, { abi: string; readMethods: string[]; approvedWriteMethods: string[] }>;
+  };
+  for (const [name, cfg] of Object.entries(contractsAsset.contracts)) {
+    let abi: unknown;
+    try {
+      abi = JSON.parse(readFileSync(path.join(ASSETS_DIR, cfg.abi), "utf8"));
+    } catch (e) {
+      errors.push(`${name}: ABI ${cfg.abi} unreadable: ${(e as Error).message}`);
+      continue;
+    }
+    const fns = (Array.isArray(abi) ? abi : []).filter(
+      (x): x is AbiFunction => Boolean(x) && (x as { type?: string }).type === "function"
+    );
+    const byName = new Map(fns.map((f) => [f.name, f]));
+
+    for (const method of [...cfg.readMethods, ...cfg.approvedWriteMethods]) {
+      if (!byName.has(method)) {
+        errors.push(`${name}: contracts.json advertises method "${method}" but ${cfg.abi} has no such function.`);
+      }
+    }
+
+    for (const [selName, sel] of engineSelectors) {
+      const fn = byName.get(selName);
+      if (!fn) continue; // selector belongs to another interface (ERC-20 / Chainlink feed)
+      const computed = toFunctionSelector(fn).toLowerCase();
+      if (computed !== sel) {
+        errors.push(`${name}: engine SEL.${selName} = ${sel} but ${cfg.abi} computes ${computed} — selector/ABI drift.`);
+      }
+    }
+  }
+
+  return errors;
+}
+
 function main(): void {
   const checkMode = process.argv.includes("--check");
   let drift = 0;
@@ -254,6 +336,12 @@ function main(): void {
       console.log(`  wrote    ${name}`);
     }
   }
+
+  // Manual-sync engine artifacts can't be regenerated — violations fail both modes.
+  const engineErrors = verifyAnvitaEngineConsistency();
+  for (const err of engineErrors) console.error(`  DRIFT    ${err}`);
+  drift += engineErrors.length;
+  if (engineErrors.length === 0) console.log("  ok       engine consistency (ABI methods, selectors, ENGINE_VERSION)");
 
   if (drift > 0) process.exit(1);
 }

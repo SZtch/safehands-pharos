@@ -130,8 +130,20 @@ function localFetchBypassEnabled(): boolean {
   return process.env.ALLOW_LOCAL_X402_FETCH === "true" && !isProductionEnv();
 }
 
+/**
+ * Normalize a URL hostname for IP checks. WHATWG `URL.hostname` keeps the
+ * brackets around an IPv6 literal (e.g. "[::1]"), and net.isIP("[::1]") is 0 —
+ * so without stripping them a bracketed IPv6 literal skips isBlockedIp() and
+ * falls through to DNS. Strip the surrounding brackets so the bare address is
+ * seen by net.isIP / isBlockedIp.
+ */
+function normalizeHostname(hostname: string): string {
+  const h = hostname.toLowerCase();
+  return h.startsWith("[") && h.endsWith("]") ? h.slice(1, -1) : h;
+}
+
 function isLoopbackHost(host: string): boolean {
-  const h = host.toLowerCase();
+  const h = normalizeHostname(host);
   if (h === "localhost" || h.endsWith(".localhost")) return true;
   const version = net.isIP(h);
   if (version === 4) return ipv4InCidr(h, "127.0.0.0", 8);
@@ -286,6 +298,29 @@ function ipv4InCidr(ip: string, cidrBase: string, prefix: number): boolean {
   return (ipNum & mask) === (baseNum & mask);
 }
 
+/**
+ * Extract the embedded IPv4 from an IPv4-mapped IPv6 address, handling BOTH the
+ * dotted-decimal form (`::ffff:127.0.0.1`) and its canonical hex form
+ * (`::ffff:7f00:1`, which is what WHATWG `URL` produces). Returns null when the
+ * input is not a `::ffff:`-mapped address. This lets isBlockedIp() run the
+ * authoritative IPv4 CIDR table on the real octets instead of fragile textual
+ * prefix matching (which both missed the hex form and over-blocked public space
+ * like 172.2.0.0/16 via a "::ffff:172.2" prefix).
+ */
+function mappedIpv4(ipv6: string): string | null {
+  const m = ipv6.toLowerCase().match(/^::ffff:(.+)$/);
+  if (!m) return null;
+  const rest = m[1];
+  if (net.isIP(rest) === 4) return rest; // dotted-decimal tail
+  const groups = rest.split(":");
+  if (groups.length === 2 && groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) {
+    const hi = parseInt(groups[0], 16);
+    const lo = parseInt(groups[1], 16);
+    return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+  }
+  return null;
+}
+
 export function isBlockedIp(ip: string): boolean {
   const version = net.isIP(ip);
   if (version === 4) {
@@ -310,28 +345,22 @@ export function isBlockedIp(ip: string): boolean {
 
   if (version === 6) {
     const normalized = ip.toLowerCase();
+    // IPv4-mapped IPv6: run the authoritative IPv4 table on the embedded address.
+    // Any "::ffff:*" we cannot cleanly parse fails closed (blocked) — an
+    // unparseable mapped form must never be treated as a safe public address.
+    if (normalized.startsWith("::ffff:")) {
+      const mapped = mappedIpv4(normalized);
+      return mapped ? isBlockedIp(mapped) : true;
+    }
     return (
       normalized === "::1" ||
       normalized === "::" ||
-      normalized.startsWith("fc") ||
-      normalized.startsWith("fd") ||
-      normalized.startsWith("fe80:") ||
-      normalized.startsWith("ff") ||
-      normalized.startsWith("2001:db8:") ||
-      normalized.startsWith("2002:") ||
-      normalized.startsWith("::ffff:0:") ||
-      normalized.startsWith("::ffff:127.") ||
-      normalized.startsWith("::ffff:10.") ||
-      normalized.startsWith("::ffff:100.") ||
-      normalized.startsWith("::ffff:169.254.") ||
-      normalized.startsWith("::ffff:172.16.") ||
-      normalized.startsWith("::ffff:172.17.") ||
-      normalized.startsWith("::ffff:172.18.") ||
-      normalized.startsWith("::ffff:172.19.") ||
-      normalized.startsWith("::ffff:172.2") ||
-      normalized.startsWith("::ffff:172.30.") ||
-      normalized.startsWith("::ffff:172.31.") ||
-      normalized.startsWith("::ffff:192.168.")
+      normalized.startsWith("fc") ||   // ULA fc00::/7 (fc..)
+      normalized.startsWith("fd") ||   // ULA fc00::/7 (fd..)
+      normalized.startsWith("fe80:") || // link-local
+      normalized.startsWith("ff") ||   // multicast
+      normalized.startsWith("2001:db8:") || // documentation
+      normalized.startsWith("2002:")   // 6to4
     );
   }
 
@@ -354,7 +383,7 @@ async function lookupWithTimeout(host: string): Promise<{ address: string; famil
 
 async function resolveSafeFetchTarget(rawUrl: string): Promise<SafeFetchTarget> {
   const parsed = validateFetchUrlSyntax(rawUrl);
-  const host = parsed.hostname.toLowerCase();
+  const host = normalizeHostname(parsed.hostname);
 
   if (net.isIP(host)) {
     if (isBlockedIp(host)) {
@@ -390,7 +419,7 @@ function validateFetchUrlSyntax(rawUrl: string): URL {
     throw new Error("Only HTTP and HTTPS URLs are allowed");
   }
 
-  const host = parsed.hostname.toLowerCase();
+  const host = normalizeHostname(parsed.hostname);
   if (!host) throw new Error("SSRF_BLOCKED: missing hostname");
   if (host === "localhost" || host.endsWith(".localhost")) {
     throw new Error("SSRF_BLOCKED: localhost is not allowed");

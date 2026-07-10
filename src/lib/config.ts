@@ -11,6 +11,7 @@ import {
   type NetworkName,
   type PharosNetwork,
 } from "./networks.js";
+import { resolveSafeHandsRegistryAddress } from "./constants.js";
 
 function gate(name: string): boolean {
   return process.env[name] === "true";
@@ -112,7 +113,13 @@ export interface CapabilityFlags {
   // Write / signing / managed wallet / custody — env-gated, default OFF: these
   // report false until the corresponding gates/env are explicitly enabled.
   prepareTxAvailable: boolean;
-  // Attestation
+  // Attestation / risk registry.
+  // READ (keyless verification via verifyRiskRecord / query) and PUBLISH
+  // (operator writes; needs the attester key) are separate capabilities — a
+  // read-only deployment reads the registry without any key.
+  riskRegistryReadAvailable: boolean;
+  riskRegistryPublishAvailable: boolean;
+  /** @deprecated Alias of riskRegistryPublishAvailable (historical name conflated read with publish). */
   riskRegistryAvailable: boolean;
   onchainAttestationAvailable: boolean;
   attestedBroadcastRequired: boolean;
@@ -171,9 +178,18 @@ export function getCapabilityFlags(network: PharosNetwork = getActiveNetwork()):
     requestIdAvailable: true,
     // — prepare-only UNSIGNED transactions (read-only; never signs/broadcasts).
     prepareTxAvailable: true,
-    // Attestation
-    riskRegistryAvailable: !!(process.env.SAFEHANDS_REGISTRY_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS) && !!process.env.SAFEHANDS_ATTESTER_PRIVATE_KEY,
-    onchainAttestationAvailable: !!(process.env.SAFEHANDS_ATTESTATION_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS) && !!process.env.SAFEHANDS_ATTESTER_PRIVATE_KEY,
+    // Attestation / risk registry. Read is keyless (env override or the baked
+    // chainId-guarded Pacific default); publish additionally needs the attester key.
+    riskRegistryReadAvailable: !!resolveSafeHandsRegistryAddress(),
+    riskRegistryPublishAvailable:
+      !!(process.env.SAFEHANDS_REGISTRY_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS) &&
+      !!process.env.SAFEHANDS_ATTESTER_PRIVATE_KEY,
+    riskRegistryAvailable:
+      !!(process.env.SAFEHANDS_REGISTRY_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS) &&
+      !!process.env.SAFEHANDS_ATTESTER_PRIVATE_KEY,
+    // The legacy SAFEHANDS_RISK_REGISTRY_ADDRESS var aliases the REGISTRY contract
+    // only — it never points at the (different) attestation contract.
+    onchainAttestationAvailable: !!process.env.SAFEHANDS_ATTESTATION_ADDRESS && !!process.env.SAFEHANDS_ATTESTER_PRIVATE_KEY,
     attestedBroadcastRequired: process.env.SAFEHANDS_ATTESTATION_REQUIRED === "true",
 
     // Opt-in execution surfaces — honest, env-gated flags (all default OFF, so a

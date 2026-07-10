@@ -5,7 +5,7 @@
 // ────────────────────────────────────────────────────────────────────────
 
 import { z } from "zod";
-import { resolveTokenAddress } from "../lib/dodoApi.js";
+import { resolveTokenAddress, isDodoApiConfiguredForChain, DodoNotConfiguredError } from "../lib/dodoApi.js";
 import { DODO_API_BASE, DODO_API_KEY, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET } from "../lib/constants.js";
 import { fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { classifyExternalError, fail, ok } from "../lib/toolResponse.js";
@@ -55,6 +55,12 @@ export async function handleGetPoolInfo(raw: GetPoolInfoInput) {
 
   if (input.tokenA === input.tokenB) {
     return fail("INVALID_PAIR", "Cannot query pool for identical tokens.", false, "get_pool_info");
+  }
+
+  // Same evidence gate as getDodoRoute: this tool queries the DODO route API
+  // directly, and that provider is unverified outside its supported chains.
+  if (!isDodoApiConfiguredForChain(CHAIN_ID)) {
+    return fail("SWAP_LIQUIDITY_NOT_CONFIGURED", new DodoNotConfiguredError(CHAIN_ID).message, false, "dodo_api");
   }
 
   try {
@@ -175,7 +181,7 @@ export async function handleGetPoolInfo(raw: GetPoolInfoInput) {
       confidence: liquidityInfo ? "medium" : "low",
       chainId: CHAIN_ID,
       environment: PHAROS_ENVIRONMENT,
-      isMainnet: false,
+      isMainnet: IS_MAINNET,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

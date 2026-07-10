@@ -24,6 +24,19 @@ const SPEND_FILE = join(tmpdir(), `safehands-x402-spend-test-${process.pid}.json
 const TEST_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
 const WALLET = privateKeyToAccount(TEST_KEY as `0x${string}`).address;
 
+// Snapshot the env keys this file mutates; restored in the `after()` hook below
+// so dynamic env readers stay clean if a runner ever shares one process across
+// test files (module-load-time readers still need the per-file process model).
+const MUTATED_ENV_KEYS = [
+  "SAFEHANDS_SPEND_HISTORY_PATH",
+  "WRITE_TOOLS_ENABLED",
+  "ALLOW_LOCAL_X402_FETCH",
+  "NODE_ENV",
+  "X402_SIGNER_PRIVATE_KEY",
+  "MAX_DAILY_SPEND_USD",
+] as const;
+const savedEnv = Object.fromEntries(MUTATED_ENV_KEYS.map((k) => [k, process.env[k]]));
+
 process.env.SAFEHANDS_SPEND_HISTORY_PATH = SPEND_FILE;
 process.env.WRITE_TOOLS_ENABLED = "true";
 // Loopback x402 targets are relaxed ONLY outside production with this flag.
@@ -31,6 +44,13 @@ process.env.ALLOW_LOCAL_X402_FETCH = "true";
 delete process.env.NODE_ENV;
 process.env.X402_SIGNER_PRIVATE_KEY = TEST_KEY;
 process.env.MAX_DAILY_SPEND_USD = "10";
+
+after(() => {
+  for (const [k, v] of Object.entries(savedEnv)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+});
 
 const { handleX402PayAndFetch } = await import("../src/tools/x402PayAndFetch.js");
 const { recordSpend, checkDailyLimit, releaseReservation } = await import("../src/lib/spendAccumulator.js");

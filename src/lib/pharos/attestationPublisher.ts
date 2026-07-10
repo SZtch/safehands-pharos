@@ -5,12 +5,13 @@ import { auditLog } from "../auditLog.js";
 import { readJsonFile, stateFile, writeJsonFileAtomic } from "../persistentJsonStore.js";
 
 /**
- * Resolve the SafeHandsAttestation contract address. Prefers the new
- * SAFEHANDS_ATTESTATION_ADDRESS; falls back to the legacy SAFEHANDS_RISK_REGISTRY_ADDRESS
- * for backward compatibility during the migration.
+ * Resolve the SafeHandsAttestation contract address (SAFEHANDS_ATTESTATION_ADDRESS
+ * only). The legacy SAFEHANDS_RISK_REGISTRY_ADDRESS var aliases the REGISTRY
+ * contract, not this ledger — accepting it here pointed attestation calls at the
+ * wrong contract (ABI-mismatch reverts), so the fallback was removed.
  */
 function attestationContractAddress(): string | undefined {
-  return process.env.SAFEHANDS_ATTESTATION_ADDRESS || process.env.SAFEHANDS_RISK_REGISTRY_ADDRESS;
+  return process.env.SAFEHANDS_ATTESTATION_ADDRESS;
 }
 
 // Action Types matching the contract

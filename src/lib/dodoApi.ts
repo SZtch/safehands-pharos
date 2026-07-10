@@ -1,6 +1,13 @@
 // ─── DODO Route API Client ─────────────────────────────────────────────
-// Fetches swap routes from DODO's aggregation API for FaroSwap on
-// Pharos Atlantic Testnet.
+// Fetches swap routes from DODO's aggregation API (FaroSwap).
+//
+// CHAIN SUPPORT IS EVIDENCE-GATED. This integration is confirmed working against
+// Pharos Atlantic Testnet (688689) and Pharos Pacific Mainnet (1672) — both are
+// in the default supported set. Route fetches on any OTHER (unverified) chain
+// fail closed with a structured SWAP_LIQUIDITY_NOT_CONFIGURED error instead of
+// quietly querying an endpoint that may answer for the wrong network. The set is
+// overridable via DODO_API_SUPPORTED_CHAIN_IDS (comma-separated chain IDs) — set
+// it only with evidence the DODO API actually serves that chain.
 // ────────────────────────────────────────────────────────────────────────
 
 import { isAddress } from "viem";
@@ -136,6 +143,44 @@ export function resolveAutoSlippage(fromToken: string, toToken: string): number 
 // ─── DODO Route Fetch ──────────────────────────────────────────────────
 
 /**
+ * Structured "provider not configured for this chain" failure. Callers must
+ * surface this as SWAP_LIQUIDITY_NOT_CONFIGURED — it is a permanent
+ * configuration state, not a transient provider outage.
+ */
+export class DodoNotConfiguredError extends Error {
+  readonly code = "SWAP_LIQUIDITY_NOT_CONFIGURED" as const;
+  constructor(chainId: number) {
+    super(
+      `SWAP_LIQUIDITY_NOT_CONFIGURED: the DODO route API is not a verified provider for chainId ${chainId}. ` +
+        `Swap liquidity, slippage, and route quotes cannot be served on this network. ` +
+        `Verified chains: ${dodoApiSupportedChainIds().join(", ") || "none"} (override with DODO_API_SUPPORTED_CHAIN_IDS only with evidence of support).`
+    );
+    this.name = "DodoNotConfiguredError";
+  }
+}
+
+/**
+ * Chains the DODO route API is treated as configured for. Defaults to Atlantic
+ * Testnet (688689) and Pacific Mainnet (1672) — both confirmed to serve routes.
+ * Any other chain fails closed until an operator opts in via
+ * DODO_API_SUPPORTED_CHAIN_IDS with evidence the API supports it.
+ */
+export function dodoApiSupportedChainIds(): number[] {
+  const raw = process.env.DODO_API_SUPPORTED_CHAIN_IDS;
+  if (raw && raw.trim()) {
+    return raw
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => Number.isFinite(n) && n > 0);
+  }
+  return [688689, 1672];
+}
+
+export function isDodoApiConfiguredForChain(chainId: number = CHAIN_ID): boolean {
+  return dodoApiSupportedChainIds().includes(chainId);
+}
+
+/**
  * Fetches a swap route from the DODO aggregation API.
  */
 export async function _getDodoRouteCore(params: {
@@ -147,6 +192,10 @@ export async function _getDodoRouteCore(params: {
 }): Promise<DodoQuote> {
   const trimmedApiKey = DODO_API_KEY?.trim();
   const usedApiKey = Boolean(trimmedApiKey);
+
+  if (!isDodoApiConfiguredForChain(CHAIN_ID)) {
+    throw new DodoNotConfiguredError(CHAIN_ID);
+  }
 
   if (!isAddress(params.walletAddress)) {
     throw new Error(`INVALID_WALLET_ADDRESS: ${params.walletAddress}`);

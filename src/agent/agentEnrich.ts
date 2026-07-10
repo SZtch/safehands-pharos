@@ -4,9 +4,10 @@
 // enricher is wrapped so a failure (offline / RPC hiccup) only omits that signal
 // — it never breaks the verdict. No signing, no writes.
 //
-// On Pharos, token-security intelligence comes from on-chain CONTRACT
-// INTELLIGENCE (the read-path analyzers) + the SafeHands on-chain reputation
-// oracle — NOT GoPlus, which does not index Pharos.
+// This enricher adds on-chain signals only (contract profile, SafeHands
+// reputation oracle, gas). Token-security intelligence (GoPlus, queried live
+// for Pharos by checkTokenSecurity) is applied separately in the check
+// pipeline — it is not duplicated here.
 // ────────────────────────────────────────────────────────────────────────
 
 import { isAddress, formatGwei, formatEther } from "viem";
@@ -14,7 +15,6 @@ import { publicClient } from "../lib/pharosClient.js";
 import { queryRegistryForTarget } from "../lib/safeHandsRegistry.js";
 import { getAgentReputation } from "../lib/pharos/attestationPublisher.js";
 import { getActiveNetwork } from "../lib/networks.js";
-import { NO_RISK_SCORE } from "../lib/constants.js";
 import type { AgentRequest } from "./agentIntentClassifier.js";
 
 const DEFAULT_ENRICHMENT_TIMEOUT_MS = 4_000;
@@ -125,6 +125,8 @@ export async function enrich(req: AgentRequest): Promise<Enrichment> {
     notes.push("gas context unavailable");
   }
 
-  notes.push("security signal: on-chain contract intelligence (GoPlus does not index Pharos)");
+  notes.push(
+    "security signals in this enrichment are on-chain reads (contract profile + SafeHands reputation oracle); GoPlus token-security intelligence is applied separately by the token-security check"
+  );
   return out;
 }

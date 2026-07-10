@@ -152,7 +152,11 @@ export function registerPaidRoutes(app: express.Application): void {
         }),
       );
     } catch (e: any) {
-      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(e instanceof Error ? e.message : String(e)), false, SOURCE));
+      const message = e instanceof Error ? e.message : String(e);
+      if (message.includes("SWAP_LIQUIDITY_NOT_CONFIGURED")) {
+        return res.status(503).json(fail("SWAP_LIQUIDITY_NOT_CONFIGURED", message, false, SOURCE));
+      }
+      res.status(400).json(fail("BAD_REQUEST", productionSafeMessage(message), false, SOURCE));
     }
   });
 

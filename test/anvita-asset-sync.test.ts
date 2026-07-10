@@ -9,7 +9,7 @@ import assert from "node:assert";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { GENERATED_ASSETS, renderAsset } from "../scripts/sync-anvita-assets.js";
+import { GENERATED_ASSETS, renderAsset, verifyAnvitaEngineConsistency } from "../scripts/sync-anvita-assets.js";
 
 const ASSETS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../anvita/safehands/assets");
 
@@ -44,5 +44,9 @@ describe("anvita/safehands/assets are generated from the canonical registry", ()
       assert.strictEqual(provider.endpoint, null, `${key} endpoint must stay null until verified`);
       assert.strictEqual(provider.providerStatus, "not_configured");
     }
+  });
+
+  it("engine artifacts are consistent (ABI methods, engine selectors, ENGINE_VERSION == package version)", () => {
+    assert.deepStrictEqual(verifyAnvitaEngineConsistency(), []);
   });
 });

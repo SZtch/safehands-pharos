@@ -78,6 +78,9 @@ export async function handleEstimateGas(raw: EstimateGasInput) {
         gasEstimate = BigInt(quote.gasLimit);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("SWAP_LIQUIDITY_NOT_CONFIGURED")) {
+          return fail("SWAP_LIQUIDITY_NOT_CONFIGURED", message, false, "dodo_api");
+        }
         if (message.includes("DODO_API_AUTH_REQUIRED")) {
           return fail(
             "DODO_API_AUTH_REQUIRED",
@@ -111,8 +114,9 @@ export async function handleEstimateGas(raw: EstimateGasInput) {
       } else {
         priceSourceStatus = "no_route_available";
       }
-    } catch {
-      priceSourceStatus = "unavailable";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      priceSourceStatus = message.includes("SWAP_LIQUIDITY_NOT_CONFIGURED") ? "not_configured" : "unavailable";
     }
 
     let totalNeeded = gasCostWei;

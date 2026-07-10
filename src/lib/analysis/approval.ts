@@ -6,7 +6,8 @@
 
 import { decodeFunctionData, getAddress, isAddress } from "viem";
 import { isUnlimitedApprovalAmount } from "../policy/actionPolicyEngine.js";
-import { DODO_APPROVE_ADDRESS, DODO_ROUTE_PROXY_ADDRESS } from "../constants.js";
+import { CHAIN_ID } from "../constants.js";
+import { addressTrustEvidence, type AddressTrustEvidence } from "../ecosystemRegistry.js";
 import { canonicalContractEvidence, type CanonicalContractEvidence } from "./contractIntel.js";
 import { tokenRegistryEvidence, type TokenRegistryEvidence } from "./pharosTokens.js";
 import { makeResult, type AnalyzerResult } from "./types.js";
@@ -27,18 +28,33 @@ const APPROVE_ABI = [
   },
 ] as const;
 
-/** Trusted spenders recognized by SafeHands config (canonical + project routers). */
-function classifySpender(spender: string): { known: boolean; label: string | null; isPermit2: boolean; canonical: CanonicalContractEvidence | null } {
-  const canonical = isAddress(spender) ? canonicalContractEvidence(spender) : null;
+/**
+ * Spender trust, registry-driven only. "known" (risk-relaxing) requires either
+ * per-network canonical-infrastructure metadata or a VERIFIED allow_eligible
+ * registry contract on the active chain. Any other registry match is
+ * recognition-only and NEVER relaxes risk (truth-model rule: recognition is not
+ * proof). The former hardcoded DODO/FaroSwap "known spender" entries are gone —
+ * those addresses are testnet-provenance, absent from the registry, and were an
+ * unearned trust signal on mainnet.
+ */
+function classifySpender(spender: string): {
+  known: boolean;
+  label: string | null;
+  isPermit2: boolean;
+  canonical: CanonicalContractEvidence | null;
+  registryRecognition: AddressTrustEvidence | null;
+} {
+  const valid = isAddress(spender);
+  const canonical = valid ? canonicalContractEvidence(spender) : null;
   const lower = spender.toLowerCase();
   const isPermit2 = lower === PERMIT2_ADDRESS;
-  const configured: Record<string, string> = {
-    [DODO_APPROVE_ADDRESS.toLowerCase()]: "DODO/FaroSwap approve proxy (testnet)",
-    [DODO_ROUTE_PROXY_ADDRESS.toLowerCase()]: "DODO/FaroSwap route proxy (testnet)",
-  };
-  if (canonical) return { known: true, label: canonical.name, isPermit2, canonical };
-  if (configured[lower]) return { known: true, label: configured[lower], isPermit2, canonical: null };
-  return { known: false, label: null, isPermit2, canonical: null };
+  const registry = valid ? addressTrustEvidence(spender, CHAIN_ID) : null;
+  const registryRecognition = registry && (registry.recognized || registry.note) ? registry : null;
+  if (canonical) return { known: true, label: canonical.name, isPermit2, canonical, registryRecognition };
+  if (registry?.verifiedCanonical) {
+    return { known: true, label: registry.contractLabel ?? registry.itemName, isPermit2, canonical: null, registryRecognition };
+  }
+  return { known: false, label: registryRecognition?.contractLabel ?? null, isPermit2, canonical: null, registryRecognition };
 }
 
 export interface ApprovalAnalysisDetails {
@@ -56,6 +72,8 @@ export interface ApprovalAnalysisDetails {
   canonicalContractEvidence: CanonicalContractEvidence | null;
   /** Per-network token-registry evidence for the approved token (null when unknown). */
   tokenRegistryEvidence: TokenRegistryEvidence | null;
+  /** Ecosystem-registry match for the spender — recognition only unless verifiedCanonical. */
+  spenderRegistryRecognition: AddressTrustEvidence | null;
 }
 
 /**
@@ -79,7 +97,7 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
       reasons: [msg],
       warnings: [],
       analyzerStatus: "unavailable",
-      details: { isApproval: false, selector, token: token ?? null, spender: null, spenderKnown: false, spenderLabel: null, isPermit2Spender: false, amountRaw: null, unlimited: false, isRevoke: false, canonicalContractEvidence: null, tokenRegistryEvidence: tokenEvidence },
+      details: { isApproval: false, selector, token: token ?? null, spender: null, spenderKnown: false, spenderLabel: null, isPermit2Spender: false, amountRaw: null, unlimited: false, isRevoke: false, canonicalContractEvidence: null, tokenRegistryEvidence: tokenEvidence, spenderRegistryRecognition: null },
     });
 
   if (selector !== APPROVE_SELECTOR) {
@@ -101,14 +119,21 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
       reasons: ["approve() calldata could not be decoded — malformed approval."],
       warnings: ["Malformed approval calldata."],
       analyzerStatus: "partial",
-      details: { isApproval: true, selector, token: token ?? null, spender: null, spenderKnown: false, spenderLabel: null, isPermit2Spender: false, amountRaw: null, unlimited: false, isRevoke: false, canonicalContractEvidence: null, tokenRegistryEvidence: tokenEvidence },
+      details: { isApproval: true, selector, token: token ?? null, spender: null, spenderKnown: false, spenderLabel: null, isPermit2Spender: false, amountRaw: null, unlimited: false, isRevoke: false, canonicalContractEvidence: null, tokenRegistryEvidence: tokenEvidence, spenderRegistryRecognition: null },
     });
   }
 
   const unlimited = isUnlimitedApprovalAmount(amount.toString());
   const isRevoke = amount === 0n;
-  const { known, label, isPermit2, canonical } = classifySpender(spender);
+  const { known, label, isPermit2, canonical, registryRecognition } = classifySpender(spender);
   if (isPermit2) warnings.push("Spender is Permit2 — Permit2-based approvals can later authorize transfers via signatures (deep Permit2 decode is Experimental).");
+  if (!known && registryRecognition?.recognized) {
+    warnings.push(
+      `Spender matches ecosystem-registry entry "${registryRecognition.contractLabel}" (${registryRecognition.verificationStatus}) — recognition only, not a safety signal.`
+    );
+  } else if (!known && registryRecognition?.note) {
+    warnings.push(registryRecognition.note);
+  }
 
   let internalDecision: "ALLOW" | "BLOCK" | "REQUIRE_CONFIRMATION";
   let riskLevel: AnalyzerResult["riskLevel"];
@@ -161,6 +186,7 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
       isRevoke,
       canonicalContractEvidence: canonical,
       tokenRegistryEvidence: tokenEvidence,
+      spenderRegistryRecognition: registryRecognition,
     },
   });
 }

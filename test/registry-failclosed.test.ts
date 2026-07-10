@@ -7,8 +7,21 @@
 //
 // Runs in its own file so the poisoned PHAROS_RPC_URL cannot leak into other
 // suites (the node:test runner isolates each file in its own process).
-import { describe, it } from "node:test";
+import { describe, it, after } from "node:test";
 import assert from "node:assert";
+
+// Snapshot + restore the env keys this file poisons. Module-load-time readers
+// in THIS process are unaffected (by design — that is what the poisoning is
+// for), but restoration keeps dynamic env readers safe if a runner ever stops
+// isolating test files into separate processes.
+const POISONED_ENV_KEYS = ["PHAROS_RPC_URL", "PHAROS_RPC_URLS", "SAFEHANDS_REGISTRY_ADDRESS", "SAFEHANDS_RISK_REGISTRY_ADDRESS"] as const;
+const savedEnv = Object.fromEntries(POISONED_ENV_KEYS.map((k) => [k, process.env[k]]));
+after(() => {
+  for (const [k, v] of Object.entries(savedEnv)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+});
 
 process.env.PHAROS_RPC_URL = "http://127.0.0.1:9"; // unreachable (discard port)
 delete process.env.PHAROS_RPC_URLS;

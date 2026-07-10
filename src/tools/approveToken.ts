@@ -1,10 +1,17 @@
 // ─── Tool: approve_token ───────────────────────────────────────────────
-// Approves ERC-20 token spending for DODO swap router.
+// Approves ERC-20 token spending for an EXPLICIT, caller-provided spender.
+// There is no default spender: the former DODO_APPROVE_ADDRESS default silently
+// approved a testnet-provenance address on mainnet while stamping
+// spenderVerified:true — a fabricated claim. Spender verification now comes
+// only from the ecosystem registry (addressTrustEvidence); anything else is an
+// unverified claim and the policy engine requires explicit confirmation.
 // ────────────────────────────────────────────────────────────────────────
 
 import { z } from "zod";
+import { isAddress } from "viem";
 import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
-import { DODO_APPROVE_ADDRESS, ERC20_ABI, MAX_APPROVAL_AMOUNT_USDC, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, activeTokenMap, activeTokenDecimals } from "../lib/constants.js";
+import { ERC20_ABI, MAX_APPROVAL_AMOUNT_USDC, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, activeTokenMap, activeTokenDecimals } from "../lib/constants.js";
+import { addressTrustEvidence } from "../lib/ecosystemRegistry.js";
 import { toWei } from "../lib/dodoApi.js";
 import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
@@ -16,6 +23,7 @@ import { validatePositiveAmount } from "../lib/validation.js";
 export const approveTokenSchema = z.object({
   token: z.enum(["USDC", "USDT"]).describe("ERC-20 token to approve"),
   amount: z.string().describe("Human-readable amount to approve, or 'max' for unlimited"),
+  spender: z.string().describe("EXPLICIT spender contract address to approve (0x…). There is no default spender — SafeHands never picks one for you. Verification is derived from the ecosystem registry; unverified spenders require confirm=true."),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
   confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION / REQUIRE_TOKEN_REVIEW. Hard BLOCK / honeypot / unlimited / over-limit are never overridable."),
 }).strict();
@@ -25,7 +33,7 @@ export type ApproveTokenInput = z.input<typeof approveTokenSchema>;
 export const approveTokenTool = {
   name: "approve_token",
   description:
-    "Approve ERC-20 token spending for FaroSwap (DODO) router. Required before swapping non-native tokens.",
+    "Approve ERC-20 token spending for an explicit spender address you provide. Spender trust is derived from the SafeHands ecosystem registry (never asserted blindly); approvals to unverified spenders require explicit confirmation.",
   inputSchema: approveTokenSchema,
 };
 
@@ -58,6 +66,15 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
     if (amtErr) return fail("VALIDATION_ERROR", amtErr, false, "approve_token");
   }
 
+  if (!isAddress(input.spender)) {
+    return fail("VALIDATION_ERROR", `spender must be a valid EVM address (got "${input.spender}").`, false, "approve_token");
+  }
+  const spender = input.spender as `0x${string}`;
+  // Registry-derived trust — the ONLY source of a spenderVerified assertion.
+  // Not verified ⇒ pass undefined so the policy engine treats the spender as an
+  // unverified claim (spender_reputation: unknown → REQUIRE_CONFIRMATION).
+  const spenderEvidence = addressTrustEvidence(spender, CHAIN_ID);
+
   const resolved = resolveApprovalToken(input.token);
   if (!resolved) {
     return fail(
@@ -86,8 +103,8 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
     approvalToken: input.token,
     approvalUnlimited: input.amount === "max",
     tokenSecurityStatus: sec.policyStatus,
-    spender: DODO_APPROVE_ADDRESS,
-    spenderVerified: true,
+    spender,
+    spenderVerified: spenderEvidence.verifiedCanonical ? true : undefined,
     chainId: CHAIN_ID,
     environment: PHAROS_ENVIRONMENT,
     isMainnet: IS_MAINNET,
@@ -118,7 +135,7 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
       address: tokenAddress,
       abi: ERC20_ABI,
       functionName: "approve",
-      args: [DODO_APPROVE_ADDRESS, approveAmount],
+      args: [spender, approveAmount],
     });
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -133,7 +150,18 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
       token: input.token,
       tokenAddress,
       approvedAmount: input.amount === "max" ? "unlimited" : input.amount,
-      spender: DODO_APPROVE_ADDRESS,
+      spender,
+      spenderVerified: spenderEvidence.verifiedCanonical,
+      spenderRegistryEvidence: spenderEvidence.recognized || spenderEvidence.note
+        ? {
+            recognized: spenderEvidence.recognized,
+            verifiedCanonical: spenderEvidence.verifiedCanonical,
+            label: spenderEvidence.contractLabel,
+            item: spenderEvidence.itemId,
+            verificationStatus: spenderEvidence.verificationStatus,
+            note: spenderEvidence.note,
+          }
+        : null,
       signerMode: signer.mode,
       walletAddress: signer.address,
       gasUsed: receipt.gasUsed.toString(),

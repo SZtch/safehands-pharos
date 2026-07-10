@@ -226,6 +226,74 @@ export function lookupRegistryByAddress(address: string): AddressLookupResult | 
   return ADDRESS_INDEX.get(address.trim().toLowerCase());
 }
 
+export interface AddressTrustEvidence {
+  /** Address matched a registry contract registered for the given chain. */
+  recognized: boolean;
+  /**
+   * VERIFIED item + VERIFIED contract + allow_eligible + chain match — the ONLY
+   * state that may relax risk. Recognition without this is informational only.
+   */
+  verifiedCanonical: boolean;
+  itemId: string | null;
+  itemName: string | null;
+  contractLabel: string | null;
+  safetyUse: RegistrySafetyUse | null;
+  verificationStatus: RegistryVerificationStatus | null;
+  /** Registry chainId of the matched item (null = chain-agnostic). */
+  registryChainId: number | null;
+  note: string | null;
+}
+
+const NO_TRUST: AddressTrustEvidence = {
+  recognized: false,
+  verifiedCanonical: false,
+  itemId: null,
+  itemName: null,
+  contractLabel: null,
+  safetyUse: null,
+  verificationStatus: null,
+  registryChainId: null,
+  note: null,
+};
+
+/**
+ * Registry-driven trust evaluation for a single address on a given chain.
+ * This is the ONLY sanctioned way for risk logic to derive spender/counterparty
+ * trust: hardcoded "known address" maps outside the registry are forbidden
+ * (truth-model rule: do not upgrade anything to VERIFIED without evidence).
+ * An address registered for a different chainId gets NO recognition — testnet
+ * provenance never carries to mainnet.
+ */
+export function addressTrustEvidence(address: string, chainId: number): AddressTrustEvidence {
+  const hit = lookupRegistryByAddress(address);
+  if (!hit) return NO_TRUST;
+  const base = {
+    itemId: hit.item.id,
+    itemName: hit.item.name,
+    contractLabel: hit.contract.label,
+    safetyUse: hit.item.safetyUse,
+    verificationStatus: hit.item.verificationStatus,
+    registryChainId: hit.item.chainId,
+  };
+  const chainMatches = hit.item.chainId === null || hit.item.chainId === chainId;
+  if (!chainMatches) {
+    return {
+      ...NO_TRUST,
+      ...base,
+      note: `Address matches registry entry "${hit.contract.label}" registered for chainId ${hit.item.chainId}, not the active chain ${chainId} — recognition does not carry across chains.`,
+    };
+  }
+  return {
+    ...base,
+    recognized: true,
+    verifiedCanonical:
+      hit.item.safetyUse === "allow_eligible" &&
+      hit.item.verificationStatus === "VERIFIED" &&
+      hit.contract.verificationStatus === "VERIFIED",
+    note: hit.contract.note ?? null,
+  };
+}
+
 /**
  * Name/alias lookup — recognition only. A name match carries NO address
  * verification and must never relax a decision, regardless of the item's

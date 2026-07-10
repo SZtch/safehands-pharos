@@ -385,7 +385,11 @@ app.get("/swap-route", async (req, res) => {
       isMainnet: IS_MAINNET,
     }));
   } catch (e: any) {
-    res.status(400).json(fail("BAD_REQUEST", e.message, false, "x402_server"));
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.includes("SWAP_LIQUIDITY_NOT_CONFIGURED")) {
+      return res.status(503).json(fail("SWAP_LIQUIDITY_NOT_CONFIGURED", message, false, "x402_server"));
+    }
+    res.status(400).json(fail("BAD_REQUEST", message, false, "x402_server"));
   }
 });
 

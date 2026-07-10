@@ -2,7 +2,8 @@
 import { z } from "zod";
 import { isAddress, type Account } from "viem";
 import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
-import { getDodoRoute, isNativeToken, resolveTokenAddress, resolveTokenDecimals, toWei } from "../lib/dodoApi.js";
+import { getDodoRoute, isNativeToken, resolveTokenAddress, resolveTokenDecimals, toWei, DodoNotConfiguredError } from "../lib/dodoApi.js";
+import { addressTrustEvidence } from "../lib/ecosystemRegistry.js";
 import { assessRisk } from "../lib/riskEngine.js";
 import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
 import { ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_SLIPPAGE_PCT, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist } from "../lib/constants.js";
@@ -222,12 +223,16 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
       })) as bigint;
 
       if (allowance < amountWei) {
+        // spenderVerified comes ONLY from registry evidence. Allowlist membership
+        // (checked above) is containment, not verification — asserting it as
+        // "verified" fabricated a trust claim for a testnet-provenance address.
+        const spenderEvidence = addressTrustEvidence(approveAddress, CHAIN_ID);
         const approvalPolicy = evaluateActionPolicy({
           actionType: "approve_token",
           agentId: input.agentId,
           approvalAmount: input.amountIn,
           spender: approveAddress,
-          spenderVerified: isAllowedDodoSpender(approveAddress),
+          spenderVerified: spenderEvidence.verifiedCanonical ? true : undefined,
           chainId: CHAIN_ID,
           environment: PHAROS_ENVIRONMENT,
           isMainnet: IS_MAINNET,
@@ -311,6 +316,9 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     // swap that never landed does not permanently consume the cap (parity with
     // send_payment; the revert path above already releases).
     if (reserved) releaseReservation(walletAddress, amountUsd);
+    if (err instanceof DodoNotConfiguredError) {
+      return fail("SWAP_LIQUIDITY_NOT_CONFIGURED", err.message, false, "dodo_api");
+    }
     return classifyExternalError("pharos_rpc", err);
   }
 }
