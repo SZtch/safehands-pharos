@@ -61,7 +61,9 @@ export function rpcEvidence(network: PharosNetwork = getActiveNetwork(), access?
     methods: rpcMethodMatrixSummary(),
     writeBlocked: WRITE_BLOCKED_METHODS,
     capabilities: {
-      ethGetProof: { method: "eth_getProof", status: "implemented", readOnly: true, spvVerification: "implemented" },
+      // Status matches rpcMethods.ts: the method is experimental (heavy, best-effort);
+      // SPV verification itself is implemented (spvVerifier.ts via get_spv_proof).
+      ethGetProof: { method: "eth_getProof", status: "experimental", readOnly: true, spvVerification: "implemented" },
       feeData: {
         gasPrice: isReadOnlyMethod("eth_gasPrice"),
         maxPriorityFeePerGas: isReadOnlyMethod("eth_maxPriorityFeePerGas"),

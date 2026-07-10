@@ -1,0 +1,382 @@
+// ─── SafeHands Canonical Ecosystem Registry — DATA ──────────────────────
+// The single source of truth for repo-bundled ecosystem knowledge. Every
+// address/endpoint here was already recorded elsewhere in this repo (Phase 5A
+// docs audit → constants.ts / feedRegistry.ts / anvita assets); NOTHING is
+// invented. The Anvita hosted-skill asset JSONs are generated from this file
+// (scripts/sync-anvita-assets.ts) and consistency with the TS constants is
+// pinned by test/ecosystem-registry-schema.test.ts.
+//
+// Editing rules (enforced by validateEcosystemRegistry + tests):
+//   • New entries default to verificationStatus TO_VERIFY / safetyUse
+//     recognition_only until an official citation is recorded.
+//   • endpoint: null means NOT_CONFIGURED — never fill it in speculatively.
+//   • allow_eligible requires VERIFIED status + verified contracts + citations.
+// ─────────────────────────────────────────────────────────────────────────
+
+import type { EcosystemItem } from "../lib/ecosystemRegistry.js";
+
+const PHAROS_CANONICAL_CONTRACTS_DOC = "https://docs.pharos.xyz/getting-started/canonical-contracts.md";
+const PHAROS_TOKEN_REGISTRY_DOC = "https://docs.pharos.xyz/getting-started/token-registry";
+const CHAINLINK_PUSH_DOC = "https://docs.pharos.xyz/tooling-and-infrastructure/oracles/chainlink-pe";
+
+export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
+  // ── Pharos Pacific Mainnet canonical infrastructure (14 contracts) ──────
+  {
+    id: "infrastructure:pacific-mainnet:canonical-contracts",
+    name: "Pharos canonical infrastructure (Pacific Mainnet)",
+    aliases: ["canonical contracts", "pharos canonical infrastructure"],
+    category: "infrastructure",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [
+      { type: "official_docs", ref: PHAROS_CANONICAL_CONTRACTS_DOC, verifiedAt: null },
+    ],
+    contracts: [
+      { address: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2", label: "Create2Deployer", role: "deployer", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0x4e59b44847b379578588920ca78fbf26c0b4956c", label: "Foundry Deterministic Deploy", role: "deployer", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0xcA11bde05977b3631167028862bE2a173976CA11", label: "MultiCall3", role: "batching", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0x69f4D1788e39c87893C980c06EdF4b7f686e2938", label: "GnosisSafe v1.3.0", role: "smart-account", deterministic: false, verificationStatus: "VERIFIED", note: "Pharos-specific deployment address (differs from the standard-Ethereum Safe 1.3.0 address)." },
+      { address: "0xfb1bffC9d739B8D520DaF37dF666da4C687191EA", label: "GnosisSafeL2 v1.3.0", role: "smart-account", deterministic: false, verificationStatus: "VERIFIED", note: "Pharos-specific deployment address (differs from the standard-Ethereum SafeL2 1.3.0 address)." },
+      { address: "0x914d7Fec6aaC8cd542e72Bca78B30650d45643d7", label: "SafeSingletonFactory", role: "deployer", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", label: "CreateX", role: "deployer", deterministic: false, verificationStatus: "VERIFIED", note: "Listed for Pacific Mainnet in the Pharos canonical-contracts page; Atlantic deployment not asserted." },
+      { address: "0xA1dabEF33b3B82c7814B6D82A79e50F4AC44102B", label: "MultiSendCallOnly v1.3.0", role: "batching", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0x998739BFdAAdde7C933B942a68053933098f9EDa", label: "MultiSend v1.3.0", role: "batching", deterministic: false, verificationStatus: "VERIFIED", note: "Pharos-specific deployment address (differs from the standard-Ethereum MultiSend 1.3.0 address)." },
+      { address: "0x000000000022D473030F116dDEE9F6B43aC78BA3", label: "Permit2", role: "approval-router", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032", label: "ERC-4337 EntryPoint v0.7", role: "account-abstraction", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0xEFC2c1444eBCC4Db75e7613d20C6a62fF67A167C", label: "ERC-4337 SenderCreator v0.7", role: "account-abstraction", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789", label: "ERC-4337 EntryPoint v0.6", role: "account-abstraction", deterministic: true, verificationStatus: "VERIFIED" },
+      { address: "0x7fc98430eAEdbb6070B35B39D798725049088348", label: "ERC-4337 SenderCreator v0.6", role: "account-abstraction", deterministic: true, verificationStatus: "VERIFIED" },
+    ],
+    providers: [],
+    safetyUse: "allow_eligible",
+    notes:
+      "Recognition is by canonical address only — deployment/verification on the active network is NOT asserted, and canonical recognition never makes a risky action safe (e.g. unlimited approvals to Permit2 still require confirmation).",
+  },
+
+  // ── Pharos Atlantic Testnet canonical infrastructure (existing registry) ─
+  {
+    id: "infrastructure:atlantic-testnet:canonical-contracts",
+    name: "Pharos canonical infrastructure (Atlantic Testnet)",
+    aliases: [],
+    category: "infrastructure",
+    chainId: 688689,
+    ecosystemStatus: "KNOWN_ECOSYSTEM",
+    verificationStatus: "TO_VERIFY",
+    evidenceSources: [
+      { type: "official_docs", ref: PHAROS_CANONICAL_CONTRACTS_DOC, verifiedAt: null },
+    ],
+    contracts: [
+      { address: "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2", label: "Create2Deployer", role: "deployer", deterministic: true, verificationStatus: "TO_VERIFY" },
+      { address: "0x4e59b44847b379578588920ca78fbf26c0b4956c", label: "DeterministicDeploymentProxy", role: "deployer", deterministic: true, verificationStatus: "TO_VERIFY" },
+      { address: "0xcA11bde05977b3631167028862bE2a173976CA11", label: "MultiCall3", role: "batching", deterministic: true, verificationStatus: "TO_VERIFY" },
+      { address: "0x69f4D1788e39c87893C980c06EdF4b7f686e2938", label: "GnosisSafe", role: "smart-account", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0xfb1bffC9d739B8D520DaF37dF666da4C687191EA", label: "GnosisSafeL2", role: "smart-account", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0xA1dabEF33b3B82c7814B6D82A79e50F4AC44102B", label: "MultiSendCallOnly", role: "batching", deterministic: true, verificationStatus: "TO_VERIFY" },
+      { address: "0x998739BFdAAdde7C933B942a68053933098f9EDa", label: "MultiSend", role: "batching", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x000000000022D473030F116dDEE9F6B43aC78BA3", label: "Permit2", role: "approval-router", deterministic: true, verificationStatus: "TO_VERIFY" },
+      { address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032", label: "EntryPoint (v0.7)", role: "account-abstraction", deterministic: true, verificationStatus: "TO_VERIFY" },
+      { address: "0xEFC2c1444eBCC4Db75e7613d20C6a62fF67A167C", label: "SenderCreator (v0.7)", role: "account-abstraction", deterministic: true, verificationStatus: "TO_VERIFY" },
+      // DODO infrastructure (recorded from the pre-existing testnet registry).
+      { address: "0x0246DffDa649e877CFd0951837332B4690fAD1EB", label: "DODOV2", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x701855ae3a8b2A989DC8ACCf02Dd2b96f8B21671", label: "MulticallWithValid", role: "batching", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x27D4236CF46842E5eC1A21C585654F07B00932a1", label: "DODOSellHelper", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0xF8FCF810B5DC0715655A1Ed2ef75d6e35e3C0f25", label: "DODOSwapCalcHelper", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x9AC12A5a3AAF3d71b2beFE1F3eE8bA9820F4a591", label: "ERC20Helper", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x091341395E94517E6960c5fAF95e81CdAD92Fe0d", label: "DODOCalleeHelper", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x75EF0F8c1c31dD307451B3A11B324b3125471Ee2", label: "DODOV1PmmHelper", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0xe9Fc1c26901AF258EdCC60a258A7f0228b3639d8", label: "DODOV2RouteHelper", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x114CD7D3f8a994139620aF07a4cEA444ab28968c", label: "CloneFactory", role: "deployer", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x73CAfc894dBfC181398264934f7Be4e482fc9d40", label: "DODOApprove", role: "approval-router", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x7c25C06777305e632218aDFF9763E3fC049Dd0Db", label: "DODOApproveProxy", role: "approval-router", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x4b177AdEd3b8bD1D5D747F91B9E853513838Cd49", label: "DODOV2Proxy02", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x3b5C0f0ca61d9C92e676C369B31545f4Fe003b56", label: "DODODspProxy", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0xf05Af5E9dC3b1dd3ad0C087BD80D7391283775e0", label: "UniswapV2Router02", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+      { address: "0x259C9EBBE307bb0aF410e103202662667254d062", label: "SwapRouter", role: "dex", deterministic: false, verificationStatus: "TO_VERIFY" },
+    ],
+    providers: [],
+    safetyUse: "recognition_only",
+    notes:
+      "Testnet registry recorded from the pre-existing SafeHands constants; marked TO_VERIFY pending an official Atlantic citation. Recognition here never relaxes mainnet decisions.",
+  },
+
+  // ── Pharos Pacific Mainnet canonical tokens (official token registry) ───
+  {
+    id: "token:pacific-mainnet:wpros",
+    name: "Wrapped PROS",
+    aliases: ["WPROS"],
+    category: "token",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [{ type: "official_docs", ref: PHAROS_TOKEN_REGISTRY_DOC, verifiedAt: null }],
+    contracts: [
+      { address: "0x52c48d4213107b20bc583832b0d951fb9ca8f0b0", label: "WPROS", role: "token", deterministic: false, verificationStatus: "VERIFIED", symbol: "WPROS", decimals: 18 },
+    ],
+    providers: [],
+    safetyUse: "allow_eligible",
+    notes: "Wrapped PROS; priced via the PROS/USD Chainlink Push feed.",
+  },
+  {
+    id: "token:pacific-mainnet:usdc",
+    name: "USD Coin (Circle-deployed)",
+    aliases: ["USDC"],
+    category: "token",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [{ type: "official_docs", ref: PHAROS_TOKEN_REGISTRY_DOC, verifiedAt: null }],
+    contracts: [
+      { address: "0xc879c018db60520f4355c26ed1a6d572cdac1815", label: "USDC", role: "token", deterministic: false, verificationStatus: "VERIFIED", symbol: "USDC", decimals: 6 },
+    ],
+    providers: [],
+    safetyUse: "allow_eligible",
+    notes:
+      "Canonical Pacific Mainnet USDC. Other networks use different USDC addresses (see constants.ts) — a symbol alone never identifies a token.",
+  },
+  {
+    id: "token:pacific-mainnet:link",
+    name: "ChainLink Token",
+    aliases: ["LINK"],
+    category: "token",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [{ type: "official_docs", ref: PHAROS_TOKEN_REGISTRY_DOC, verifiedAt: null }],
+    contracts: [
+      { address: "0x51e2A24742Db77604B881d6781Ee16B5b8fcBE29", label: "LINK", role: "token", deterministic: false, verificationStatus: "VERIFIED", symbol: "LINK", decimals: 18 },
+    ],
+    providers: [],
+    safetyUse: "allow_eligible",
+    notes: "",
+  },
+  {
+    id: "token:pacific-mainnet:weth",
+    name: "Wrapped Ether",
+    aliases: ["WETH"],
+    category: "token",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [{ type: "official_docs", ref: PHAROS_TOKEN_REGISTRY_DOC, verifiedAt: null }],
+    contracts: [
+      { address: "0x1f4b7011Ee3d53969bb67F59428a9ec0477856E9", label: "WETH", role: "token", deterministic: false, verificationStatus: "VERIFIED", symbol: "WETH", decimals: 18 },
+    ],
+    providers: [],
+    safetyUse: "allow_eligible",
+    notes: "Wrapped Ether; priced via the ETH/USD Chainlink Push feed.",
+  },
+
+  // ── Chainlink Push Engine price feeds (Pacific Mainnet) ─────────────────
+  {
+    id: "oracle:pacific-mainnet:chainlink-push-feeds",
+    name: "Chainlink Push Engine price feeds",
+    aliases: ["chainlink-push", "chainlink push feeds"],
+    category: "oracle",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [{ type: "official_docs", ref: CHAINLINK_PUSH_DOC, verifiedAt: null }],
+    contracts: [
+      { address: "0x9356C87a48F913d11C87a0d4b8cD16CD04624BF3", label: "PROS/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "PROS", pair: "PROS/USD" },
+      { address: "0x6BFcd14b164de6c8C4dA2d065d511055A589EB20", label: "BTC/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "BTC", pair: "BTC/USD" },
+      { address: "0x092ff0175Be8B2e83Ca5740d3EB13C6225901fa7", label: "ETH/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "ETH", pair: "ETH/USD" },
+      { address: "0x22E1db75084B7f0393896bc7046E64eFdC34b729", label: "WBTC/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "WBTC", pair: "WBTC/USD" },
+      { address: "0x84B06e38C70DD1f0039bA25E017CAe7cFcDE53b0", label: "USDT/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "USDT", pair: "USDT/USD", feedOnly: true, note: "Feed-only: no official USDT token address exists in the Pharos Pacific Mainnet token registry. Price reads are supported; wallet-balance and token-contract analysis for USDT are NOT claimed." },
+      { address: "0x8d08eA83A55ad1e805b5660F5eC76C99C6aF5eaf", label: "USDC/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "USDC", pair: "USDC/USD" },
+      { address: "0xCb87D7B02AC34B0aC5C3472467AB67E1de655C0A", label: "LINK/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "LINK", pair: "LINK/USD" },
+      { address: "0x2eaB341Db05503c73A1274f1EFbD5d4560767229", label: "BNB/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "BNB", pair: "BNB/USD" },
+      { address: "0x9c9FccaEf0851298321B813Ce2530c67e20F9C10", label: "SOL/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "SOL", pair: "SOL/USD" },
+      { address: "0x43CeBa953FF0165840f35342F6a6Bc1B923bc5FF", label: "XRP/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "XRP", pair: "XRP/USD" },
+    ],
+    providers: [
+      { kind: "price_feed", endpoint: null, configVia: null, status: "implemented", note: "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price — including stablecoins." },
+    ],
+    safetyUse: "recognition_only",
+    notes:
+      "Canonical USD pricing source. A configured feed never guarantees token identity or action safety; stale feeds fail closed (FEED_STALE) and the last answer is never quoted.",
+  },
+
+  // ── SafeHands on-chain contracts (Pacific Mainnet) ──────────────────────
+  {
+    id: "infrastructure:pacific-mainnet:safehands-contracts",
+    name: "SafeHands Registry & Attestation",
+    aliases: ["safehands registry", "safehands attestation"],
+    category: "infrastructure",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [
+      { type: "onchain", ref: "Deployed on Pharos Pacific Mainnet (chainId 1672) via scripts/deploy-safehands.ts; see SECURITY.md §Deployed contracts.", verifiedAt: null },
+      { type: "official_github", ref: "https://github.com/SZtch/safehands-pharos/tree/main/contracts", verifiedAt: null },
+    ],
+    contracts: [
+      { address: "0x428e02bf85412e7242d991cd6725ec59e8b06c8d", label: "SafeHandsRegistry", role: "registry", deterministic: false, verificationStatus: "VERIFIED" },
+      { address: "0x71a7a87b3b1ab6d86204cad691bb32fd75b4588c", label: "SafeHandsAttestation", role: "attestation", deterministic: false, verificationStatus: "VERIFIED" },
+    ],
+    providers: [],
+    safetyUse: "allow_eligible",
+    notes:
+      "Operator-permissioned Merkle-batch registry and positive-only attestation reputation (SECURITY.md operator-trust caveat): treat published risk roots as operator-attested, not trustless. Read-path defaults are chain-guarded to Pacific (any other chain resolves to \"\" → fail-closed).",
+  },
+
+  // ── Read-only enrichment providers (hosted skill; endpoint: null = NOT_CONFIGURED) ─
+  {
+    id: "provider:pacific-mainnet:goldsky",
+    name: "Goldsky subgraph",
+    aliases: ["goldsky", "subgraph"],
+    category: "provider",
+    chainId: 1672,
+    ecosystemStatus: "NOT_CONFIGURED",
+    verificationStatus: "UNVERIFIED",
+    evidenceSources: [],
+    contracts: [],
+    providers: [
+      { kind: "subgraph", endpoint: null, configVia: "GOLDSKY_SUBGRAPH_URL", status: "not_configured", note: "Set to a public Goldsky subgraph GraphQL URL (https, keyless) to enable query_goldsky_subgraph." },
+    ],
+    safetyUse: "recognition_only",
+    notes: "Indexing/data enrichment only — never an execution path and never a substitute for on-chain reads.",
+  },
+  {
+    id: "provider:pacific-mainnet:execution-history",
+    name: "Execution-history indexer",
+    aliases: ["execution history"],
+    category: "provider",
+    chainId: 1672,
+    ecosystemStatus: "NOT_CONFIGURED",
+    verificationStatus: "UNVERIFIED",
+    evidenceSources: [],
+    contracts: [],
+    providers: [
+      { kind: "indexer", endpoint: null, configVia: null, status: "not_configured", note: "Set to a public, keyless indexer URL to enable get_execution_history. Explorer scraping is not an acceptable substitute." },
+    ],
+    safetyUse: "recognition_only",
+    notes: "",
+  },
+  {
+    id: "provider:pacific-mainnet:pool-info",
+    name: "Pool-info provider",
+    aliases: ["pool info"],
+    category: "provider",
+    chainId: 1672,
+    ecosystemStatus: "NOT_CONFIGURED",
+    verificationStatus: "UNVERIFIED",
+    evidenceSources: [],
+    contracts: [],
+    providers: [
+      { kind: "json_api", endpoint: null, configVia: null, status: "not_configured", note: "Set to a verified public, keyless pool-info URL to enable get_pool_info. Pool/route data is context only — never a canonical price." },
+    ],
+    safetyUse: "recognition_only",
+    notes: "",
+  },
+  {
+    id: "provider:pacific-mainnet:vault-status",
+    name: "Vault-status provider",
+    aliases: ["vault status"],
+    category: "provider",
+    chainId: 1672,
+    ecosystemStatus: "NOT_CONFIGURED",
+    verificationStatus: "UNVERIFIED",
+    evidenceSources: [],
+    contracts: [],
+    providers: [
+      { kind: "json_api", endpoint: null, configVia: null, status: "not_configured", note: "Set to a verified public, keyless vault-status URL to enrich vault_deposit / yield_deposit intents with TVL/cap/paused data. Without it, those fields are reported as unavailable — never invented." },
+    ],
+    safetyUse: "recognition_only",
+    notes: "",
+  },
+
+  // ── Live truth providers used by the TS backend ─────────────────────────
+  {
+    id: "provider:pacific-mainnet:public-rpc",
+    name: "Public Pharos RPC",
+    aliases: ["public rpc", "rpc.pharos.xyz"],
+    category: "provider",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [{ type: "official_docs", ref: "https://docs.pharos.xyz/api-and-sdk/json-rpc-methods", verifiedAt: null }],
+    contracts: [],
+    providers: [
+      { kind: "rpc", endpoint: "https://rpc.pharos.xyz", configVia: "PHAROS_RPC_URL", status: "implemented", note: "Default keyless read-only RPC; read methods only (see src/lib/pharos/rpcMethods.ts)." },
+    ],
+    safetyUse: "recognition_only",
+    notes: "Tier-1 on-chain truth transport. RPC availability never relaxes a decision; RPC failure fails closed.",
+  },
+  {
+    id: "provider:goplus",
+    name: "GoPlus token/address security",
+    aliases: ["goplus", "go+ security"],
+    category: "provider",
+    chainId: null,
+    ecosystemStatus: "KNOWN_ECOSYSTEM",
+    verificationStatus: "TO_VERIFY",
+    evidenceSources: [{ type: "provider", ref: "https://api.gopluslabs.io (keyless public API)", verifiedAt: null }],
+    contracts: [],
+    providers: [
+      { kind: "security_intel", endpoint: "https://api.gopluslabs.io", configVia: "GOPLUS_API_BASE", status: "implemented", note: "Keyless threat intel. Negative signals escalate; a clean result never relaxes risk on its own. Unavailable/unindexed/schema-drift → fail closed (token treated as unreviewed)." },
+    ],
+    safetyUse: "recognition_only",
+    notes: "GoPlus support for Pharos (chain 1672) is a third-party claim (TO_VERIFY) — its output is risk intel, never identity or legitimacy.",
+  },
+  {
+    id: "explorer:pharosscan",
+    name: "Pharosscan explorer",
+    aliases: ["pharosscan", "explorer"],
+    category: "explorer",
+    chainId: null,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [{ type: "official_docs", ref: "https://www.pharosscan.xyz (linked from official Pharos docs)", verifiedAt: null }],
+    contracts: [],
+    providers: [
+      { kind: "explorer_api", endpoint: null, configVia: null, status: "not_implemented", note: "Explorer is used for display links only; no verification API is called and explorer pages are never scraped." },
+    ],
+    safetyUse: "recognition_only",
+    notes: "Every SafeHands analysis links to the explorer so users can verify evidence themselves — the link is presentation, not proof.",
+  },
+
+  // ── Known-but-unverified ecosystem protocols (fail closed) ──────────────
+  {
+    id: "protocol:pacific-mainnet:stargate",
+    name: "Stargate",
+    aliases: ["stargate"],
+    category: "bridge",
+    chainId: 1672,
+    ecosystemStatus: "KNOWN_ECOSYSTEM",
+    verificationStatus: "UNVERIFIED",
+    evidenceSources: [],
+    contracts: [],
+    providers: [],
+    safetyUse: "escalate_only",
+    notes: "No officially published Stargate router address for Pharos Pacific Mainnet is bundled. Bridge intents to unlisted routers fail closed (warn/block).",
+  },
+  {
+    id: "protocol:pacific-mainnet:faroswap",
+    name: "FaroSwap",
+    aliases: ["faroswap"],
+    category: "protocol",
+    chainId: 1672,
+    ecosystemStatus: "KNOWN_ECOSYSTEM",
+    verificationStatus: "UNVERIFIED",
+    evidenceSources: [],
+    contracts: [],
+    providers: [],
+    safetyUse: "escalate_only",
+    notes: "No officially published FaroSwap contract addresses are bundled. Internal frontend endpoints and pass-keys are prohibited.",
+  },
+  {
+    id: "protocol:pacific-mainnet:stpros-premint",
+    name: "stPROS Pre-Mint",
+    aliases: ["stpros", "stpros-premint"],
+    category: "protocol",
+    chainId: 1672,
+    ecosystemStatus: "KNOWN_ECOSYSTEM",
+    verificationStatus: "UNVERIFIED",
+    evidenceSources: [],
+    contracts: [],
+    providers: [],
+    safetyUse: "escalate_only",
+    notes: "No officially published stPROS Pre-Mint contract address is bundled. Yield-deposit intents to unlisted contracts fail closed (warn/block).",
+  },
+];

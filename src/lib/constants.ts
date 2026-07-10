@@ -14,6 +14,7 @@
 
 import { parseAbi } from "viem";
 import { getActiveNetwork, resolveRpcUrl, explorerTxBase } from "./networks.js";
+import { ECOSYSTEM_REGISTRY_ITEMS } from "../data/ecosystemRegistry.data.js";
 
 const ACTIVE_NETWORK = getActiveNetwork();
 
@@ -337,8 +338,10 @@ export const DODO_ROUTE_ENDPOINT = "/route-service/v2/widget/getdodoroute";
 
 // ─── Risk Engine Thresholds ────────────────────────────────────────────
 
+// Weighted risk-engine block boundary (block when score > 80). NOTE: the hosted
+// Anvita engine deliberately blocks earlier (score ≥ 70) — see
+// docs/DECISION_CONTRACT.md §Thresholds for the documented divergence.
 export const RISK_BLOCK_THRESHOLD = 80;
-export const RISK_WARN_THRESHOLD = 60;
 export const MAX_SLIPPAGE_PCT = 5;
 export const MAX_BALANCE_USAGE_PCT = 90;
 
@@ -467,7 +470,12 @@ export function resolveSafeHandsAttestationAddress(chainId: number = CHAIN_ID): 
 export const SAFEHANDS_REGISTRY_ADDRESS = resolveSafeHandsRegistryAddress();
 export const SAFEHANDS_ATTESTATION_ADDRESS = resolveSafeHandsAttestationAddress();
 
-/** Sentinel returned by SafeHandsRegistry.riskScoreOf when no valid record exists. */
+/**
+ * Sentinel meaning "no valid on-chain risk score exists". The current
+ * Merkle-batched SafeHandsRegistry has no per-record `riskScoreOf` read — this
+ * sentinel is used by off-chain enrichment (src/agent/agentEnrich.ts) to
+ * represent the absence of a score; it is never fabricated into a real one.
+ */
 export const NO_RISK_SCORE = 255;
 
 export const SAFEHANDS_REGISTRY_ABI = parseAbi([
@@ -485,51 +493,22 @@ export const SAFEHANDS_REGISTRY_ABI = parseAbi([
 
 // ─── Canonical Infrastructure Contracts ─────────────────────────────────
 // Recognized as safe by the SafeHands Policy Engine to reduce false positives.
-export const PACIFIC_CANONICAL_CONTRACTS = [
-  "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2", // Create2Deployer
-  "0x4e59b44847b379578588920ca78fbf26c0b4956c", // Foundry Deterministic Deploy
-  "0xcA11bde05977b3631167028862bE2a173976CA11", // MultiCall3
-  "0x69f4D1788e39c87893C980c06EdF4b7f686e2938", // GnosisSafe (v1.3.0)
-  "0xfb1bffC9d739B8D520DaF37dF666da4C687191EA", // GnosisSafeL2 (v1.3.0)
-  "0x914d7Fec6aaC8cd542e72Bca78B30650d45643d7", // SafeSingletonFactory
-  "0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed", // CreateX
-  "0xA1dabEF33b3B82c7814B6D82A79e50F4AC44102B", // MultiSendCallOnly (v1.3.0)
-  "0x998739BFdAAdde7C933B942a68053933098f9EDa", // MultiSend (v1.3.0)
-  "0x000000000022D473030F116dDEE9F6B43aC78BA3", // Permit2
-  "0x0000000071727De22E5E9d8BAf0edAc6f37da032", // EntryPoint (v0.7)
-  "0xEFC2c1444eBCC4Db75e7613d20C6a62fF67A167C", // SenderCreator (v0.7)
-  "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789", // EntryPoint (v0.6)
-  "0x7fc98430eAEdbb6070B35B39D798725049088348", // SenderCreator (v0.6)
-].map(a => a.toLowerCase());
+// Derived from the canonical ecosystem registry (src/data/ecosystemRegistry.data.ts)
+// so the policy engine, the read-API analyzer (contractIntel), and the Anvita
+// hosted-skill assets all recognize the same set — the registry is the single
+// source of truth for these addresses.
+function canonicalRegistryAddresses(itemId: string): string[] {
+  const item = ECOSYSTEM_REGISTRY_ITEMS.find((i) => i.id === itemId);
+  return (item?.contracts ?? []).map((c) => c.address.toLowerCase());
+}
 
-export const ATLANTIC_CANONICAL_CONTRACTS = [
-  "0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2", // Create2Deployer
-  "0x4e59b44847b379578588920ca78fbf26c0b4956c", // DeterministicDeploymentProxy
-  "0xcA11bde05977b3631167028862bE2a173976CA11", // MultiCall3
-  "0x69f4D1788e39c87893C980c06EdF4b7f686e2938", // GnosisSafe
-  "0xfb1bffC9d739B8D520DaF37dF666da4C687191EA", // GnosisSafeL2
-  "0xA1dabEF33b3B82c7814B6D82A79e50F4AC44102B", // MultiSendCallOnly
-  "0x998739BFdAAdde7C933B942a68053933098f9EDa", // MultiSend
-  "0x000000000022D473030F116dDEE9F6B43aC78BA3", // Permit2
-  "0x0000000071727De22E5E9d8BAf0edAc6f37da032", // EntryPoint (v0.7)
-  "0xEFC2c1444eBCC4Db75e7613d20C6a62fF67A167C", // SenderCreator (v0.7)
-  // DODO infrastructure
-  "0x0246DffDa649e877CFd0951837332B4690fAD1EB", // DODOV2
-  "0x701855ae3a8b2A989DC8ACCf02Dd2b96f8B21671", // MulticallWithValid
-  "0x27D4236CF46842E5eC1A21C585654F07B00932a1", // DODOSellHelper
-  "0xF8FCF810B5DC0715655A1Ed2ef75d6e35e3C0f25", // DODOSwapCalcHelper
-  "0x9AC12A5a3AAF3d71b2beFE1F3eE8bA9820F4a591", // ERC20Helper
-  "0x091341395E94517E6960c5fAF95e81CdAD92Fe0d", // DODOCalleeHelper
-  "0x75EF0F8c1c31dD307451B3A11B324b3125471Ee2", // DODOV1PmmHelper
-  "0xe9Fc1c26901AF258EdCC60a258A7f0228b3639d8", // DODOV2RouteHelper
-  "0x114CD7D3f8a994139620aF07a4cEA444ab28968c", // CloneFactory
-  "0x73CAfc894dBfC181398264934f7Be4e482fc9d40", // DODOApprove
-  "0x7c25C06777305e632218aDFF9763E3fC049Dd0Db", // DODOApproveProxy
-  "0x4b177AdEd3b8bD1D5D747F91B9E853513838Cd49", // DODOV2Proxy02
-  "0x3b5C0f0ca61d9C92e676C369B31545f4Fe003b56", // DODODspProxy
-  "0xf05Af5E9dC3b1dd3ad0C087BD80D7391283775e0", // UniswapV2Router02
-  "0x259C9EBBE307bb0aF410e103202662667254d062", // SwapRouter
-].map(a => a.toLowerCase());
+export const PACIFIC_CANONICAL_CONTRACTS = canonicalRegistryAddresses(
+  "infrastructure:pacific-mainnet:canonical-contracts",
+);
+
+export const ATLANTIC_CANONICAL_CONTRACTS = canonicalRegistryAddresses(
+  "infrastructure:atlantic-testnet:canonical-contracts",
+);
 
 export function isCanonicalInfrastructure(address: string, isMainnet: boolean): boolean {
   if (!address) return false;
