@@ -18,6 +18,8 @@ import {
   analyzeContract,
   analyzeApproval,
   analyzeSafeTx,
+  analyzeCalldata,
+  isDecodableCalldataSelector,
   analyzeX402,
   type AnalyzerResult,
   type AnalyzerRiskLevel,
@@ -40,6 +42,7 @@ import {
   analyzeContractSchema,
   analyzeApprovalSchema,
   analyzeSafeSchema,
+  analyzeCalldataSchema,
   analyzeX402Schema,
 } from "./schemas.js";
 import { readOnlyMeta, rpcMeta, explorerLinks, worstDecision } from "./response.js";
@@ -185,6 +188,10 @@ export async function handleGuardianCheck(raw: unknown, access?: ReadOnlyChainAc
       analyzers.push(analyzeApproval(input.data, input.to));
     } else if (selector === MULTISEND_SELECTOR && input.data) {
       analyzers.push(await analyzeSafeTx(input.data));
+    } else if (input.data && isDecodableCalldataSelector(selector)) {
+      // permit / Permit2 approve / setApprovalForAll / transferFrom / transfer /
+      // allowance / dangerous-admin selectors — offline decode, escalate-only.
+      analyzers.push(analyzeCalldata(input.data, input.to));
     }
   }
 
@@ -262,6 +269,21 @@ export async function handleAnalyzeContract(raw: unknown, access?: ReadOnlyChain
 export function handleAnalyzeApproval(raw: unknown) {
   const input = analyzeApprovalSchema.parse(raw);
   const result = analyzeApproval(input.data, input.token);
+  return {
+    ...result,
+    ecosystemEvidence: ecosystemEvidenceForRequest({ token: input.token }),
+    ...readOnlyMeta(),
+    ...rpcMeta(getActiveNetwork()),
+  };
+}
+
+// ── POST /analyze/calldata ─────────────────────────────────────────────
+// Offline superset decoder (permit, Permit2 approve, setApprovalForAll,
+// transferFrom/transfer, allowance changes, dangerous-admin selectors). Never
+// signs/sends — verdict only. Read-only.
+export function handleAnalyzeCalldata(raw: unknown) {
+  const input = analyzeCalldataSchema.parse(raw);
+  const result = analyzeCalldata(input.data, input.token);
   return {
     ...result,
     ecosystemEvidence: ecosystemEvidenceForRequest({ token: input.token }),

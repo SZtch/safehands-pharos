@@ -11,6 +11,7 @@ import {
   handleAnalyzeContract,
   handleAnalyzeApproval,
   handleAnalyzeSafe,
+  handleAnalyzeCalldata,
   handleAnalyzeX402,
 } from "../api/routes.js";
 import { explainPolicyResult } from "../lib/policy/actionPolicyEngine.js";
@@ -71,8 +72,11 @@ export async function routeIntent(intent: AgentIntent, req: AgentRequest, opts: 
     case "contract_check":
       return fromAnalyzer("analyze/contract", (await handleAnalyzeContract({ address: req.address ?? req.to, network: req.network, chainId: req.chainId }, access)) as AnalyzerShape);
     case "erc20_approval":
-    case "permit2_approval":
       return fromAnalyzer("analyze/approval", handleAnalyzeApproval({ data: req.data, token: req.token ?? req.to }) as AnalyzerShape);
+    case "permit2_approval":
+      // Permit2 approve(0x87517c45) is decoded by the calldata analyzer, not the
+      // ERC-20 approve decoder (which only understands 0x095ea7b3).
+      return fromAnalyzer("analyze/calldata", handleAnalyzeCalldata({ data: req.data, token: req.token ?? req.to }) as AnalyzerShape);
     case "safe_transaction":
       return fromAnalyzer("analyze/safe", (await handleAnalyzeSafe({ data: req.data })) as AnalyzerShape);
     case "x402_payment_request":

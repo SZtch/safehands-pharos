@@ -28,6 +28,7 @@ import {
   handleAnalyzeContract,
   handleAnalyzeApproval,
   handleAnalyzeSafe,
+  handleAnalyzeCalldata,
   handleAnalyzeX402,
 } from "./routes.js";
 import { ok, fail } from "../lib/toolResponse.js";
@@ -343,6 +344,13 @@ export function createGuardianApp(): express.Application {
       sendOk(req, res, payload);
     } catch (err) { sendError(res, err); }
   });
+  app.post("/analyze/calldata", (req, res) => {
+    try {
+      const payload = handleAnalyzeCalldata(req.body ?? {});
+      recordDecision(req, res, "/analyze/calldata", payload);
+      sendOk(req, res, payload);
+    } catch (err) { sendError(res, err); }
+  });
   app.post("/analyze/x402", (req, res) => {
     try {
       const payload = handleAnalyzeX402(req.body ?? {});
@@ -476,7 +484,7 @@ export function startServer(): void {
     console.log(`✅ SafeHands API + Tool Gateway on http://${BIND_HOST}:${port}`);
     console.log(`📡 Active network: ${network.label} (chainId ${network.chainId}, ${network.nativeToken})`);
     console.log(`🔐 Default-safe: read/check routes are open; hosted tools and user-signed broadcast stay env-gated.`);
-    console.log(`🆓 GET /health, /infra/status, /public-config · POST /guardian/check, /analyze/{tx,contract,approval,safe,x402}, /agent/check, /agent/a2a/check, /prepare/tx, /wallet/prepare, /broadcast/signed · GET /tools · POST /tools/:toolName`);
+    console.log(`🆓 GET /health, /infra/status, /public-config · POST /guardian/check, /analyze/{tx,contract,approval,safe,calldata,x402}, /agent/check, /agent/a2a/check, /prepare/tx, /wallet/prepare, /broadcast/signed · GET /tools · POST /tools/:toolName`);
     console.log(`📊 Observability: GET /activity/summary, /activity/recent, /metrics/public · X-Request-Id on every response`);
   });
 }

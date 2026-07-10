@@ -80,6 +80,13 @@ export const analyzeSafeSchema = z.object({
 });
 export type AnalyzeSafeInput = z.infer<typeof analyzeSafeSchema>;
 
+export const analyzeCalldataSchema = z.object({
+  data: hexDataSchema,
+  /** Optional token/contract the calldata targets — read-only metadata only. */
+  token: addressSchema.optional(),
+});
+export type AnalyzeCalldataInput = z.infer<typeof analyzeCalldataSchema>;
+
 export const analyzeX402Schema = z.object({
   url: z.string().min(1, "url is required."),
   paymentAmountUsdc: z.string().optional(),
