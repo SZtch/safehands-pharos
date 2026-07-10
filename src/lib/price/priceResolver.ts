@@ -19,7 +19,6 @@ import { getActiveNetwork } from "../networks.js";
 import { CHAIN_ID } from "../constants.js";
 import { resolveFeedSymbol, pricedSymbolsForActiveNetwork, type FeedLookup } from "./feedRegistry.js";
 import { ChainlinkPushProvider } from "./chainlinkPushProvider.js";
-import { SupraPullProvider } from "./supraProvider.js";
 import type {
   PriceErrorCode,
   PriceFeedProviderKind,
@@ -286,10 +285,16 @@ export class PriceResolver {
   }
 }
 
-/** Process-wide singleton wired to the live publicClient. */
+/**
+ * Process-wide singleton wired to the live publicClient. Only implemented
+ * providers are registered — the Supra pull provider is a stub
+ * (src/lib/price/supraProvider.ts) and is deliberately NOT registered; a feed
+ * configured for "supra-pull" fails closed with a structured
+ * PRICE_SOURCE_UNAVAILABLE ("no provider registered") instead of advertising an
+ * unimplemented source.
+ */
 export const priceResolver = new PriceResolver({
   "chainlink-push": new ChainlinkPushProvider(),
-  "supra-pull": new SupraPullProvider(),
 });
 
 export function resolvePriceUsd(symbol: string, opts?: ResolvePriceOptions): Promise<PriceResolverResult> {

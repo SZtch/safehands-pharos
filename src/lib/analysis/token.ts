@@ -56,10 +56,19 @@ function analyzePacificToken(raw: string, registryScope: NetworkName, evidence: 
     status = "CANONICAL_MAINNET_TOKEN";
     verificationStatus = "DOCS_VERIFIED";
     resolvedFrom = isAddress(raw) ? "address" : "symbol";
-    internalDecision = "ALLOW";
-    riskLevel = "LOW";
-    reasons.push(`Token is a canonical Pharos Pacific Mainnet token (${symbol}).`);
-    if (resolvedFrom === "symbol") {
+    if (resolvedFrom === "address") {
+      // ALLOW requires an address match against the official registry — the caller
+      // named the exact canonical contract.
+      internalDecision = "ALLOW";
+      riskLevel = "LOW";
+      reasons.push(`Token is a canonical Pharos Pacific Mainnet token (${symbol}).`);
+    } else {
+      // Fail-closed (truth-model rule 1): a known NAME alone never produces ALLOW.
+      // The symbol resolves to the canonical registry address, but the caller did
+      // not identify a contract — confirm the resolved address before acting.
+      internalDecision = "REQUIRE_CONFIRMATION";
+      riskLevel = "MEDIUM";
+      reasons.push(`Symbol "${raw}" resolves to the canonical Pharos Pacific Mainnet token ${symbol} at ${normalizedAddress}, but a symbol alone is not an on-chain guarantee — confirm the resolved address before acting on it.`);
       warnings.push(`Symbol "${raw}" was resolved to the official Pacific Mainnet registry address ${normalizedAddress} — a symbol alone is not an on-chain guarantee.`);
     }
   } else if (isAddress(raw)) {
@@ -118,9 +127,16 @@ function analyzeAtlanticToken(raw: string, registryScope: NetworkName, evidence:
       break;
     case "SKILL_ENGINE_CANONICAL_TOKEN":
     case "CANONICAL_MAINNET_TOKEN":
-      internalDecision = "ALLOW";
-      riskLevel = "LOW";
-      reasons.push(`Token is a canonical Atlantic-mainnet token (${cls.symbol ?? "?"}).`);
+      if (resolvedFrom === "symbol") {
+        // Fail-closed (truth-model rule 1): a known NAME alone never produces ALLOW.
+        internalDecision = "REQUIRE_CONFIRMATION";
+        riskLevel = "MEDIUM";
+        reasons.push(`Symbol "${raw}" resolves to the registry token ${cls.symbol ?? "?"} at ${cls.normalizedAddress ?? "?"}, but a symbol alone is not an on-chain guarantee — confirm the resolved address before acting on it.`);
+      } else {
+        internalDecision = "ALLOW";
+        riskLevel = "LOW";
+        reasons.push(`Token is a canonical Atlantic-mainnet token (${cls.symbol ?? "?"}).`);
+      }
       break;
     case "ALTERNATE_SOURCE_TOKEN":
       internalDecision = "REQUIRE_CONFIRMATION";
