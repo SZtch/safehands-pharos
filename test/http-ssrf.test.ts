@@ -18,6 +18,10 @@ import { isBlockedIp, assertSafeFetchUrl, fetchWithTimeoutAndRetry } from "../sr
 // Env keys the bypass tests mutate — snapshot + restore.
 const MUTATED_ENV_KEYS = ["ALLOW_LOCAL_X402_FETCH", "NODE_ENV"] as const;
 const savedEnv = Object.fromEntries(MUTATED_ENV_KEYS.map((k) => [k, process.env[k]]));
+// The strict-path cases below assume the loopback bypass is OFF. CI (and local
+// shells) may export ALLOW_LOCAL_X402_FETCH=true for OTHER suites, so clear it
+// here — the bypass-specific tests re-enable it explicitly themselves.
+delete process.env.ALLOW_LOCAL_X402_FETCH;
 after(() => {
   for (const [k, v] of Object.entries(savedEnv)) {
     if (v === undefined) delete process.env[k];
