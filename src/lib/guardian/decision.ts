@@ -17,10 +17,6 @@ export const GUARDIAN_DECISIONS: readonly GuardianDecision[] = [
   "PREPARE_ONLY",
 ] as const;
 
-export function isGuardianDecision(value: unknown): value is GuardianDecision {
-  return typeof value === "string" && (GUARDIAN_DECISIONS as readonly string[]).includes(value);
-}
-
 export interface MapEngineDecisionOptions {
   /**
    * When false, an otherwise-ALLOW action is returned as PREPARE_ONLY because
