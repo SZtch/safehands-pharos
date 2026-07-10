@@ -102,9 +102,11 @@ SafeHands is **mainnet-first for read/check/analyze on Pharos Pacific (1672)** a
 For the Mainnet Production Profile (Single-Instance Production Architecture), deploy with:
 
 ```bash
-npm ci --omit=dev
-npm run build
+npm ci                                  # dev deps included — tsc lives there; the prepare hook compiles dist/
+npm prune --omit=dev                    # then drop dev tooling (Hardhat/Mocha/tsc) from the host
 NODE_ENV=production npm run start:api   # the boot guards only run with NODE_ENV=production — always set it
 ```
+
+(`npm ci --omit=dev` alone cannot work here: the `prepare` hook runs `tsc`, which is a devDependency. On container hosts, prefer the repo `Dockerfile` — its multi-stage build does the same compile-then-prune split.)
 
 Do not run Hardhat/Mocha tooling on the public API host. A forced audit fix can downgrade/change Hardhat toolbox versions and may break the Hardhat 3 setup, so it is intentionally not applied blindly. Track these as dev-tooling findings and re-run `npm audit` after Hardhat/Mocha publish compatible patched releases.
