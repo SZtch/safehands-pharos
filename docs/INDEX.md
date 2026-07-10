@@ -15,6 +15,7 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 |-----|----------------|
 | [REVIEWER_QUICKSTART.md](./REVIEWER_QUICKSTART.md) | Clone → build → test → demo in minutes. No keys/wallet needed. |
 | [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md) | Guided reviewer walkthrough — live URLs, live contracts, expected outputs. |
+| [DECISION_CONTRACT.md](./DECISION_CONTRACT.md) | The public 4-value decision vocabulary, its internal mappings, and the confirmation trust anchor. Load-bearing. |
 | [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) | How SafeHands serves Real-Fi & RWA on Pharos: what is live today vs roadmap. |
 | [PRODUCTION_BACKEND.md](./PRODUCTION_BACKEND.md) | The read-only SafeHands HTTP API: endpoints, capability flags, request safety. |
 | [PREPARE_TRANSACTION.md](./PREPARE_TRANSACTION.md) | P9 prepare-only mode — `POST /prepare/tx` returns an unsigned tx; the user signs externally. |
@@ -48,6 +49,17 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | [PHAROS_ECOSYSTEM_EVIDENCE.md](./PHAROS_ECOSYSTEM_EVIDENCE.md) · [PHAROS_ECOSYSTEM_INTEGRATIONS.md](./PHAROS_ECOSYSTEM_INTEGRATIONS.md) | Integration evidence. |
 | [reports/PHAROS_IMPLEMENTATION_MAP.md](./reports/PHAROS_IMPLEMENTATION_MAP.md) · [reports/PHAROS_IMPLEMENTED_VS_ROADMAP.md](./reports/PHAROS_IMPLEMENTED_VS_ROADMAP.md) | What's implemented vs roadmap — **Phase 5D snapshots**; see the supersession banner (CLI/SDK, live Chainlink reads, and SPV verification have since shipped). |
 | [PHAROS_RPC_READ_ONLY.md](./PHAROS_RPC_READ_ONLY.md) · [PHAROS_RPC_METHOD_MATRIX.md](./PHAROS_RPC_METHOD_MATRIX.md) · [PHAROS_ZAN_RPC_OPTIONAL.md](./PHAROS_ZAN_RPC_OPTIONAL.md) | RPC read-only whitelist + optional providers. |
+
+## Contracts, audits & deep dives
+
+| Doc | What it covers |
+|-----|----------------|
+| [CANONICAL_CONTRACTS.md](./CANONICAL_CONTRACTS.md) | Ground truth for the official Pharos canonical contracts the preflight engine recognizes. |
+| [reports/AUDIT_REMEDIATION_2026-07.md](./reports/AUDIT_REMEDIATION_2026-07.md) | Full July 2026 repository audit + remediation record — every finding, fix, and verification gate. |
+| [deployment/ARCHITECTURE_DECISION.md](./deployment/ARCHITECTURE_DECISION.md) | ADR for the optional self-hosted reference backend (single-instance profile). |
+| [deployment/FULL_SERVICE_DESIGN.md](./deployment/FULL_SERVICE_DESIGN.md) | Layout for running every endpoint/service self-hosted (API + x402 + worker). |
+| [indexing/GOLDSKY_ATTESTATION_INDEXING.md](./indexing/GOLDSKY_ATTESTATION_INDEXING.md) | Goldsky indexing design — mainnet contracts stay the source of truth. |
+| [POST_HACKATHON_NOTES.md](./POST_HACKATHON_NOTES.md) | Applied hardening notes, a known contract-layer design limitation, and the engine roadmap. |
 
 ---
 
