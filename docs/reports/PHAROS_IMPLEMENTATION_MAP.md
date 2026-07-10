@@ -3,6 +3,15 @@
 
 # Pharos → SafeHands Implementation Map (Phase 5A)
 
+> [!WARNING]
+> **Historical snapshot (Phase 5A) — superseded in places.** Shipped since (code +
+> tests): **SPV verification** (`src/lib/pharos/spvVerifier.ts` via `get_spv_proof`;
+> §11's `not_implemented` no longer holds) and **live Chainlink Push feed reads**
+> (`src/lib/price/priceResolver.ts`; §12's "no Chainlink call" no longer holds — the
+> no-overclaim rule still stands for CCIP/cross-chain). Current state:
+> [`docs/INDEX.md`](../INDEX.md) · [`AUDIT_REMEDIATION_2026-07.md`](./AUDIT_REMEDIATION_2026-07.md).
+> The snapshot below is kept unedited for provenance.
+
 > Maps every Pharos topic to SafeHands implementation status. Audit-only; no code
 > changes in this phase. Source of truth = official Pharos docs (fetched live).
 > Unconfirmed items = **TO_VERIFY**.

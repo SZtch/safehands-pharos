@@ -3,6 +3,18 @@
 
 # SafeHands × Pharos — Implemented vs Roadmap (Phase 5D)
 
+> [!WARNING]
+> **Historical snapshot (Phase 5D) — several claims below are superseded.** Since this
+> report was written, the following have shipped (code + tests) and contradict the
+> "roadmap / to-verify / not-implemented" entries below:
+> - **CLI and SDK surfaces exist** (`src/cli.ts`, `src/sdk.ts`, `test/sdk-exports.test.ts`) — the "❌ Web UI / SDK / CLI" rule now applies to the Web UI only.
+> - **Live Chainlink Push feed reads** via `eth_call` (`src/lib/price/priceResolver.ts`, `test/price-resolver.test.ts`) — no longer "awareness only, no Chainlink call".
+> - **SPV / Merkle inclusion verification implemented** (`src/lib/pharos/spvVerifier.ts` via the `get_spv_proof` tool, `src/lib/riskInclusion.ts`; `test/spv-verifier.test.ts`, `test/risk-inclusion.test.ts`) — no longer "not implemented".
+>
+> For current state, start at [`docs/INDEX.md`](../INDEX.md) and
+> [`AUDIT_REMEDIATION_2026-07.md`](./AUDIT_REMEDIATION_2026-07.md). The snapshot below
+> is kept unedited for provenance.
+
 > A single honest separation of what SafeHands **actually does** (code + tests) from
 > what it is merely **aware of**. The guiding rule: `implemented` requires code **and**
 > tests; everything else is `experimental` / `roadmap` / `to_verify` / `not_implemented`.
