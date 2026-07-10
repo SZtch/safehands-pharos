@@ -75,7 +75,7 @@ export async function simulateSwapCalldata(
 
 export const executeSwapTool = {
   name: "execute_swap",
-  description: "Swap tokens via FaroSwap with built-in risk gate. Runs risk assessment first, blocks if score > 80.",
+  description: "Swap tokens via FaroSwap/DODO with built-in risk gate. Runs risk assessment first, blocks if score > 80. Gated by WRITE_TOOLS_ENABLED.",
   inputSchema: executeSwapSchema,
 };
 

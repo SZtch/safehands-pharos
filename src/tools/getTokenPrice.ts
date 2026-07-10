@@ -33,7 +33,7 @@ export type GetTokenPriceInput = z.input<typeof getTokenPriceSchema>;
 export const getTokenPriceTool = {
   name: "get_token_price",
   description:
-    "Fetch the live USD price of a token/asset on Pharos from Chainlink Push Engine oracle feeds (PROS, WPROS, USDC, USDT, ETH, WETH, BTC, WBTC, LINK, BNB, SOL, XRP).",
+    "Fetch the live USD price of a token/asset on Pharos from Chainlink Push Engine feeds read on-chain via eth_call (heartbeat-staleness checked; a stale feed is reported, never quoted as current). Supported: PROS, WPROS, USDC, USDT, ETH, WETH, BTC, WBTC, LINK, BNB, SOL, XRP.",
   inputSchema: getTokenPriceSchema,
 };
 

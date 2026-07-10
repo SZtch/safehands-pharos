@@ -23,7 +23,7 @@ export type SendPaymentInput = z.input<typeof sendPaymentSchema>;
 
 export const sendPaymentTool = {
   name: "send_payment",
-  description: "Send native PROS with pre-flight validation. Checks address validity, balance sufficiency, and warns on high exposure.",
+  description: "Send native PROS with pre-flight validation. Checks address validity, balance sufficiency, and warns on high exposure. Gated by WRITE_TOOLS_ENABLED.",
   inputSchema: sendPaymentSchema,
 };
 

@@ -15,7 +15,7 @@ export type GetGasPriceInput = z.input<typeof getGasPriceSchema>;
 export const getGasPriceTool = {
   name: "get_gas_price",
   description:
-    "Get the current gas price on Pharos Atlantic Testnet with trend classification (low/normal/high) and cost estimates.",
+    "Get the current gas price on Pharos with trend classification (low/normal/high) and cost estimates.",
   inputSchema: getGasPriceSchema,
 };
 

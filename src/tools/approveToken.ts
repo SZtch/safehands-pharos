@@ -33,7 +33,7 @@ export type ApproveTokenInput = z.input<typeof approveTokenSchema>;
 export const approveTokenTool = {
   name: "approve_token",
   description:
-    "Approve ERC-20 token spending for an explicit spender address you provide. Spender trust is derived from the SafeHands ecosystem registry (never asserted blindly); approvals to unverified spenders require explicit confirmation.",
+    "Approve ERC-20 token spending for an explicit spender address you provide. Spender trust is derived from the SafeHands ecosystem registry (never asserted blindly); approvals to unverified spenders require explicit confirmation, and unlimited approvals are blocked by default. Gated by WRITE_TOOLS_ENABLED.",
   inputSchema: approveTokenSchema,
 };
 

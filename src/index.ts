@@ -14,23 +14,23 @@ const PKG_VERSION: string = (require("../package.json") as { version: string }).
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import { assessRiskSchema, handleAssessRisk } from "./tools/assessRisk.js";
-import { simulateTransactionSchema, handleSimulateTransaction } from "./tools/simulateTransaction.js";
-import { getExecutionHistorySchema, handleGetExecutionHistory } from "./tools/getExecutionHistory.js";
-import { getTokenPriceSchema, handleGetTokenPrice } from "./tools/getTokenPrice.js";
-import { getWalletBalanceSchema, handleGetWalletBalance } from "./tools/getWalletBalance.js";
-import { checkAllowanceSchema, handleCheckAllowance } from "./tools/checkAllowance.js";
-import { getTransactionStatusSchema, handleGetTransactionStatus } from "./tools/getTransactionStatus.js";
-import { estimateGasSchema, handleEstimateGas } from "./tools/estimateGas.js";
-import { publishRiskScoreSchema, handlePublishRiskScore } from "./tools/publishRiskScore.js";
-import { queryRiskRegistrySchema, handleQueryRiskRegistry } from "./tools/queryRiskRegistry.js";
-import { verifyRiskInclusionSchema, handleVerifyRiskInclusion } from "./tools/verifyRiskInclusion.js";
-import { getAgentReputationSchema, handleGetAgentReputation } from "./tools/getAgentReputation.js";
-import { getGasPriceSchema, handleGetGasPrice } from "./tools/getGasPrice.js";
-import { getPoolInfoSchema, handleGetPoolInfo } from "./tools/getPoolInfo.js";
+import { assessRiskTool, handleAssessRisk } from "./tools/assessRisk.js";
+import { simulateTransactionTool, handleSimulateTransaction } from "./tools/simulateTransaction.js";
+import { getExecutionHistoryTool, handleGetExecutionHistory } from "./tools/getExecutionHistory.js";
+import { getTokenPriceTool, handleGetTokenPrice } from "./tools/getTokenPrice.js";
+import { getWalletBalanceTool, handleGetWalletBalance } from "./tools/getWalletBalance.js";
+import { checkAllowanceTool, handleCheckAllowance } from "./tools/checkAllowance.js";
+import { getTransactionStatusTool, handleGetTransactionStatus } from "./tools/getTransactionStatus.js";
+import { estimateGasTool, handleEstimateGas } from "./tools/estimateGas.js";
+import { publishRiskScoreTool, handlePublishRiskScore } from "./tools/publishRiskScore.js";
+import { queryRiskRegistryTool, handleQueryRiskRegistry } from "./tools/queryRiskRegistry.js";
+import { verifyRiskInclusionTool, handleVerifyRiskInclusion } from "./tools/verifyRiskInclusion.js";
+import { getAgentReputationTool, handleGetAgentReputation } from "./tools/getAgentReputation.js";
+import { getGasPriceTool, handleGetGasPrice } from "./tools/getGasPrice.js";
+import { getPoolInfoTool, handleGetPoolInfo } from "./tools/getPoolInfo.js";
 import { queryGoldskySchema, handleQueryGoldsky } from "./tools/queryGoldsky.js";
 import { getSpvProofSchema, handleGetSpvProof } from "./tools/getSpvProof.js";
-import { checkTokenSecuritySchema, handleCheckTokenSecurity } from "./tools/checkTokenSecurity.js";
+import { checkTokenSecurityTool, handleCheckTokenSecurity } from "./tools/checkTokenSecurity.js";
 import { createAgentWalletSchema, handleCreateAgentWallet } from "./tools/createAgentWallet.js";
 import { safehandsPreflightCheckSchema, handleSafeHandsPreflightCheck } from "./tools/safehandsPreflightCheck.js";
 import { safehandsSafeExecuteSchema, handleSafeHandsSafeExecute } from "./tools/safehandsSafeExecute.js";
@@ -43,10 +43,10 @@ import { getAgentWalletSchema, handleGetAgentWallet } from "./tools/getAgentWall
 import { getAgentWalletBalanceSchema, handleGetAgentWalletBalance } from "./tools/getAgentWalletBalance.js";
 import { getAgentPolicySchema, handleGetAgentPolicy } from "./tools/getAgentPolicy.js";
 import { setAgentPolicySchema, handleSetAgentPolicy } from "./tools/setAgentPolicy.js";
-import { executeSwapSchema, handleExecuteSwap } from "./tools/executeSwap.js";
-import { sendPaymentSchema, handleSendPayment } from "./tools/sendPayment.js";
-import { approveTokenSchema, handleApproveToken } from "./tools/approveToken.js";
-import { x402PayAndFetchSchema, handleX402PayAndFetch } from "./tools/x402PayAndFetch.js";
+import { executeSwapTool, handleExecuteSwap } from "./tools/executeSwap.js";
+import { sendPaymentTool, handleSendPayment } from "./tools/sendPayment.js";
+import { approveTokenTool, handleApproveToken } from "./tools/approveToken.js";
+import { x402PayAndFetchTool, handleX402PayAndFetch } from "./tools/x402PayAndFetch.js";
 import { fail, ok } from "./lib/toolResponse.js";
 import { auditLog } from "./lib/auditLog.js";
 import { walletStore, encryptKey, getEffectiveEncryptionKey } from "./lib/wallet/index.js";
@@ -366,30 +366,30 @@ server.tool(
 // ─── Execution Tools (Gated) ───────────────────────────────────────────
 
 server.tool(
-  "execute_swap",
-  "Swap tokens via FaroSwap/DODO. Runs preflight policy check before execution. Gated by WRITE_TOOLS_ENABLED.",
-  executeSwapSchema.shape,
+  executeSwapTool.name,
+  executeSwapTool.description,
+  executeSwapTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleExecuteSwap, params, "execute_swap"))
 );
 
 server.tool(
-  "send_payment",
-  "Send native PROS to an address. Runs preflight policy check before execution. Gated by WRITE_TOOLS_ENABLED.",
-  sendPaymentSchema.shape,
+  sendPaymentTool.name,
+  sendPaymentTool.description,
+  sendPaymentTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleSendPayment, params, "send_payment"))
 );
 
 server.tool(
-  "approve_token",
-  "Approve an ERC-20 token for spending. Unlimited approvals are blocked by default. Runs preflight check.",
-  approveTokenSchema.shape,
+  approveTokenTool.name,
+  approveTokenTool.description,
+  approveTokenTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleApproveToken, params, "approve_token"))
 );
 
 server.tool(
-  "x402_pay_and_fetch",
-  "Pay an x402 invoice (in USDC or PROS) to a facilitator and fetch the protected resource.",
-  x402PayAndFetchSchema.shape,
+  x402PayAndFetchTool.name,
+  x402PayAndFetchTool.description,
+  x402PayAndFetchTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleX402PayAndFetch, params, "x402_pay_and_fetch"))
 );
 
@@ -429,9 +429,9 @@ server.tool(
 );
 
 server.tool(
-  "assess_risk",
-  "Evaluate the risk of a planned on-chain action (swap or transfer). Returns 0-100 risk score with 5-dimension breakdown.",
-  assessRiskSchema.shape,
+  assessRiskTool.name,
+  assessRiskTool.description,
+  assessRiskTool.inputSchema.shape,
   async (params) => {
     const result = await handleAssessRisk(params as any);
     return mcpText(result);
@@ -439,93 +439,93 @@ server.tool(
 );
 
 server.tool(
-  "simulate_transaction",
-  "Dry run a swap or transfer via eth_call — no gas spent. Returns expected output and revert reasons.",
-  simulateTransactionSchema.shape,
+  simulateTransactionTool.name,
+  simulateTransactionTool.description,
+  simulateTransactionTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleSimulateTransaction, params, "simulate_transaction"))
 );
 
 server.tool(
-  "get_execution_history",
-  "Pull on-chain transaction history for a wallet. Filters by swap, transfer, or all.",
-  getExecutionHistorySchema.shape,
+  getExecutionHistoryTool.name,
+  getExecutionHistoryTool.description,
+  getExecutionHistoryTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetExecutionHistory, params, "get_execution_history"))
 );
 
 server.tool(
-  "get_token_price",
-  "Fetch the live token price on Pharos from Chainlink Push Engine feeds read on-chain via eth_call (heartbeat-staleness checked; a stale feed is reported, never quoted as current).",
-  getTokenPriceSchema.shape,
+  getTokenPriceTool.name,
+  getTokenPriceTool.description,
+  getTokenPriceTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetTokenPrice, params, "get_token_price"))
 );
 
 server.tool(
-  "get_wallet_balance",
-  "Return PROS, USDC, USDT balances for a wallet with total USD estimate.",
-  getWalletBalanceSchema.shape,
+  getWalletBalanceTool.name,
+  getWalletBalanceTool.description,
+  getWalletBalanceTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetWalletBalance, params, "get_wallet_balance"))
 );
 
 server.tool(
-  "check_allowance",
-  "Check ERC-20 token allowance for DODO swap approval. Returns whether approval is needed.",
-  checkAllowanceSchema.shape,
+  checkAllowanceTool.name,
+  checkAllowanceTool.description,
+  checkAllowanceTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleCheckAllowance, params, "check_allowance"))
 );
 
 server.tool(
-  "get_transaction_status",
-  "Check on-chain transaction status by hash. Returns status, block, gas, and explorer link.",
-  getTransactionStatusSchema.shape,
+  getTransactionStatusTool.name,
+  getTransactionStatusTool.description,
+  getTransactionStatusTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetTransactionStatus, params, "get_transaction_status"))
 );
 
 server.tool(
-  "estimate_gas",
-  "Estimate gas cost for a swap or transfer before executing. Returns cost in PROS and USD.",
-  estimateGasSchema.shape,
+  estimateGasTool.name,
+  estimateGasTool.description,
+  estimateGasTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleEstimateGas, params, "estimate_gas"))
 );
 
 server.tool(
-  "publish_risk_score",
-  "Run risk assessment and publish result to the on-chain RiskRegistry. Other agents can query it.",
-  publishRiskScoreSchema.shape,
+  publishRiskScoreTool.name,
+  publishRiskScoreTool.description,
+  publishRiskScoreTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handlePublishRiskScore, params, "publish_risk_score"))
 );
 
 server.tool(
-  "query_risk_registry",
-  "Query the on-chain SafeHandsRegistry for a wallet's risk record and authorization status. Read-only, no private key needed.",
-  queryRiskRegistrySchema.shape,
+  queryRiskRegistryTool.name,
+  queryRiskRegistryTool.description,
+  queryRiskRegistryTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleQueryRiskRegistry, params, "query_risk_registry"))
 );
 
 server.tool(
-  "verify_risk_inclusion",
-  "Prove a target's risk record is included in the committed on-chain Merkle root: fetches the root + DA batch, rebuilds the Merkle proof, and verifies it locally and through the contract's verifyRiskRecord view. Read-only, keyless, composable.",
-  verifyRiskInclusionSchema.shape,
+  verifyRiskInclusionTool.name,
+  verifyRiskInclusionTool.description,
+  verifyRiskInclusionTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleVerifyRiskInclusion, params, "verify_risk_inclusion"))
 );
 
 server.tool(
-  "get_agent_reputation",
-  "Read an address's on-chain SafeHands reputation: count of verified-safe broadcasts attributed to it (+ recency) from SafeHandsAttestation, plus registry authorization. Read-only, keyless, composable trust signal. Zero = NEUTRAL (no track record yet), never negative.",
-  getAgentReputationSchema.shape,
+  getAgentReputationTool.name,
+  getAgentReputationTool.description,
+  getAgentReputationTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetAgentReputation, params, "get_agent_reputation"))
 );
 
 server.tool(
-  "get_gas_price",
-  "Get current gas price on Pharos with trend classification and cost estimates.",
-  getGasPriceSchema.shape,
+  getGasPriceTool.name,
+  getGasPriceTool.description,
+  getGasPriceTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetGasPrice, params, "get_gas_price"))
 );
 
 server.tool(
-  "get_pool_info",
-  "Fetch DODO liquidity pool info for a token pair on Pharos. Returns price ratio, impact, and fees.",
-  getPoolInfoSchema.shape,
+  getPoolInfoTool.name,
+  getPoolInfoTool.description,
+  getPoolInfoTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleGetPoolInfo, params, "get_pool_info"))
 );
 
@@ -544,9 +544,9 @@ server.tool(
 );
 
 server.tool(
-  "check_token_security",
-  "Check token contract security (honeypot, mintable, ownership privileges, tax) via GoPlus Security API.",
-  checkTokenSecuritySchema.shape,
+  checkTokenSecurityTool.name,
+  checkTokenSecurityTool.description,
+  checkTokenSecurityTool.inputSchema.shape,
   async (params) => mcpText(await invokeTool(handleCheckTokenSecurity, params, "check_token_security"))
 );
 
