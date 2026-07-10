@@ -30,14 +30,6 @@ export function recommendationToEnum(rec: string): number {
   return i >= 0 ? i : 1;
 }
 
-function levelToString(level: number): string {
-  return LEVELS[level] ?? "unknown";
-}
-
-function recommendationToString(rec: number): string {
-  return RECOMMENDATIONS[rec] ?? "unknown";
-}
-
 /** The configured registry address, or null when not yet deployed/configured. */
 function registryAddress(): `0x${string}` | null {
   return SAFEHANDS_REGISTRY_ADDRESS && isAddress(SAFEHANDS_REGISTRY_ADDRESS)
@@ -146,39 +138,10 @@ export function deriveActionHash(
   return keccak256(encodePacked(["string"], [parts]));
 }
 
-export interface OnChainRiskRecord {
-  recordId: string;
-  target: string;
-  operator: string;
-  actionHash: string;
-  score: number;
-  riskLevel: string;
-  recommendation: string;
-  policyVersionHash: string;
-  evidenceHash: string;
-  createdAt: string;
-  expiresAt: string;
-  revoked: boolean;
-  valid: boolean;
-}
-
-function formatRecord(raw: any, valid: boolean): OnChainRiskRecord {
-  return {
-    recordId: String(raw.recordId),
-    target: raw.target,
-    operator: raw.operator,
-    actionHash: raw.actionHash,
-    score: Number(raw.score),
-    riskLevel: levelToString(Number(raw.level)),
-    recommendation: recommendationToString(Number(raw.recommendation)),
-    policyVersionHash: raw.policyVersionHash,
-    evidenceHash: raw.evidenceHash,
-    createdAt: new Date(Number(raw.createdAt) * 1000).toISOString(),
-    expiresAt: raw.expiresAt === 0n ? "never" : new Date(Number(raw.expiresAt) * 1000).toISOString(),
-    revoked: raw.revoked,
-    valid,
-  };
-}
+// NOTE: the legacy per-record read model (OnChainRiskRecord/formatRecord) was
+// removed — the deployed SafeHandsRegistry is Merkle-batched and exposes no
+// per-record reads. Individual records are verified off a committed root via
+// verifyRiskRecord (see src/tools/verifyRiskInclusion / risk-inclusion tests).
 
 export interface RegistryQueryResult {
   version: string;

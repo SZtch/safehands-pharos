@@ -82,7 +82,7 @@ const ENTRIES: RpcMethodEntry[] = [
   // ── Experimental read-only (supported but heavy / not fully consumed) ──
   experimental(
     "eth_getProof",
-    "EIP-1186 account/storage Merkle proof. SafeHands exposes availability as evidence only — full SPV verification is NOT implemented.",
+    "EIP-1186 account/storage Merkle proof. SPV verification is implemented (src/lib/pharos/spvVerifier.ts, exposed via get_spv_proof) using Pharos' SHA-256 trie; the method itself remains experimental (heavy, best-effort).",
     GETPROOF_DOCS,
   ),
   experimental("debug_traceTransaction", "Full execution trace; heavy/optional, best-effort only."),

@@ -15,6 +15,7 @@
 
 import { getAddress, isAddress } from "viem";
 import { getActiveNetwork, type NetworkName, type PharosNetwork } from "../networks.js";
+import { ATLANTIC_CANONICAL_CONTRACTS, PACIFIC_CANONICAL_CONTRACTS } from "../constants.js";
 import { makeResult, type AnalyzerResult, type EvidenceSource, type EvidenceStatus, type ReadOnlyChainAccess } from "./types.js";
 
 export type CanonicalStandard =
@@ -25,7 +26,11 @@ export type CanonicalStandard =
   | "MultiCall3"
   | "Permit2"
   | "ERC4337EntryPoint"
-  | "CreateX";
+  | "ERC4337SenderCreator"
+  | "CreateX"
+  | "Create2Deployer"
+  | "DeterministicDeploymentProxy"
+  | "SafeSingletonFactory";
 
 export type CanonicalCategory =
   | "smart-account"
@@ -50,23 +55,35 @@ export interface CanonicalContract {
   note?: string;
 }
 
-const ALL_NETWORKS: NetworkName[] = ["pacific-mainnet", "pacific-mainnet"];
-const PACIFIC_ONLY: NetworkName[] = ["pacific-mainnet"];
+/**
+ * Per-network recognition scope is derived from the canonical infrastructure
+ * lists in constants.ts (which in turn derive from the canonical ecosystem
+ * registry). This keeps the read-API analyzer and the policy engine's
+ * isCanonicalInfrastructure() recognizing the SAME set per network — the same
+ * address can no longer be "canonical" to one layer and "unknown" to another.
+ */
+function networksFor(lowercaseAddress: string): NetworkName[] {
+  const networks: NetworkName[] = [];
+  if (PACIFIC_CANONICAL_CONTRACTS.includes(lowercaseAddress)) networks.push("pacific-mainnet");
+  if (ATLANTIC_CANONICAL_CONTRACTS.includes(lowercaseAddress)) networks.push("atlantic-testnet");
+  return networks;
+}
 
 /**
  * Known canonical addresses. Recognition is by canonical address only —
  * deployment/verification on the active network is NOT asserted. Addresses are
  * lowercase keys. Pharos-specific Safe/SafeL2/MultiSend + CreateX are taken from
- * the official Pharos canonical-contracts page (Phase 5A audit) and scoped to
- * Pacific Mainnet; deterministic CREATE2 contracts apply to all networks.
+ * the official Pharos canonical-contracts page (Phase 5A audit); per-network
+ * scope comes from networksFor(). DODO/DEX testnet infrastructure from the
+ * Atlantic allowlist is intentionally NOT given canonical metadata here — those
+ * addresses are governed by the DODO-specific allowlists and swap policy.
  */
-export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
+const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "networks">> = {
   // ── Deterministic CREATE2 deployments (same address on every EVM chain) ──
   "0x000000000022d473030f116ddee9f6b43ac78ba3": {
     label: "Uniswap Permit2",
     standard: "Permit2",
     category: "approval-router",
-    networks: ALL_NETWORKS,
     deterministic: true,
     source: "official_docs",
     status: "implemented",
@@ -79,7 +96,6 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
     label: "Multicall3",
     standard: "MultiCall3",
     category: "batching",
-    networks: ALL_NETWORKS,
     deterministic: true,
     source: "official_docs",
     status: "implemented",
@@ -90,7 +106,6 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
     label: "ERC-4337 EntryPoint v0.6",
     standard: "ERC4337EntryPoint",
     category: "account-abstraction",
-    networks: ALL_NETWORKS,
     deterministic: true,
     source: "official_docs",
     status: "implemented",
@@ -101,7 +116,6 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
     label: "ERC-4337 EntryPoint v0.7",
     standard: "ERC4337EntryPoint",
     category: "account-abstraction",
-    networks: ALL_NETWORKS,
     deterministic: true,
     source: "official_docs",
     status: "implemented",
@@ -116,7 +130,6 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
     label: "Pharos Safe Singleton (GnosisSafe v1.3.0)",
     standard: "Safe",
     category: "smart-account",
-    networks: PACIFIC_ONLY,
     deterministic: false,
     source: "official_docs",
     status: "implemented",
@@ -129,7 +142,6 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
     label: "Pharos SafeL2 Singleton (GnosisSafeL2 v1.3.0)",
     standard: "SafeL2",
     category: "smart-account",
-    networks: PACIFIC_ONLY,
     deterministic: false,
     source: "official_docs",
     status: "implemented",
@@ -142,7 +154,6 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
     label: "Pharos Safe MultiSend (v1.3.0)",
     standard: "MultiSend",
     category: "batching",
-    networks: PACIFIC_ONLY,
     deterministic: false,
     source: "official_docs",
     status: "implemented",
@@ -155,7 +166,6 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
     label: "CreateX Factory",
     standard: "CreateX",
     category: "deployer",
-    networks: PACIFIC_ONLY,
     deterministic: false,
     source: "official_docs",
     status: "implemented",
@@ -164,7 +174,80 @@ export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = {
       "Recognize as the canonical CreateX deployer on Pacific Mainnet; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
     note: "Listed for Pacific Mainnet in the Pharos canonical-contracts page; Atlantic deployment not asserted.",
   },
+  "0x13b0d85ccb8bf860b6b79af3029fca081ae9bef2": {
+    label: "Create2Deployer",
+    standard: "Create2Deployer",
+    category: "deployer",
+    deterministic: true,
+    source: "official_docs",
+    status: "implemented",
+    riskRelevance: "CREATE2 contract-deployment factory; can deploy arbitrary contracts at deterministic addresses.",
+    recommendedSafeHandsBehavior:
+      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+  },
+  "0x4e59b44847b379578588920ca78fbf26c0b4956c": {
+    label: "Foundry Deterministic Deployment Proxy",
+    standard: "DeterministicDeploymentProxy",
+    category: "deployer",
+    deterministic: true,
+    source: "official_docs",
+    status: "implemented",
+    riskRelevance: "Deterministic deployment proxy used by Foundry tooling; can deploy arbitrary contracts.",
+    recommendedSafeHandsBehavior:
+      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+  },
+  "0x914d7fec6aac8cd542e72bca78b30650d45643d7": {
+    label: "Safe Singleton Factory",
+    standard: "SafeSingletonFactory",
+    category: "deployer",
+    deterministic: true,
+    source: "official_docs",
+    status: "implemented",
+    riskRelevance: "Deterministic factory used to deploy Safe singletons; can deploy arbitrary contracts.",
+    recommendedSafeHandsBehavior:
+      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+  },
+  "0xa1dabef33b3b82c7814b6d82a79e50f4ac44102b": {
+    label: "Safe MultiSendCallOnly (v1.3.0)",
+    standard: "MultiSendCallOnly",
+    category: "batching",
+    deterministic: true,
+    source: "official_docs",
+    status: "implemented",
+    riskRelevance: "Batches multiple CALLs within a Safe transaction (no delegatecall); the inner calls determine the real risk.",
+    recommendedSafeHandsBehavior:
+      "Recognize as canonical batching contract; decode the batch's inner calls before trusting it (experimental).",
+  },
+  "0xefc2c1444ebcc4db75e7613d20c6a62ff67a167c": {
+    label: "ERC-4337 SenderCreator v0.7",
+    standard: "ERC4337SenderCreator",
+    category: "account-abstraction",
+    deterministic: true,
+    source: "official_docs",
+    status: "implemented",
+    riskRelevance: "ERC-4337 helper that deploys smart accounts on first UserOperation.",
+    recommendedSafeHandsBehavior:
+      "Recognize as canonical account-abstraction infrastructure; account initcode is not decoded — treat the action as REQUIRE_CONFIRMATION.",
+  },
+  "0x7fc98430eaedbb6070b35b39d798725049088348": {
+    label: "ERC-4337 SenderCreator v0.6",
+    standard: "ERC4337SenderCreator",
+    category: "account-abstraction",
+    deterministic: true,
+    source: "official_docs",
+    status: "implemented",
+    riskRelevance: "ERC-4337 helper that deploys smart accounts on first UserOperation.",
+    recommendedSafeHandsBehavior:
+      "Recognize as canonical account-abstraction infrastructure; account initcode is not decoded — treat the action as REQUIRE_CONFIRMATION.",
+  },
 };
+
+export const CANONICAL_CONTRACTS: Record<string, CanonicalContract> = Object.fromEntries(
+  Object.entries(CANONICAL_CONTRACT_METADATA).map(([address, entry]) => [
+    address,
+    { ...entry, networks: networksFor(address) },
+  ]),
+);
 
 /**
  * Raw, network-agnostic lookup by address (returns the entry if the address is a

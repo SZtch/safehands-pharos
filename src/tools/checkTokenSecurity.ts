@@ -21,6 +21,15 @@ export const checkTokenSecurityTool = {
   inputSchema: checkTokenSecuritySchema,
 };
 
+/**
+ * GoPlus base URL — env-configurable via GOPLUS_API_BASE (same variable the
+ * hosted Anvita engine honors), defaulting to the keyless public API. Read at
+ * call time so tests/operators can repoint it without a process restart.
+ */
+function goplusApiBase(): string {
+  return (process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io").replace(/\/+$/, "");
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -143,7 +152,7 @@ export async function fetchGoplusTokenIdentity(
   const timeout = setTimeout(() => controller.abort(), 3_000);
   try {
     const res = await fetch(
-      `https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${address}`,
+      `${goplusApiBase()}/api/v1/token_security/${chainId}?contract_addresses=${address}`,
       {
         signal: controller.signal,
         headers: {
@@ -193,8 +202,10 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
     return fail("INVALID_TOKEN_ADDRESS", `Invalid token address: ${input.tokenAddress}`, false, "check_token_security");
   }
 
-  // GoPlus now officially supports Pharos Mainnet (Chain 1672)!
-  const url = `https://api.gopluslabs.io/api/v1/token_security/${chainId}?contract_addresses=${address}`;
+  // GoPlus supports Pharos Mainnet (chain 1672) — a third-party claim; results are
+  // risk intel, never identity. Base URL honors GOPLUS_API_BASE like the hosted
+  // Anvita engine, so both runtimes point at the same configurable truth source.
+  const url = `${goplusApiBase()}/api/v1/token_security/${chainId}?contract_addresses=${address}`;
 
   try {
     const res = await fetchGoplus(url);

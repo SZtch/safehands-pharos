@@ -75,7 +75,12 @@ export interface ActionPolicyInput {
   signerAvailable?: boolean;
   tokenSecurityStatus?: "ok" | "unavailable" | "unknown";
   tokenRegistryStatus?: string;
+  /**
+   * Caller CLAIM that the recipient was verified — never independently confirmed
+   * by this engine. Omitted = treated as unverified (fail-closed), never as safe.
+   */
   recipientVerified?: boolean;
+  /** Caller CLAIM (same semantics as recipientVerified). */
   spenderVerified?: boolean;
   allowUnlimitedApproval?: boolean;
   writeToolsEnabled?: boolean;
@@ -245,6 +250,13 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
         pushCheck(checks, "recipient_denylist", "fail", "Recipient is on the operator denylist (known-bad address).", reasons, requiredActions, "Recipient address is denylisted.", "Do not send to this address — it is flagged as known-bad by the operator.");
       } else if (input.recipientVerified === false) {
         pushCheck(checks, "recipient_reputation", "warn", "Recipient is unverified.", reasons, requiredActions, undefined, "Verify recipient before sending funds.");
+      } else if (input.recipient && input.recipientVerified === undefined) {
+        // Fail-closed: recipientVerified is a caller CLAIM. When it is omitted, no
+        // verification happened — treat exactly like an unverified recipient instead
+        // of silently skipping the reputation check (truth-model rule 5).
+        pushCheck(checks, "recipient_reputation", "unknown", "Recipient verification was not asserted — the recipient is treated as an unverified claim.", reasons, requiredActions, undefined, "Verify the recipient against chain/registry evidence before sending funds.");
+      } else if (input.recipient && input.recipientVerified === true) {
+        pushCheck(checks, "recipient_reputation", "pass", "Recipient verification asserted by the caller (caller-attested claim; not independently verified by SafeHands).");
       }
     }
 
@@ -265,6 +277,11 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
       pushCheck(checks, "spender_address", "fail", "Spender address is invalid.", reasons, requiredActions, "Invalid spender address.", "Provide a valid spender address.");
     } else if (input.spenderVerified === false) {
       pushCheck(checks, "spender_reputation", "warn", "Spender is unverified.", reasons, requiredActions, undefined, "Verify spender contract before approving.");
+    } else if (input.spender && input.spenderVerified === undefined) {
+      // Fail-closed: same rule as recipientVerified — an omitted claim is not evidence.
+      pushCheck(checks, "spender_reputation", "unknown", "Spender verification was not asserted — the spender is treated as an unverified claim.", reasons, requiredActions, undefined, "Verify the spender contract against chain/registry evidence before approving.");
+    } else if (input.spender && input.spenderVerified === true) {
+      pushCheck(checks, "spender_reputation", "pass", "Spender verification asserted by the caller (caller-attested claim; not independently verified by SafeHands).");
     }
   }
 

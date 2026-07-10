@@ -66,9 +66,11 @@ current decision and the evidence's recommended impact. It **never** downgrades.
 - **Ecosystem evidence does not make risky actions safe.** A known token/canonical/oracle
   contract does **not** relax any existing risk rule.
 - **A BLOCK stays a BLOCK.** Escalation only raises severity; `applyEcosystemEscalation`
-  on a `BLOCK` returns `BLOCK` for any evidence.
+  on a `BLOCK` returns `BLOCK` for any evidence — pinned by
+  `test/truth-model.test.ts` ("a hard BLOCK is NEVER downgraded by ecosystem evidence").
 - **Unlimited approval → unknown spender remains BLOCK** even with a bridge-like provider
-  hint (see the 5D smoke test "unlimited→unknown spender stays BLOCK").
+  hint (the unlimited-approval hard fail in `test/action-policy.test.ts` combined with the
+  escalate-only rule above).
 - **No external calls / no secrets.** Classification is offline; evidence is secret-free
   (only a redacted RPC provider name is ever surfaced).
 - **readOnly = true, executionAvailable = false** are preserved on every response.
