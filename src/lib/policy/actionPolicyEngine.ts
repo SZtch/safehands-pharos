@@ -8,9 +8,11 @@ import { isDenylistedRecipient } from "../recipientSafety.js";
 import {
   CHAIN_ID,
   PHAROS_ENVIRONMENT,
+  COUNTERPARTY_CRITICAL_THRESHOLD,
   MAX_APPROVAL_AMOUNT_USDC,
   MAX_TX_AMOUNT_PROS,
   MAX_X402_PAYMENT_USDC,
+  RISK_BLOCK_THRESHOLD,
   activeX402AllowedTokenAddresses,
   PACIFIC_USDC_ADDRESS,
   PACIFIC_WPROS_ADDRESS,
@@ -21,6 +23,7 @@ import {
 import { getNetworkByChainId } from "../networks.js";
 import { resolvePriceableToken } from "../spendAccumulator.js";
 import { loadAgentPolicy, resolveEffectiveLimits, type AgentPolicy } from "./agentPolicy.js";
+import type { RiskAssessment } from "../riskEngine.js";
 
 export type SafeHandsActionType =
   | "send_payment"
@@ -48,6 +51,35 @@ export interface PolicyCheck {
   name: string;
   status: "pass" | "warn" | "fail" | "unknown";
   message: string;
+}
+
+/**
+ * Advisory risk-engine output passed to the policy engine as EVIDENCE. The
+ * policy engine, not the risk engine, decides (see docs/DECISION_CONTRACT.md).
+ * Check names derived from this evidence are `risk_*` — deliberately containing
+ * neither "token" nor "funding" so the decision remap below never applies.
+ */
+export interface PolicyRiskEvidence {
+  /** 0-100 weighted risk score. */
+  score: number;
+  /** Critical risk signal could not be evaluated (H2) — never sign silently. */
+  degraded: boolean;
+  degradedReasons?: string[];
+  /** Counterparty breakdown dimension (0-100). */
+  counterpartyRisk?: number;
+  /** Structural SWAP_LIQUIDITY_NOT_CONFIGURED state (permanent, not transient). */
+  swapProviderNotConfigured?: boolean;
+}
+
+/** Projects a RiskAssessment into the policy-evidence shape. Single mapper — write tools must use this rather than hand-rolling the projection. */
+export function riskEvidenceFromAssessment(a: RiskAssessment): PolicyRiskEvidence {
+  return {
+    score: a.riskScore,
+    degraded: a.degraded,
+    degradedReasons: a.degradedReasons,
+    counterpartyRisk: a.breakdown.counterpartyRisk,
+    swapProviderNotConfigured: a.swapProviderNotConfigured,
+  };
 }
 
 export interface ActionPolicyInput {
@@ -87,6 +119,13 @@ export interface ActionPolicyInput {
   requiresSigner?: boolean;
   agentId?: string;
   agentPolicy?: AgentPolicy;
+  /**
+   * Advisory risk-engine output passed as EVIDENCE (riskEvidenceFromAssessment).
+   * Write tools MUST provide this and gate with `requireRiskEvidence: true` —
+   * never gate on riskEngine output directly. Omitted by structural/preflight
+   * callers, which then get no risk_* checks.
+   */
+  risk?: PolicyRiskEvidence;
 }
 
 export interface ActionPolicyResult {
@@ -371,6 +410,38 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
     pushCheck(checks, "token_security_intel_missing", "unknown", "Token security intelligence is unavailable (provider outage or token not indexed) — the token was NOT reviewed.", reasons, requiredActions, undefined, "Retry when the token-security provider is reachable, or verify the token independently before executing.");
   } else if (input.tokenSecurityStatus === "unknown") {
     pushCheck(checks, "token_security_provider", "unknown", "Token security provider is unavailable or unknown.", reasons, requiredActions, undefined, "Proceed only after manual token review.");
+  }
+
+  // ─── Advisory risk-engine evidence (write paths) ─────────────────────
+  // The risk engine never gates execution itself: its output arrives here as
+  // evidence and these checks are where the score/degradation actually decide.
+  if (input.risk) {
+    const risk = input.risk;
+    if (risk.score > RISK_BLOCK_THRESHOLD) {
+      pushCheck(checks, "risk_score", "fail", `Weighted risk score ${risk.score}/100 exceeds the block threshold (${RISK_BLOCK_THRESHOLD}).`, reasons, requiredActions, `Risk score ${risk.score}/100 exceeds the block threshold (${RISK_BLOCK_THRESHOLD}).`, "Review the risk reasons and adjust the transaction parameters significantly before retrying.");
+    } else {
+      pushCheck(checks, "risk_score", "pass", `Weighted risk score ${risk.score}/100 is within the block threshold (${RISK_BLOCK_THRESHOLD}).`);
+    }
+
+    if (typeof risk.counterpartyRisk === "number" && risk.counterpartyRisk >= COUNTERPARTY_CRITICAL_THRESHOLD) {
+      pushCheck(checks, "risk_counterparty", "fail", `Counterparty risk ${risk.counterpartyRisk}/100 is critical (≥ ${COUNTERPARTY_CRITICAL_THRESHOLD}) — missing, invalid, or zero-address counterparty.`, reasons, requiredActions, "Critically risky counterparty (missing/invalid/zero recipient).", "Provide a valid, verified counterparty address.");
+    } else if (typeof risk.counterpartyRisk === "number") {
+      pushCheck(checks, "risk_counterparty", "pass", `Counterparty risk ${risk.counterpartyRisk}/100 is below the critical threshold (${COUNTERPARTY_CRITICAL_THRESHOLD}).`);
+    }
+
+    if (risk.degraded) {
+      let detail = (risk.degradedReasons ?? []).join(" ") || "A critical risk signal could not be evaluated.";
+      if (risk.swapProviderNotConfigured && !detail.includes("SWAP_LIQUIDITY_NOT_CONFIGURED")) {
+        detail += " The swap liquidity provider is not configured for this chain (SWAP_LIQUIDITY_NOT_CONFIGURED) — a permanent configuration state, not a transient outage.";
+      }
+      pushCheck(checks, "risk_degraded", "unknown", `Risk assessment is degraded — ${detail}`, reasons, requiredActions, undefined, "Re-invoke with confirm=true only after manually reviewing the degraded risk data.");
+      // Unknown-status checks do not populate `reasons`; surface the degradation
+      // detail there anyway so the CONFIRMATION_REQUIRED envelope explains itself
+      // (parity with the former tool-level degraded message).
+      reasons.push(`Risk assessment is degraded — ${detail}`);
+    } else {
+      pushCheck(checks, "risk_degraded", "pass", "No critical risk signal was missing during assessment.");
+    }
   }
 
   const riskLevel = classifyRisk(checks);

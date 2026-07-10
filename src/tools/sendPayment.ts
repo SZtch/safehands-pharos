@@ -4,9 +4,9 @@ import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } fro
 import { isAddress, parseEther, formatEther } from "viem";
 import { assessRisk } from "../lib/riskEngine.js";
 import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
-import { MAX_BALANCE_USAGE_PCT, RISK_BLOCK_THRESHOLD, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET } from "../lib/constants.js";
+import { MAX_BALANCE_USAGE_PCT, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET } from "../lib/constants.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
-import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { evaluateActionPolicy, riskEvidenceFromAssessment } from "../lib/policy/actionPolicyEngine.js";
 import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
 import { checkDailyLimit, reserveDailyLimit, releaseReservation, estimateUsd } from "../lib/spendAccumulator.js";
 import { validatePositiveAmount, validateNonZeroAddress, collectErrors } from "../lib/validation.js";
@@ -50,22 +50,6 @@ export async function handleSendPayment(raw: SendPaymentInput) {
   if (isManagedExecutionFailure(gate)) return gate;
   const { signer } = gate;
   const walletAddress = signer.address;
-
-  const policy = evaluateActionPolicy({
-    actionType: "send_payment",
-    agentId: input.agentId,
-    amount: input.amount,
-    amountUnit: "PROS",
-    recipient: input.toAddress,
-    recipientVerified: false,
-    chainId: CHAIN_ID,
-    environment: PHAROS_ENVIRONMENT,
-    isMainnet: IS_MAINNET,
-    signerAvailable: true,
-    requiresSigner: true,
-  });
-  const paymentGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "send_payment" });
-  if (paymentGate) return paymentGate;
 
   if (Number(input.amount) > Number(MAX_TX_AMOUNT_PROS)) {
     return fail("TX_LIMIT_EXCEEDED", `Payment amount exceeds the operator ceiling MAX_TX_AMOUNT_PROS (${MAX_TX_AMOUNT_PROS} PROS), which bounds all agent policies. Raise MAX_TX_AMOUNT_PROS to allow larger mainnet payments.`, false, "send_payment");
@@ -118,13 +102,27 @@ export async function handleSendPayment(raw: SendPaymentInput) {
     walletAddress,
   });
 
-  if (risk.riskScore > RISK_BLOCK_THRESHOLD || risk.recommendation === "block") {
-    return fail("POLICY_BLOCKED", `Payment blocked — risk score ${risk.riskScore}/100: ${risk.suggestion}`, false, "send_payment");
-  }
-  // H2: never sign silently on degraded risk data — require explicit confirmation.
-  if (risk.degraded && input.confirm !== true) {
-    return fail("CONFIRMATION_REQUIRED", `Payment risk assessment is degraded — ${risk.degradedReasons.join(" ")} Re-invoke with confirm=true only after manual review.`, false, "send_payment");
-  }
+  // Sole decision point: ONE policy evaluation over all collected evidence,
+  // including the advisory risk assessment. Never gate on riskEngine output
+  // directly — the policy engine's risk_* checks do that (never-weaken parity
+  // with the former direct gates; requireRiskEvidence makes a wiring miss fail
+  // closed instead of silently losing the risk gates).
+  const policy = evaluateActionPolicy({
+    actionType: "send_payment",
+    agentId: input.agentId,
+    amount: input.amount,
+    amountUnit: "PROS",
+    recipient: input.toAddress,
+    recipientVerified: false,
+    chainId: CHAIN_ID,
+    environment: PHAROS_ENVIRONMENT,
+    isMainnet: IS_MAINNET,
+    signerAvailable: true,
+    requiresSigner: true,
+    risk: riskEvidenceFromAssessment(risk),
+  });
+  const paymentGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "send_payment", requireRiskEvidence: true });
+  if (paymentGate) return paymentGate;
 
   // M2: atomically reserve the daily-spend budget immediately before broadcasting
   // (no await between reserve and send), so concurrent calls can't both exceed the cap.

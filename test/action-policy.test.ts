@@ -5,7 +5,9 @@
 // ───────────────────────────────────────────────────────────────────────────
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert";
-import { evaluateActionPolicy } from "../src/lib/policy/actionPolicyEngine.js";
+import { evaluateActionPolicy, riskEvidenceFromAssessment } from "../src/lib/policy/actionPolicyEngine.js";
+import { enforceWriteDecision } from "../src/lib/policy/writeExecutionGate.js";
+import type { RiskAssessment } from "../src/lib/riskEngine.js";
 
 const VALID = "0x1111111111111111111111111111111111111111";
 
@@ -120,5 +122,112 @@ describe("ActionPolicyEngine — dangerous-transaction BLOCK matrix", () => {
     assert.strictEqual(r.decision, "ALLOW");
     assert.strictEqual(r.safeToExecute, true);
     assert.ok(!r.checks.some((c) => c.status === "fail"), "no check should fail on the happy path");
+  });
+});
+
+// ─── Risk evidence checks — the policy engine is the SOLE decider ───────────
+// The riskEngine no longer gates execution anywhere; its output enters here as
+// evidence and these checks reproduce the former direct tool gates exactly
+// (never-weaken): score > threshold → BLOCK, critical counterparty → BLOCK,
+// degraded → REQUIRE_CONFIRMATION (confirmable).
+describe("ActionPolicyEngine — risk evidence checks (sole decider)", () => {
+  // A payment input that is ALLOW on its own, so any non-ALLOW outcome below is
+  // attributable to the risk evidence.
+  const CLEAN_PAYMENT = {
+    actionType: "send_payment" as const,
+    amount: "0.001",
+    recipient: VALID,
+    recipientVerified: true,
+    walletBalancePhs: "10",
+  };
+
+  it("BLOCKs on a risk score above the block threshold — never confirmable", () => {
+    const r = evaluateActionPolicy({ ...CLEAN_PAYMENT, risk: { score: 90, degraded: false } });
+    assert.strictEqual(r.decision, "BLOCK");
+    assert.ok(failed("risk_score", r), "risk_score should fail");
+    const gate = enforceWriteDecision(r, { confirmed: true, toolName: "send_payment", requireRiskEvidence: true });
+    assert.strictEqual(gate!.error.code, "POLICY_BLOCKED", "a risk-score BLOCK must not be confirmable");
+  });
+
+  it("BLOCKs on a critical counterparty even when the weighted score is low", () => {
+    const r = evaluateActionPolicy({ ...CLEAN_PAYMENT, risk: { score: 20, degraded: false, counterpartyRisk: 95 } });
+    assert.strictEqual(r.decision, "BLOCK");
+    assert.ok(failed("risk_counterparty", r), "risk_counterparty should fail");
+  });
+
+  it("BLOCKs when degraded AND over-threshold coincide (fail beats unknown)", () => {
+    const r = evaluateActionPolicy({ ...CLEAN_PAYMENT, risk: { score: 85, degraded: true, degradedReasons: ["Balance could not be verified."] } });
+    assert.strictEqual(r.decision, "BLOCK");
+  });
+
+  it("REQUIREs CONFIRMATION on degraded risk data — and confirm=true satisfies it", () => {
+    const r = evaluateActionPolicy({
+      ...CLEAN_PAYMENT,
+      risk: { score: 20, degraded: true, degradedReasons: ["Wallet balance could not be verified — RPC unavailable."] },
+    });
+    assert.strictEqual(r.decision, "REQUIRE_CONFIRMATION");
+    const check = r.checks.find((c) => c.name === "risk_degraded");
+    assert.strictEqual(check?.status, "unknown");
+    assert.ok(r.reasons.some((m) => m.includes("degraded")), "degradation detail must surface in reasons");
+
+    const unconfirmed = enforceWriteDecision(r, { confirmed: false, toolName: "send_payment", requireRiskEvidence: true });
+    assert.strictEqual(unconfirmed!.error.code, "CONFIRMATION_REQUIRED");
+    const confirmed = enforceWriteDecision(r, { confirmed: true, toolName: "send_payment", requireRiskEvidence: true });
+    assert.strictEqual(confirmed, null, "degraded risk must be confirmable (parity with the former tool gate)");
+  });
+
+  it("mentions the permanent SWAP_LIQUIDITY_NOT_CONFIGURED state in the degraded check", () => {
+    const r = evaluateActionPolicy({
+      actionType: "execute_swap",
+      amount: "0.001",
+      tokenIn: "USDC",
+      tokenOut: "PROS",
+      risk: { score: 45, degraded: true, degradedReasons: ["Route data unavailable."], swapProviderNotConfigured: true },
+    });
+    const check = r.checks.find((c) => c.name === "risk_degraded");
+    assert.ok(check?.message.includes("SWAP_LIQUIDITY_NOT_CONFIGURED"), "permanence must be called out");
+  });
+
+  it("still ALLOWs when the risk evidence is clean", () => {
+    const r = evaluateActionPolicy({ ...CLEAN_PAYMENT, risk: { score: 12, degraded: false, counterpartyRisk: 10 } });
+    assert.strictEqual(r.decision, "ALLOW");
+    assert.ok(r.checks.some((c) => c.name === "risk_score" && c.status === "pass"), "risk_score pass must be present");
+    assert.strictEqual(enforceWriteDecision(r, { confirmed: false, toolName: "send_payment", requireRiskEvidence: true }), null);
+  });
+
+  it("emits NO risk_* checks when risk evidence is omitted (structural/preflight callers)", () => {
+    const r = evaluateActionPolicy(CLEAN_PAYMENT);
+    assert.ok(!r.checks.some((c) => c.name.startsWith("risk_")), "no risk_* checks without evidence");
+    assert.strictEqual(r.decision, "ALLOW");
+  });
+
+  it("requireRiskEvidence fails closed when the policy carries no risk evidence (wiring guard)", () => {
+    const r = evaluateActionPolicy(CLEAN_PAYMENT); // ALLOW, but evaluated without risk
+    const gate = enforceWriteDecision(r, { confirmed: true, toolName: "send_payment", requireRiskEvidence: true });
+    assert.strictEqual(gate!.error.code, "POLICY_EVIDENCE_MISSING", "missing evidence must block loudly");
+    // Without the flag (structural callers like approve_token / x402), behavior is unchanged.
+    assert.strictEqual(enforceWriteDecision(r, { confirmed: false, toolName: "approve_token" }), null);
+  });
+
+  it("riskEvidenceFromAssessment projects a RiskAssessment faithfully", () => {
+    const assessment: RiskAssessment = {
+      riskScore: 44,
+      riskLevel: "medium",
+      recommendation: "caution",
+      breakdown: { liquidityRisk: 70, slippageRisk: 60, counterpartyRisk: 55, balanceRisk: 5, marketConditionRisk: 5 },
+      reasons: [],
+      suggestion: "",
+      degraded: true,
+      degradedReasons: ["Route fetch failed."],
+      swapProviderNotConfigured: true,
+    };
+    const evidence = riskEvidenceFromAssessment(assessment);
+    assert.deepStrictEqual(evidence, {
+      score: 44,
+      degraded: true,
+      degradedReasons: ["Route fetch failed."],
+      counterpartyRisk: 55,
+      swapProviderNotConfigured: true,
+    });
   });
 });

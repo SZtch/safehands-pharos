@@ -33,6 +33,14 @@ export interface EnforceWriteDecisionOptions {
   confirmed: boolean;
   /** Tool name for the error envelope + telemetry. */
   toolName: string;
+  /**
+   * Set by write tools whose policy input MUST include risk-engine evidence
+   * (execute_swap / send_payment). When true and the evaluated policy carries
+   * no `risk_*` check, the gate fails closed — a wiring mistake (assessRisk
+   * result not passed to evaluateActionPolicy) blocks loudly instead of
+   * silently losing the risk gates.
+   */
+  requireRiskEvidence?: boolean;
 }
 
 /**
@@ -46,6 +54,15 @@ export function enforceWriteDecision(
 ): ToolFailure | null {
   const reasons = policy.reasons.join(" ").trim();
   const actions = policy.requiredActions.join(" ").trim();
+
+  if (opts.requireRiskEvidence && !policy.checks.some((c) => c.name.startsWith("risk_"))) {
+    return fail(
+      "POLICY_EVIDENCE_MISSING",
+      `${opts.toolName} is blocked fail-closed: the policy decision was evaluated WITHOUT risk-engine evidence (no risk_* check present). This indicates a wiring defect — the assessRisk result must be passed to evaluateActionPolicy via riskEvidenceFromAssessment(). Not confirmable.`,
+      false,
+      opts.toolName
+    );
+  }
 
   switch (policy.decision) {
     case "ALLOW":

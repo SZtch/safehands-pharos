@@ -1,7 +1,13 @@
-// ─── Risk Scoring Engine ───────────────────────────────────────────────
+// ─── Risk Scoring Engine (ADVISORY) ────────────────────────────────────
 // 5-dimension risk assessment engine for SafeHands.
 // Weights: liquidity 25%, slippage 25%, counterparty 20%,
 //          balance 15%, market conditions 15%
+//
+// This engine never gates execution. Its output is advisory: published
+// on-chain as part of the assessment record (publish_risk_score) and fed to
+// the actionPolicyEngine as evidence (riskEvidenceFromAssessment) — the
+// policy engine is the sole ALLOW/BLOCK decider on write paths
+// (docs/DECISION_CONTRACT.md).
 // ────────────────────────────────────────────────────────────────────────
 
 import { publicClient } from "./pharosClient.js";
@@ -17,6 +23,7 @@ import {
 import {
   RISK_WEIGHTS,
   RISK_BLOCK_THRESHOLD,
+  COUNTERPARTY_CRITICAL_THRESHOLD,
   MAX_SLIPPAGE_PCT,
   MAX_BALANCE_USAGE_PCT,
   ERC20_ABI,
@@ -41,6 +48,11 @@ export type RiskRecommendation = "proceed" | "caution" | "block";
 export interface RiskAssessment {
   riskScore: number;
   riskLevel: RiskLevel;
+  /**
+   * ADVISORY only — never gates execution. The actionPolicyEngine is the sole
+   * ALLOW/BLOCK decider on write paths (docs/DECISION_CONTRACT.md); this field
+   * exists for reports and the on-chain assessment record.
+   */
   recommendation: RiskRecommendation;
   breakdown: RiskBreakdown;
   reasons: string[];
@@ -414,11 +426,13 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
     recommendation = "caution";
   }
 
-  // H1 — defense-in-depth transfer block. A critically-risky counterparty
-  // (missing / invalid / zero recipient) hard-blocks via the risk engine too, not
-  // only via the policy engine. (Weighted heuristics alone can never cross the
-  // block threshold for a transfer, so this explicit escalation is required.)
-  if (input.action === "transfer" && counterparty.score >= 90) {
+  // H1 — advisory escalation mirroring the policy engine's `risk_counterparty`
+  // check (the actual block mechanism). Kept so the published recommendation
+  // stays honest for critically-risky transfers (missing / invalid / zero
+  // recipient): weighted heuristics alone can never cross the block threshold
+  // for a transfer, so without this the on-chain record would say "caution"
+  // where the policy engine blocks.
+  if (input.action === "transfer" && counterparty.score >= COUNTERPARTY_CRITICAL_THRESHOLD) {
     recommendation = "block";
   }
 

@@ -339,6 +339,11 @@ export const DODO_ROUTE_ENDPOINT = "/route-service/v2/widget/getdodoroute";
 // Anvita engine deliberately blocks earlier (score ≥ 70) — see
 // docs/DECISION_CONTRACT.md §Thresholds for the documented divergence.
 export const RISK_BLOCK_THRESHOLD = 80;
+// A counterparty dimension at/above this is critical (missing/invalid/zero
+// recipient). Shared by the policy engine's `risk_counterparty` check (the
+// decider) and the risk engine's advisory recommendation escalation — the two
+// must never drift apart, so both read this single constant.
+export const COUNTERPARTY_CRITICAL_THRESHOLD = 90;
 export const MAX_SLIPPAGE_PCT = 5;
 export const MAX_BALANCE_USAGE_PCT = 90;
 

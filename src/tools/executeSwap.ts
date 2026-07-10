@@ -6,9 +6,9 @@ import { getDodoRoute, isNativeToken, resolveTokenAddress, resolveTokenDecimals,
 import { addressTrustEvidence } from "../lib/ecosystemRegistry.js";
 import { assessRisk } from "../lib/riskEngine.js";
 import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
-import { ERC20_ABI, RISK_BLOCK_THRESHOLD, MAX_SLIPPAGE_PCT, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist } from "../lib/constants.js";
+import { ERC20_ABI, MAX_SLIPPAGE_PCT, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist } from "../lib/constants.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
-import { evaluateActionPolicy } from "../lib/policy/actionPolicyEngine.js";
+import { evaluateActionPolicy, riskEvidenceFromAssessment } from "../lib/policy/actionPolicyEngine.js";
 import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
 import { evaluateTokenSecurityGate } from "./checkTokenSecurity.js";
 import { checkDailyLimit, reserveDailyLimit, releaseReservation, estimateUsd } from "../lib/spendAccumulator.js";
@@ -75,7 +75,7 @@ export async function simulateSwapCalldata(
 
 export const executeSwapTool = {
   name: "execute_swap",
-  description: "Swap tokens via FaroSwap/DODO with built-in risk gate. Runs risk assessment first, blocks if score > 80. Gated by WRITE_TOOLS_ENABLED.",
+  description: "Swap tokens via FaroSwap/DODO. Runs a risk assessment first and feeds it as evidence to the SafeHands policy engine — the sole ALLOW/BLOCK/REQUIRE_CONFIRMATION decider (a risk score above the block threshold fails its risk_score check and blocks, never confirmable). Gated by WRITE_TOOLS_ENABLED.",
   inputSchema: executeSwapSchema,
 };
 
@@ -117,23 +117,6 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     tokenSecurityStatus = sec.policyStatus;
   }
 
-  const policy = evaluateActionPolicy({
-    actionType: "execute_swap",
-    agentId: input.agentId,
-    amount: input.amountIn,
-    amountUnit: "TOKEN",
-    tokenIn: input.tokenIn,
-    tokenOut: input.tokenOut,
-    tokenSecurityStatus,
-    chainId: CHAIN_ID,
-    environment: PHAROS_ENVIRONMENT,
-    isMainnet: IS_MAINNET,
-    signerAvailable: true,
-    requiresSigner: true,
-  });
-  const swapGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "execute_swap" });
-  if (swapGate) return swapGate;
-
   if (Number(input.amountIn) > Number(MAX_TX_AMOUNT_PROS) && input.tokenIn.toUpperCase() === "PROS") {
     return fail("TX_LIMIT_EXCEEDED", `Swap amount exceeds the operator ceiling MAX_TX_AMOUNT_PROS (${MAX_TX_AMOUNT_PROS} PROS), which bounds all agent policies. Raise MAX_TX_AMOUNT_PROS to allow larger mainnet swaps.`, false, "execute_swap");
   }
@@ -149,10 +132,6 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     );
   }
 
-  // P0-3: unpriceable input tokens are DENIED by the policy engine above
-  // (swap_notional_unpriceable → BLOCK via enforceWriteDecision — never merely
-  // confirmable), so every swap reaching this point is bounded by the USD caps.
-
   const risk = await assessRisk({
     action: "swap",
     tokenIn: input.tokenIn,
@@ -161,13 +140,31 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     walletAddress,
   });
 
-  if (risk.riskScore > RISK_BLOCK_THRESHOLD || risk.recommendation === "block") {
-    return fail("POLICY_BLOCKED", `Swap blocked — risk score ${risk.riskScore}/100: ${risk.suggestion}`, false, "execute_swap");
-  }
-  // H2: never sign silently on degraded risk data — require explicit confirmation.
-  if (risk.degraded && input.confirm !== true) {
-    return fail("CONFIRMATION_REQUIRED", `Swap risk assessment is degraded — ${risk.degradedReasons.join(" ")} Re-invoke with confirm=true only after manual review.`, false, "execute_swap");
-  }
+  // Sole decision point: ONE policy evaluation over all collected evidence,
+  // including the advisory risk assessment. Never gate on riskEngine output
+  // directly — the policy engine's risk_* checks do that (never-weaken parity
+  // with the former direct gates; requireRiskEvidence makes a wiring miss fail
+  // closed instead of silently losing the risk gates).
+  // P0-3 lives here too: an unpriceable input token escaped the USD caps read
+  // by checkDailyLimit above, and swap_notional_unpriceable → BLOCK (never
+  // confirmable) stops it before any quote is fetched or budget is reserved.
+  const policy = evaluateActionPolicy({
+    actionType: "execute_swap",
+    agentId: input.agentId,
+    amount: input.amountIn,
+    amountUnit: "TOKEN",
+    tokenIn: input.tokenIn,
+    tokenOut: input.tokenOut,
+    tokenSecurityStatus,
+    chainId: CHAIN_ID,
+    environment: PHAROS_ENVIRONMENT,
+    isMainnet: IS_MAINNET,
+    signerAvailable: true,
+    requiresSigner: true,
+    risk: riskEvidenceFromAssessment(risk),
+  });
+  const swapGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "execute_swap", requireRiskEvidence: true });
+  if (swapGate) return swapGate;
 
   let reserved = false;
   try {
