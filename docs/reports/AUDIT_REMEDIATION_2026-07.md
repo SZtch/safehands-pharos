@@ -1,7 +1,7 @@
 # SafeHands — Full Repository Audit + Remediation (2026-07)
 
 > **Date:** 2026-07-10 · **Base commit:** `944c7d6` · **Posture:** Pharos Pacific Mainnet (chainId 1672), read-only gateway.
-> This is the portable, in-repo record of the July 2026 read-only audit and the remediation that followed. This file is the full detail.
+> This is the portable, in-repo record of the July 2026 read-only audit and the remediation that followed — the full, self-contained detail.
 
 **Scope:** entire repo at commit `944c7d6`. ~50 direct file reads + 2 sub-audits (Anvita drift, test reality).
 
@@ -13,7 +13,7 @@
 
 ## 1. Executive verdict: **CONDITIONALLY PRODUCTION-READY** (findings since remediated)
 
-The read-only checkpoint core is **real, not tempelan**: live Chainlink prices via `eth_call` with heartbeat-staleness + bounded degraded cache (`src/lib/price/priceResolver.ts`), live GoPlus with fail-closed schema-drift handling (`src/tools/checkTokenSecurity.ts`), a genuine DNS-pinned SSRF layer (`src/lib/http.ts`), trustless on-chain Merkle inclusion through the contract's own `verifyRiskRecord` view (`src/lib/riskInclusion.ts`), a disciplined evidence-cited registry with CI drift-guard (`src/data/ecosystemRegistry.data.ts` + `scripts/sync-anvita-assets.ts --check`), and honest `NOT_CONFIGURED` gating on every absent provider. No name-only-allow anti-pattern exists; `allow_eligible` requires VERIFIED + verified contracts + citations.
+The read-only checkpoint core is **real, not a bolt-on**: live Chainlink prices via `eth_call` with heartbeat-staleness + bounded degraded cache (`src/lib/price/priceResolver.ts`), live GoPlus with fail-closed schema-drift handling (`src/tools/checkTokenSecurity.ts`), a genuine DNS-pinned SSRF layer (`src/lib/http.ts`), trustless on-chain Merkle inclusion through the contract's own `verifyRiskRecord` view (`src/lib/riskInclusion.ts`), a disciplined evidence-cited registry with CI drift-guard (`src/data/ecosystemRegistry.data.ts` + `scripts/sync-anvita-assets.ts --check`), and honest `NOT_CONFIGURED` gating on every absent provider. No name-only-allow anti-pattern exists; `allow_eligible` requires VERIFIED + verified contracts + citations.
 
 **The conditions (all now remediated):** one subsystem — the DODO/FaroSwap swap layer — was testnet-origin and (a) mildly **relaxed** risk via hardcoded "known" trust and (b) presented degraded liquidity analysis as if it were a live check. Plus: one output bug (`getPoolInfo` isMainnet), one baked-in false claim (`agentEnrich` says GoPlus doesn't index Pharos), an unguarded DA fetch, and material test gaps (SSRF layer and risk engine untested). None fabricated an ALLOW, none touched custody; all were fixed.
 
