@@ -147,4 +147,26 @@ describe("name lookups never carry allow-power", () => {
   it("an unknown name resolves to nothing (UNKNOWN is honest)", () => {
     assert.strictEqual(lookupRegistryByName("definitely-not-a-pharos-protocol"), undefined);
   });
+
+  it("every KNOWN_ECOSYSTEM protocol/bridge is address-less and never allow-eligible", () => {
+    const known = ECOSYSTEM_REGISTRY.filter(
+      (i) => (i.category === "protocol" || i.category === "bridge") && i.ecosystemStatus === "KNOWN_ECOSYSTEM",
+    );
+    assert.ok(known.length >= 3, "expected the known-but-unverified protocol set");
+    for (const item of known) {
+      assert.strictEqual(item.verificationStatus, "UNVERIFIED", `${item.id} must stay UNVERIFIED`);
+      assert.strictEqual(item.safetyUse, "escalate_only", `${item.id} must be escalate_only`);
+      assert.notStrictEqual(item.safetyUse, "allow_eligible");
+      assert.strictEqual(item.contracts.length, 0, `${item.id} must carry no addresses`);
+      assert.strictEqual(item.providers.length, 0, `${item.id} must carry no providers/endpoints`);
+      assert.strictEqual(item.evidenceSources.length, 0, `${item.id} must cite no evidence (name-only)`);
+    }
+  });
+
+  it("Faroo and FaroSwap are distinct registry entries", () => {
+    const faroo = lookupRegistryByName("faroo");
+    const faroswap = lookupRegistryByName("faroswap");
+    assert.ok(faroo && faroswap, "both Faroo and FaroSwap must resolve");
+    assert.notStrictEqual(faroo.id, faroswap.id, "Faroo must not collapse into FaroSwap");
+  });
 });

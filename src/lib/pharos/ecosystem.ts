@@ -21,6 +21,8 @@ export type EcosystemCategory =
   | "evm_wasm_interop"
   | "payment"
   | "rpc_provider"
+  | "security"
+  | "identity"
   | "unknown";
 
 export type EcosystemStatus = "implemented" | "experimental" | "roadmap" | "to_verify" | "not_implemented";
@@ -225,6 +227,224 @@ export const ECOSYSTEM_PROVIDERS: EcosystemEntry[] = [
     riskRelevance: "Default read-only RPC for SafeHands checks.",
     safehandsBehavior: "Default hosted read-only RPC; read methods only (Phase 5C whitelist). No keys required.",
     overclaimRisk: "None.",
+  },
+
+  // ── Ecosystem awareness from the public Pharos ecosystem list ────────────
+  // Recognized by name only (no official docs URL / addresses bundled), so
+  // status/source are `to_verify`. SafeHands does NOT integrate with, call,
+  // hold keys for, or execute against any of these — awareness/pre-sign
+  // verdicts only. Everything stays read-only and fail-closed.
+
+  // Wallets
+  {
+    name: "OKX Wallet",
+    category: "wallet_infrastructure",
+    aliases: ["okx", "okx wallet"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Self-custody wallet UI; pre-sign checks (recipient, calldata, approvals) benefit the signer.",
+    safehandsBehavior: "Recognized Pharos-ecosystem wallet (awareness only). SafeHands holds no keys, never custodies or co-signs — pre-sign verdicts only.",
+    overclaimRisk: "Do NOT claim an OKX Wallet integration or partnership.",
+  },
+  {
+    name: "TopNod",
+    category: "wallet_infrastructure",
+    aliases: ["topnod"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Wallet UI; pre-sign checks benefit the signer.",
+    safehandsBehavior: "Recognized Pharos-ecosystem wallet (awareness only). SafeHands holds no keys and never custodies — pre-sign verdicts only.",
+    overclaimRisk: "Do NOT claim a TopNod integration or partnership.",
+  },
+  {
+    name: "OneKey",
+    category: "wallet_infrastructure",
+    aliases: ["onekey"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Hardware/self-custody wallet; pre-sign checks benefit the signer.",
+    safehandsBehavior: "Recognized Pharos-ecosystem wallet (awareness only). SafeHands holds no keys and never custodies — pre-sign verdicts only.",
+    overclaimRisk: "Do NOT claim a OneKey integration or partnership.",
+  },
+  {
+    name: "KuCoin Wallet",
+    category: "wallet_infrastructure",
+    aliases: ["kucoin", "kucoin wallet"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Self-custody wallet UI; pre-sign checks benefit the signer.",
+    safehandsBehavior: "Recognized Pharos-ecosystem wallet (awareness only). SafeHands holds no keys and never custodies — pre-sign verdicts only.",
+    overclaimRisk: "Do NOT claim a KuCoin Wallet integration or partnership.",
+  },
+
+  // Custody
+  {
+    name: "Anchorage",
+    category: "custody_infrastructure",
+    aliases: ["anchorage", "anchorage digital"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Institutional custody — treasury/custody flows carry external key-management risk.",
+    safehandsBehavior: "External custody awareness only. SafeHands holds no keys and never creates/imports/exports/manages private keys; it surfaces pre-sign verdicts to custody UIs.",
+    overclaimRisk: "Do NOT claim an Anchorage partnership or custody capability.",
+  },
+
+  // Payment
+  {
+    name: "Alchemy Pay",
+    category: "payment",
+    aliases: ["alchemy pay", "alchemypay"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Fiat on/off-ramp & payment rail — amount, token, and counterparty risk.",
+    safehandsBehavior: "Recognized Pharos-ecosystem payment rail (awareness only). Distinct from Alchemy (RPC). SafeHands never signs or settles a payment; payment intents → REQUIRE_CONFIRMATION.",
+    overclaimRisk: "Do NOT claim an Alchemy Pay integration or automatic settlement.",
+  },
+
+  // Oracle / RPC / indexer
+  {
+    name: "Supra",
+    category: "oracle",
+    aliases: ["supra", "supra oracle"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Oracle price dependency — a contract reading Supra feeds inherits oracle/price risk (staleness, manipulation).",
+    safehandsBehavior: "Recognized Pharos-ecosystem oracle (awareness only). SafeHands does NOT query Supra feeds and has no Supra analyzer.",
+    overclaimRisk: "Do NOT claim a Supra integration.",
+  },
+  {
+    name: "Alchemy",
+    category: "rpc_provider",
+    aliases: ["alchemy", "alchemy rpc"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Optional read-only RPC/data provider; premium keys must never leak.",
+    safehandsBehavior: "Recognized Pharos-ecosystem RPC provider (awareness only). Distinct from Alchemy Pay (payment). Not wired as a default provider; keys are never bundled.",
+    overclaimRisk: "Do NOT claim an Alchemy integration or ship Alchemy keys.",
+  },
+  {
+    name: "Nirvana",
+    category: "rpc_provider",
+    aliases: ["nirvana"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Optional read-only RPC/data provider; keys must never leak.",
+    safehandsBehavior: "Recognized Pharos-ecosystem RPC/data provider (awareness only). Not wired as a default provider; keys are never bundled.",
+    overclaimRisk: "Do NOT claim a Nirvana integration.",
+  },
+  {
+    name: "Hemera",
+    category: "indexing",
+    aliases: ["hemera"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Indexing/data source — could enrich historical evidence; NOT an execution path.",
+    safehandsBehavior: "Recognized Pharos-ecosystem indexer (awareness only). SafeHands does NOT query Hemera; indexing ≠ guardrail logic.",
+    overclaimRisk: "Do NOT claim a Hemera integration.",
+  },
+
+  // Security / compliance
+  {
+    name: "Trusta Labs",
+    category: "security",
+    aliases: ["trusta", "trusta labs"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "External security/reputation intel — could inform risk, not decide it.",
+    safehandsBehavior: "Recognized Pharos-ecosystem security provider (awareness only). SafeHands does NOT call Trusta Labs; its own verdicts remain the source of truth.",
+    overclaimRisk: "Do NOT claim a Trusta Labs integration, audit, or endorsement.",
+  },
+  {
+    name: "Hypernative",
+    category: "security",
+    aliases: ["hypernative"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "External threat-detection intel — could inform risk, not decide it.",
+    safehandsBehavior: "Recognized Pharos-ecosystem security provider (awareness only). SafeHands does NOT call Hypernative; its own verdicts remain the source of truth.",
+    overclaimRisk: "Do NOT claim a Hypernative integration or endorsement.",
+  },
+  {
+    name: "Zellic",
+    category: "security",
+    aliases: ["zellic"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Security audit firm — an audit is evidence about a contract, never a guarantee.",
+    safehandsBehavior: "Recognized Pharos-ecosystem audit firm (awareness only). SafeHands does NOT claim any Zellic audit of its own or others' contracts.",
+    overclaimRisk: "Do NOT claim a Zellic audit or endorsement.",
+  },
+  {
+    name: "ExVul Security",
+    category: "security",
+    aliases: ["exvul", "exvul security"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Security audit/monitoring firm — evidence about a contract, never a guarantee.",
+    safehandsBehavior: "Recognized Pharos-ecosystem security firm (awareness only). SafeHands does NOT call ExVul or claim an ExVul audit.",
+    overclaimRisk: "Do NOT claim an ExVul Security audit or endorsement.",
+  },
+  {
+    name: "OpenZeppelin",
+    category: "security",
+    aliases: ["openzeppelin", "oz"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Audit firm & contract libraries — recognizing an OZ pattern is not proof of safety.",
+    safehandsBehavior: "Recognized Pharos-ecosystem security firm/library (awareness only). SafeHands does NOT claim an OpenZeppelin audit; library usage alone never lowers risk.",
+    overclaimRisk: "Do NOT claim an OpenZeppelin audit, partnership, or endorsement.",
+  },
+  {
+    name: "TRM",
+    category: "security",
+    aliases: ["trm", "trm labs"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Compliance/AML screening intel — could inform risk, not decide it.",
+    safehandsBehavior: "Recognized Pharos-ecosystem compliance provider (awareness only). SafeHands does NOT call TRM; its own verdicts remain the source of truth.",
+    overclaimRisk: "Do NOT claim a TRM integration or compliance certification.",
+  },
+
+  // Identity / NFT / navigation
+  {
+    name: "PNS",
+    category: "identity",
+    aliases: ["pns", "pharos name service"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Name service — resolved names can be spoofed/homoglyphed; name ≠ address trust.",
+    safehandsBehavior: "Recognized Pharos-ecosystem naming service (awareness only). SafeHands does NOT resolve or trust names as identity; address verification remains required.",
+    overclaimRisk: "Do NOT claim a PNS integration or name-resolution capability.",
+  },
+  {
+    name: "ZNS Connect",
+    category: "identity",
+    aliases: ["zns", "zns connect"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Name service — resolved names can be spoofed/homoglyphed; name ≠ address trust.",
+    safehandsBehavior: "Recognized Pharos-ecosystem naming service (awareness only). SafeHands does NOT resolve or trust names as identity; address verification remains required.",
+    overclaimRisk: "Do NOT claim a ZNS Connect integration or name-resolution capability.",
+  },
+  {
+    name: "Grandline",
+    category: "identity",
+    aliases: ["grandline"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Identity/NFT app — recognizing the name grants no trust in its contracts.",
+    safehandsBehavior: "Recognized Pharos-ecosystem identity/NFT app (awareness only). SafeHands does NOT integrate; intents to its contracts fail closed without address verification.",
+    overclaimRisk: "Do NOT claim a Grandline integration or partnership.",
+  },
+  {
+    name: "Pharosverse",
+    category: "identity",
+    aliases: ["pharosverse"],
+    source: "to_verify",
+    status: "to_verify",
+    riskRelevance: "Ecosystem navigation/NFT hub — recognizing the name grants no trust in linked contracts.",
+    safehandsBehavior: "Recognized Pharos-ecosystem navigation/NFT hub (awareness only). SafeHands does NOT integrate; intents to linked contracts fail closed without address verification.",
+    overclaimRisk: "Do NOT claim a Pharosverse integration or partnership.",
   },
 ];
 

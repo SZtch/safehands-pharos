@@ -144,13 +144,14 @@ export function buildSupportedProtocols(): unknown {
     };
   }
 
+  // Derived (not hardcoded) so every known-but-unverified protocol/bridge in the
+  // canonical registry is surfaced automatically and can never silently drift.
+  // Registry array order is preserved; the key is the item id's last segment.
   const protocols: Record<string, unknown> = {};
-  for (const [key, id] of [
-    ["stargate", "protocol:pacific-mainnet:stargate"],
-    ["faroswap", "protocol:pacific-mainnet:faroswap"],
-    ["stpros-premint", "protocol:pacific-mainnet:stpros-premint"],
-  ] as const) {
-    const item = requireItem(id);
+  for (const item of ECOSYSTEM_REGISTRY_ITEMS) {
+    if (item.category !== "protocol" && item.category !== "bridge") continue;
+    if (item.ecosystemStatus !== "KNOWN_ECOSYSTEM") continue;
+    const key = item.id.split(":").pop() as string;
     protocols[key] = {
       verificationStatus: item.verificationStatus.toLowerCase(),
       note: item.notes,

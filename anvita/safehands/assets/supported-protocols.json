@@ -47,6 +47,54 @@
     "stpros-premint": {
       "verificationStatus": "unverified",
       "note": "No officially published stPROS Pre-Mint contract address is bundled. Yield-deposit intents to unlisted contracts fail closed (warn/block)."
+    },
+    "oku": {
+      "verificationStatus": "unverified",
+      "note": "No officially published OKU contract addresses are bundled. Swap/DEX intents to unlisted routers fail closed (warn/block)."
+    },
+    "agra": {
+      "verificationStatus": "unverified",
+      "note": "No officially published Agra contract addresses are bundled. Swap/DEX intents to unlisted routers fail closed (warn/block)."
+    },
+    "bitverse": {
+      "verificationStatus": "unverified",
+      "note": "Recognized in the Pharos DEX/DeFi and RWA ecosystem (single entry). No officially published Bitverse contract addresses are bundled. Trading/RWA intents to unlisted contracts fail closed (warn/block)."
+    },
+    "interport": {
+      "verificationStatus": "unverified",
+      "note": "No officially published InterPort router address for Pharos Pacific Mainnet is bundled. Bridge/cross-chain intents to unlisted routers fail closed (warn/block)."
+    },
+    "r25": {
+      "verificationStatus": "unverified",
+      "note": "No officially published R25 contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
+    },
+    "asseto": {
+      "verificationStatus": "unverified",
+      "note": "No officially published Asseto contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
+    },
+    "aquaflux": {
+      "verificationStatus": "unverified",
+      "note": "No officially published AquaFlux contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
+    },
+    "zona": {
+      "verificationStatus": "unverified",
+      "note": "No officially published Zona contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
+    },
+    "morpho": {
+      "verificationStatus": "unverified",
+      "note": "No officially published Morpho contract addresses for Pharos Pacific Mainnet are bundled. Lending/vault intents to unlisted contracts fail closed (warn/block)."
+    },
+    "termmax": {
+      "verificationStatus": "unverified",
+      "note": "No officially published TermMax contract addresses are bundled. Lending/fixed-rate intents to unlisted contracts fail closed (warn/block)."
+    },
+    "faroo": {
+      "verificationStatus": "unverified",
+      "note": "Distinct from FaroSwap. No officially published Faroo contract addresses are bundled. Lending/yield intents to unlisted contracts fail closed (warn/block)."
+    },
+    "ember": {
+      "verificationStatus": "unverified",
+      "note": "No officially published Ember contract addresses are bundled. Lending/vault/yield intents to unlisted contracts fail closed (warn/block)."
     }
   }
 }

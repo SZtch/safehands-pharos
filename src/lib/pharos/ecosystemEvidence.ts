@@ -47,6 +47,8 @@ const CATEGORY_IMPACT: Record<EcosystemCategory, EcosystemDecisionImpact> = {
   evm_wasm_interop: "REQUIRE_CONFIRMATION",
   payment: "none",
   rpc_provider: "none",
+  security: "none",
+  identity: "none",
   unknown: "none",
 };
 
@@ -60,6 +62,8 @@ const CATEGORY_META: Record<EcosystemCategory, { riskRelevance: string; safehand
   evm_wasm_interop: { riskRelevance: "EVM↔WASM interop can bypass EVM-only assumptions.", safehandsBehavior: "Experimental; WASM-interop intent → REQUIRE_CONFIRMATION. No WASM analyzer." },
   payment: { riskRelevance: "Payment intent (x402).", safehandsBehavior: "Route to the x402 preflight analyzer. mainnet-only; never signs/settles." },
   rpc_provider: { riskRelevance: "RPC provider/infrastructure.", safehandsBehavior: "Read-only RPC only; secrets redacted." },
+  security: { riskRelevance: "External security/compliance/audit intel.", safehandsBehavior: "Awareness only; SafeHands does not call it and its own verdicts remain the source of truth. An audit/screening is evidence, never a guarantee." },
+  identity: { riskRelevance: "Name service / identity / NFT — names can be spoofed; name ≠ address trust.", safehandsBehavior: "Awareness only; SafeHands never resolves or trusts names as identity — address verification is still required." },
   unknown: { riskRelevance: "No ecosystem category recognized.", safehandsBehavior: "No ecosystem awareness applies; base analyzers/policy still govern the decision." },
 };
 
