@@ -279,12 +279,6 @@ async function safePinnedFetchOnce(parsed: URL, init: RequestInit, timeoutMs: nu
   });
 }
 
-export function redactSensitive(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  if (value.length <= 10) return "[REDACTED]";
-  return `${value.slice(0, 6)}...[REDACTED]`;
-}
-
 function ipv4ToNumber(ip: string): number | null {
   if (net.isIP(ip) !== 4) return null;
   return ip.split(".").reduce((acc, octet) => (acc << 8) + Number(octet), 0) >>> 0;

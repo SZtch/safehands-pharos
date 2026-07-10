@@ -93,11 +93,3 @@ export function requireWriteToolsEnabled(toolName: string): ToolFailure | null {
   }
   return null;
 }
-
-export function requireEnv(name: string, source: string): string | ToolFailure {
-  const value = process.env[name];
-  if (!value) {
-    return fail("MISSING_ENV", `${name} is not configured.`, false, source);
-  }
-  return value;
-}

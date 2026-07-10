@@ -70,11 +70,6 @@ function upsert(record: PendingAttestation): void {
   persist();
 }
 
-export function getAttestationStatus(txHash: string): AttestationStatus {
-  state = readJsonFile<AttestationState>(STORE_PATH, { records: {} });
-  return state.records[txHash.toLowerCase()]?.status || "skipped";
-}
-
 export function getAttestationRecord(txHash: string): PendingAttestation | null {
   state = readJsonFile<AttestationState>(STORE_PATH, { records: {} });
   return state.records[txHash.toLowerCase()] ?? null;

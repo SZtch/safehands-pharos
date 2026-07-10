@@ -29,18 +29,6 @@ export const RPC_URL = process.env.PHAROS_RPC_URL || resolveRpcUrl(ACTIVE_NETWOR
 export const EXPLORER_BASE = process.env.PHAROS_EXPLORER_BASE || explorerTxBase(ACTIVE_NETWORK);
 export const IS_MAINNET = ACTIVE_NETWORK.isMainnet;
 
-export const CHAIN_REGISTRY = {
-  pharosAtlanticTestnet: {
-    environment: "atlantic-testnet",
-    chainId: 688689,
-    isMainnet: false,
-    rpcUrlEnv: "PHAROS_RPC_URL",
-    defaultRpcUrl: "https://atlantic.dplabs-internal.com/",
-    explorerUrl: "https://atlantic.pharosscan.xyz/",
-    docsSource: "https://docs.pharosnetwork.xyz/developer-guide/hardhat/write-your-first-nft",
-  },
-} as const;
-
 // ─── Token Addresses ───────────────────────────────────────────────────
 // These are the ATLANTIC-TESTNET / Skill-Engine-compat addresses (activeTokenMap
 // switches to the Pacific registry on mainnet). The one evidenced canonical
@@ -56,10 +44,6 @@ export const USDC_ADDRESS = "0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8" as cons
 
 /** Circle's Pharos TESTNET USDC (per Circle's contract-addresses page). Used only as the Atlantic alt-USDC route fallback — never a mainnet claim. */
 export const CIRCLE_USDC_ADDRESS = "0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B" as const;
-
-/** @deprecated Use USDC_ADDRESS instead. Kept for backward compatibility. */
-export const X402_DEMO_USDC_ADDRESS = USDC_ADDRESS;
-export const TEST_USDC_ADDRESS = USDC_ADDRESS;
 
 export const WBTC_ADDRESS = "0x0c64F03EEa5c30946D5c55B4b532D08ad74638a4" as const;
 export const WETH_ADDRESS = "0x7d211F77525ea39A0592794f793cC1036eEaccD5" as const;
@@ -318,7 +302,6 @@ export function activeX402AllowedTokenAddresses(): `0x${string}`[] {
 
 export const DODO_APPROVE_ADDRESS = "0x4Cf317b8918FbE8A890c01eDAb7d548555Ac2cE9" as const;
 export const DODO_ROUTE_PROXY_ADDRESS = "0x819829e5CF6e19F9fED92F6b4CC1edF45a2cC4A2" as const;
-export const POSITION_MANAGER_ADDRESS = "0x1c430d84DD6185b1Ea2d4693e0033799d193542f" as const;
 
 function parseAddressCsv(value: string | undefined, fallback: readonly string[]): `0x${string}`[] {
   const source = value && value.trim().length > 0 ? value.split(",") : [...fallback];

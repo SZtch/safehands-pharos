@@ -110,8 +110,3 @@ export class PharosReadOnlyRpc {
     };
   }
 }
-
-/** Convenience factory for the active network (read-only). */
-export function createReadOnlyRpc(opts: PharosReadOnlyRpcOptions = {}): PharosReadOnlyRpc {
-  return new PharosReadOnlyRpc(opts);
-}

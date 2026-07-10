@@ -14,7 +14,6 @@ import {
   type Chain,
   type Account,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { RPC_URL, CHAIN_ID, EXPLORER_BASE, IS_MAINNET } from "./constants.js";
 import { getActiveNetwork } from "./networks.js";
 
@@ -64,17 +63,6 @@ export const publicClient: PublicClient<Transport, Chain> = createPublicClient({
 });
 
 // ─── Wallet Client Factory ─────────────────────────────────────────────
-
-/**
- * Creates a wallet client for signing and sending transactions.
- * Private key is passed per-request and NEVER stored.
- */
-export function createPharosWalletClient(
-  privateKey: `0x${string}`
-): WalletClient<Transport, Chain, Account> {
-  const account = privateKeyToAccount(privateKey);
-  return createPharosWalletClientFromAccount(account);
-}
 
 export function createPharosWalletClientFromAccount(
   account: Account

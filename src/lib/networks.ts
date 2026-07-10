@@ -72,10 +72,6 @@ export function getActiveNetworkName(): NetworkName {
   return isNetworkName(raw) ? raw : DEFAULT_NETWORK_NAME;
 }
 
-export function getNetwork(name: NetworkName): PharosNetwork {
-  return NETWORKS[name];
-}
-
 export function getActiveNetwork(): PharosNetwork {
   return NETWORKS[getActiveNetworkName()];
 }
