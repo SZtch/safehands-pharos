@@ -81,9 +81,11 @@ export function getActiveNetworkConfig(): ActiveNetworkConfig {
 // ── Honest product capability flags ────────────────────────────────────
 // A deterministic, secret-free (booleans only) summary of what SafeHands can and
 // cannot do TODAY. Implemented live read/check/analyze capabilities are `true`;
-// write / signing / managed-wallet / custody capabilities — which the SafeHands API
-// does NOT implement — are hard `false`. This is honest, not aspirational: a `true`
-// here means there is shipping code (+ tests) behind it. It never enables anything.
+// write / signing / managed-wallet / custody capabilities are env-gated and report
+// `false` until the corresponding opt-in gates are explicitly enabled (all default
+// off). This is honest, not aspirational: a `true` here means there is shipping
+// code (+ tests) behind it — and for the write group, that its gate is actually
+// open right now. It never enables anything.
 export interface CapabilityFlags {
   // Implemented live (read-only, mainnet-first)
   mainnetLive: boolean;
