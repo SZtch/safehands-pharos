@@ -57,6 +57,6 @@ Every failure is structured JSON: `{success:false, error:{code,message}, provide
 - Missing threat intel (GoPlus unreachable / token unindexed / schema drift) → score floored out of the allow band.
 - Missing evidence → reported in `missingInputs`, never silently assumed safe.
 - Stale price feed → reported stale; last answer is never quoted as current.
-- **Unlimited approval or blanket operator grant (`setApprovalForAll`) to an unknown counterparty → block.** "Known" means canonical Pharos infrastructure or the Permit2 singleton only — this is policy, not breakage: an UNVERIFIED ecosystem protocol (FaroSwap included) is an unknown counterparty until its addresses are verified in the registry.
+- **Unlimited approval or blanket operator grant (`setApprovalForAll`) to an unknown counterparty → block.** "Known" means canonical Pharos infrastructure, registry-VERIFIED protocol contracts (own-docs citation + on-chain check, e.g. Morpho Blue), or the Permit2 singleton — this is policy, not breakage: an UNVERIFIED ecosystem protocol (FaroSwap included) is an unknown counterparty until its addresses are verified in the registry.
 - **Transfer/payment recipient on the operator denylist → block.** The denylist is operator-supplied via `SAFEHANDS_RECIPIENT_DENYLIST` (comma-separated 0x addresses, local config) and **empty by default** — SafeHands never ships a fabricated scam list.
 - **Unrecognized or malformed calldata → held** (warn floor), never decoded-as-safe.

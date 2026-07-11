@@ -81,8 +81,13 @@
       "note": "No officially published Zona contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
     },
     "morpho": {
-      "verificationStatus": "unverified",
-      "note": "No officially published Morpho contract addresses for Pharos Pacific Mainnet are bundled. Lending/vault intents to unlisted contracts fail closed (warn/block)."
+      "verificationStatus": "verified",
+      "contracts": {
+        "0x18573fa18fd17ddfd790b4a5b5b2977aad3b4efb": "Morpho Blue",
+        "0xd5e02889c13230458506cc842347c4e62f8cdf3a": "Morpho AdaptiveCurveIRM",
+        "0xb8118256d8aa950ec0b26a0b8be7c6c1a858f6a3": "Morpho ChainlinkOracleV2Factory"
+      },
+      "note": "Verified 2026-07-11 from Morpho's own addresses page + on-chain checks. Verification relaxes recognition only — an unlimited approval to Morpho Blue still requires confirmation, and MetaMorpho vault addresses are NOT bundled (markets/vaults are permissionless; verify each vault separately)."
     },
     "termmax": {
       "verificationStatus": "unverified",

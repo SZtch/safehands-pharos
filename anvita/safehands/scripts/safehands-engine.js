@@ -392,9 +392,9 @@ async function analyzeContract(addr) {
   const factors = []; let score = 15;
   const known = KNOWN_INFRA.has(addr.toLowerCase());
   if (known) {
-    return report(5, [`Canonical Pharos infrastructure: ${CANON_CONTRACTS[addr.toLowerCase()]} (official docs registry)`],
+    return report(5, [`Canonical registry contract: ${CANON_CONTRACTS[addr.toLowerCase()]} (verified via official-docs citation + on-chain check)`],
       { type: "contract", address: addr },
-      { onChain: { isContract: true, codeSize: p.codeSize }, intel: "official Pharos canonical-contracts registry" });
+      { onChain: { isContract: true, codeSize: p.codeSize }, intel: "verified canonical registry (Pharos docs + registry-verified protocol docs)" });
   }
   const t = await erc20Probe(addr);
   const looksToken = t.symbol !== null; // strict: symbol must ABI-decode; fallback junk like 0x0 must not classify as token

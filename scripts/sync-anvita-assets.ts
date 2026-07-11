@@ -44,6 +44,17 @@ export function buildKnownPharos(): unknown {
   const canonicalContracts: Record<string, string> = {};
   for (const c of infra.contracts) canonicalContracts[c.address.toLowerCase()] = c.label;
 
+  // Registry-VERIFIED ecosystem protocol contracts flow into hosted recognition
+  // too — verification in the canonical registry (own-docs citation + on-chain
+  // check, allow_eligible) is the ONLY path in; KNOWN_ECOSYSTEM stays name-only.
+  for (const item of ECOSYSTEM_REGISTRY_ITEMS) {
+    if (item.chainId !== 1672 || item.category !== "protocol") continue;
+    if (item.verificationStatus !== "VERIFIED" || item.safetyUse !== "allow_eligible") continue;
+    for (const c of item.contracts) {
+      if (c.verificationStatus === "VERIFIED") canonicalContracts[c.address.toLowerCase()] = c.label;
+    }
+  }
+
   const canonicalTokens: Record<string, string> = {};
   for (const tokenId of ["token:pacific-mainnet:wpros", "token:pacific-mainnet:usdc", "token:pacific-mainnet:link", "token:pacific-mainnet:weth"]) {
     const token = requireItem(tokenId);
@@ -53,7 +64,7 @@ export function buildKnownPharos(): unknown {
   }
 
   return {
-    source: "https://docs.pharos.xyz/getting-started/canonical-contracts.md + token-registry.md",
+    source: "https://docs.pharos.xyz/getting-started/canonical-contracts.md + token-registry.md + registry-verified protocol docs (citations in src/data/ecosystemRegistry.data.ts)",
     network: "pacific-mainnet",
     chainId: 1672,
     canonicalContracts,
@@ -154,16 +165,21 @@ export function buildSupportedProtocols(): unknown {
     };
   }
 
-  // Derived (not hardcoded) so every known-but-unverified protocol/bridge in the
-  // canonical registry is surfaced automatically and can never silently drift.
+  // Derived (not hardcoded) so every ecosystem protocol/bridge in the canonical
+  // registry is surfaced automatically and can never silently drift: VERIFIED
+  // entries carry their verified addresses, KNOWN_ECOSYSTEM stays name-only.
   // Registry array order is preserved; the key is the item id's last segment.
   const protocols: Record<string, unknown> = {};
   for (const item of ECOSYSTEM_REGISTRY_ITEMS) {
     if (item.category !== "protocol" && item.category !== "bridge") continue;
-    if (item.ecosystemStatus !== "KNOWN_ECOSYSTEM") continue;
+    if (item.ecosystemStatus !== "KNOWN_ECOSYSTEM" && item.ecosystemStatus !== "VERIFIED") continue;
     const key = item.id.split(":").pop() as string;
+    const verified = item.verificationStatus === "VERIFIED";
     protocols[key] = {
       verificationStatus: item.verificationStatus.toLowerCase(),
+      ...(verified && item.contracts.length
+        ? { contracts: Object.fromEntries(item.contracts.filter((c) => c.verificationStatus === "VERIFIED").map((c) => [c.address.toLowerCase(), c.label])) }
+        : {}),
       note: item.notes,
     };
   }
