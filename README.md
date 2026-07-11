@@ -51,9 +51,10 @@ User → Steward Agent → Anvita Flow marketplace → SafeHands (hosted skill)
 | Capability | How it decides |
 |---|---|
 | **Token impersonation detection** | Official Pharos Token Registry checks, canonical-token aliases, and optional on-chain `symbol()` evidence — catches fake USDC/WPROS/WETH/LINK patterns that clean-looking names can hide |
+| **Offline calldata decode** *(v2.4.0)* | approve / permit / Permit2 / setApprovalForAll / transfer / dangerous-admin / MultiSend decoded from the raw bytes — an unlimited approval or blanket operator grant to an unknown counterparty blocks, denylisted recipients block, malformed calldata is held; no simulation service needed |
 | Honeypot / sell-tax / hidden-owner | GoPlus token-security evidence when available in the full backend; hosted skill remains fail-closed / review-oriented when live evidence is unavailable |
 | Malicious wallet flags | Caller-supplied or backend-enriched address-security signals for phishing, stealing, cybercrime, and unverified counterparties |
-| Canonical infrastructure recognition | 14 official Pharos canonical contracts (Safe, Permit2, EntryPoint 4337…) |
+| Canonical + verified-protocol recognition | 14 official Pharos canonical contracts (Safe, Permit2, EntryPoint 4337…) plus registry-**VERIFIED** ecosystem protocols (Morpho Blue — verified from Morpho's own docs + on-chain checks); recognition comes only from cited first-party evidence |
 | Transfer / swap intent review | Amount, chain, recipient/spender, token, approval, signer, and counterparty-verification checks before execution |
 | On-chain risk records & agent reputation | Full backend reads the SafeHands Registry & Attestation contracts via `eth_call`; hosted skill can evaluate supplied registry/risk context without custody |
 

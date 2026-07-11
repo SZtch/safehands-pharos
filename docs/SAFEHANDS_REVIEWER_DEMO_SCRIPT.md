@@ -54,6 +54,7 @@ AI agents making on-chain transactions need guardrails. Without safety checks, a
 
 - Send funds to the wrong address or chain
 - Approve unlimited token spending
+- Sign drainer-crafted calldata it never actually decoded
 - Execute swaps above policy limits
 - Pay x402 invoices to SSRF targets
 - Move a tokenized asset to an unvetted counterparty with no audit trail
@@ -93,6 +94,33 @@ Both are verifiable on the explorer; the reputation oracle has live attestations
 npm ci && npm run build
 npm run demo          # or: npx -y github:SZtch/safehands-pharos --demo
 ```
+
+### The firewall reading raw calldata (v2.4.0 — 60-second wow)
+
+The hosted engine decodes approval/transfer/admin calldata **offline** — no simulation service, no third-party API. Feed it a drainer-style transaction and watch it block from the raw bytes:
+
+```bash
+# Unlimited approve to an unknown spender, hidden inside a "vault deposit" — BLOCK
+node anvita/safehands/scripts/safehands-engine.js analyze '{
+  "subjectType":"intent","action":"vault_deposit",
+  "walletAddress":"0x1111111111111111111111111111111111111111",
+  "vault":"0xcA11bde05977b3631167028862bE2a173976CA11",
+  "to":"0xc879C018Db60520f4355C26eD1a6D572CDAC1815",
+  "data":"0x095ea7b3000000000000000000000000000000000000000000000000000000000000deadffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}'
+# -> recommendation: block, riskScore >= 90
+# -> "UNLIMITED approve to an UNKNOWN spender (0x…dead) — the spender could move the entire … balance"
+```
+
+Contrast with a **registry-verified** protocol — trust comes only from first-party evidence (the project's own docs + on-chain checks, cited in the registry):
+
+```bash
+# Morpho Blue on Pharos — verified 2026-07-11 from Morpho's own addresses page
+node anvita/safehands/scripts/safehands-engine.js analyze '{"subjectType":"contract","address":"0x18573fA18fd17dDfD790B4a5B5b2977aad3b4Efb"}'
+# -> recommendation: allow, riskScore 5
+# -> "Canonical registry contract: Morpho Blue (verified via official-docs citation + on-chain check)"
+```
+
+Ecosystem names the registry recognizes but whose addresses are **not** yet published in their own docs (FaroSwap, Stargate, …) stay fail-closed: an unlimited approval to them blocks. That is policy, not a bug — recognition is never proof.
 
 ### Test suites
 
