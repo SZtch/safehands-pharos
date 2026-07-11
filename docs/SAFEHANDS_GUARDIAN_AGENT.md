@@ -109,8 +109,9 @@ All demos are offline (no RPC, no keys) and self-checking.
 | Routing to Phase 2 analyzers / Phase 3 handlers | **Live** (read-only) |
 | Deep Safe/MultiSend decode, Permit2 deep decode | **Experimental** (read-only, flagged) |
 | Live mainnet read-only checks via injected RPC | **Live capability** (default wiring) |
-| Execution / signing / managed wallets / on-chain publishing | **Advanced self-hosted / disabled by default / Roadmap** |
-| x402 **mainnet payment**, paid agent API, ecosystem integrations | **Roadmap** |
+| Execution / signing / managed wallets / on-chain publishing | **Advanced self-hosted / disabled by default** |
+| x402 mainnet USDC settlement + paid `/paid/*` API | **Opt-in self-hosted** (off by default; hosted mode never pays) |
+| Ecosystem integrations (wallet/custody vendors, CCTP, …) | **Roadmap** |
 
 See also: [`AGENT_ARENA.md`](./AGENT_ARENA.md) and
 [`AGENT_TO_AGENT.md`](./AGENT_TO_AGENT.md).

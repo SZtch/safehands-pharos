@@ -97,9 +97,10 @@
 | EAS (attestations) | https://attest.org/ | TO-VERIFY |
 | Circle CCTP / USDC | https://developers.circle.com/stablecoins | TO-VERIFY (Pharos support) |
 
-> Canonical contract **addresses** for Pharos mainnet must be taken from the
-> official Pharos canonical-contracts page at integration time; none are hardcoded
-> for mainnet in Phase 0.
+> Canonical contract **addresses** for Pharos mainnet are taken from the official
+> Pharos canonical-contracts page; the bundled, cited set lives in the canonical
+> ecosystem registry (`src/data/ecosystemRegistry.data.ts`) and is documented in
+> [`CANONICAL_CONTRACTS.md`](./CANONICAL_CONTRACTS.md).
 
 ---
 
