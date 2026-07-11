@@ -131,7 +131,7 @@ npm run test:contracts # 25 Hardhat Solidity tests (offline smoke fallback witho
 npm run test:all       # all combined
 ```
 
-Focused suites also exist: `test/x402-gate.test.ts` (10 tests, x402 payment gate with a mock facilitator) and `test/risk-inclusion.test.ts` (8 tests, Merkle inclusion proof path), runnable via `tsx`.
+Focused suites also exist: `test/x402-gate.test.ts` (x402 payment gate with a mock facilitator) and `test/risk-inclusion.test.ts` (Merkle inclusion proof path), runnable via `tsx --test <file>`.
 
 ## 7. Expected outputs
 

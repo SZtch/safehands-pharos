@@ -2,10 +2,10 @@
 
 SafeHands is the pre-execution transaction firewall for AI agents on Pharos. A critical part of its Policy Engine is distinguishing between random unverified contracts and official, audited ecosystem infrastructure.
 
-This document serves as the ground truth for all canonical contracts recognized natively by the SafeHands Preflight Engine.
+This document serves as the ground truth for the official Pharos canonical contracts recognized natively by the SafeHands Preflight Engine (§1) and the canonical token registry (§3). Registry-**VERIFIED** ecosystem protocol contracts (e.g. Morpho Blue, verified from first-party evidence) live in the canonical ecosystem registry, `src/data/ecosystemRegistry.data.ts` — that registry is the single source of address-level trust.
 
 > [!TIP]
-> When an agent interacts with any of these contracts, SafeHands recognizes it as **Trusted Infrastructure** and evaluates the payload intelligently, drastically reducing false positives.
+> Recognition here is **counterparty recognition, never payload leniency**: a canonical contract is a known counterparty, but a risky payload stays risky — an unlimited approval to Permit2 still requires confirmation, and a decoded drainer pattern still blocks regardless of the target being listed on this page.
 
 ## 1. Account Abstraction & Infrastructure (Canonical Contracts)
 
@@ -43,33 +43,22 @@ This document serves as the ground truth for all canonical contracts recognized 
 
 ---
 
-## 2. DODO & FaroSwap Infrastructure (DEX)
+## 2. DODO / FaroSwap routing addresses — restriction-only containment, NOT trust
 
-SafeHands natively integrates with DODO / FaroSwap for price discovery and agent swaps. 
+The self-hosted swap path fetches quotes from the DODO route API (which serves
+FaroSwap liquidity on Pharos). Before any gated execution, `execute_swap` checks the
+quote's router (`to`) and approval target against **operator-configurable
+allowlists** — `DODO_ROUTER_ALLOWLIST` / `DODO_SPENDER_ALLOWLIST` (defaults in
+`src/lib/constants.ts`). A quote pointing anywhere outside the allowlist **fails
+closed**.
 
-> **Background:** FaroSwap is powered by DODO Dexpert, built on top of a robust infrastructure refined over five years of on-chain trading activity. This architecture combines flexibility, gas efficiency, and modular design — enabling FaroSwap to adapt quickly to new use cases, especially within the emerging RWA narrative. The core team behind FaroSwap brings together former operators from top-tier exchanges, wallets, and L1 blockchains, combining technical depth with proven go-to-market expertise.
-
-These contracts are verified as safe routing infrastructure.
-
-| Version | Description | Address |
-| --- | --- | --- |
-| DODOV2 | Multicall | `0x0246DffDa649e877CFd0951837332B4690fAD1EB` |
-| DODO | MulticallWithValid | `0x701855ae3a8b2A989DC8ACCf02Dd2b96f8B21671` |
-| DODO | DODOSellHelper | `0x27D4236CF46842E5eC1A21C585654F07B00932a1` |
-| DODO | DODOSwapCalcHelper | `0xF8FCF810B5DC0715655A1Ed2ef75d6e35e3C0f25` |
-| DODO | ERC20Helper | `0x9AC12A5a3AAF3d71b2beFE1F3eE8bA9820F4a591` |
-| DODO | DODOCalleeHelper | `0x091341395E94517E6960c5fAF95e81CdAD92Fe0d` |
-| DODO | DODOV1PmmHelper | `0x75EF0F8c1c31dD307451B3A11B324b3125471Ee2` |
-| DODO | DODOV2RouteHelper | `0xe9Fc1c26901AF258EdCC60a258A7f0228b3639d8` |
-| DODO | CloneFactory | `0x114CD7D3f8a994139620aF07a4cEA444ab28968c` |
-| DODO | DODOApprove | `0x73CAfc894dBfC181398264934f7Be4e482fc9d40` |
-| DODO | DODOApproveProxy | `0x7c25C06777305e632218aDFF9763E3fC049Dd0Db` |
-| DODO | DODOV2Proxy02 | `0x4b177AdEd3b8bD1D5D747F91B9E853513838Cd49` |
-| DODO | DODODspProxy | `0x3b5C0f0ca61d9C92e676C369B31545f4Fe003b56` |
-| Uniswap | UniswapV2Router02 | `0xf05Af5E9dC3b1dd3ad0C087BD80D7391283775e0` |
-| Uniswap | SwapRouter | `0x259C9EBBE307bb0aF410e103202662667254d062` |
-
-*(This registry includes factories, fee models, and adapters which are recognized by the policy engine as DEX infrastructure).*
+**These allowlists are containment, not verification** (the enforcement code says
+exactly that): being on the list means "the only addresses a swap is *permitted* to
+touch", never "this address is trusted/safe". They grant no risk relaxation anywhere —
+`spenderVerified` is derived from the canonical ecosystem registry only, and FaroSwap
+remains **UNVERIFIED** there until its own documentation publishes citable Pharos
+mainnet addresses. The shipped defaults are testnet-provenance; mainnet operators
+should set the allowlists themselves after verifying the route API's actual targets.
 
 ---
 
