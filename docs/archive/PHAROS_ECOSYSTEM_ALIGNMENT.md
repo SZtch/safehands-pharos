@@ -1,3 +1,6 @@
+> [!WARNING]
+> **Historical snapshot (Phase 2 planning) — superseded.** Kept unedited for provenance; outdated statements below include: "read-only Pharos checks on Atlantic testnet today" (Pacific Mainnet 1672 is live and the default), "SDK Roadmap" (the SDK shipped), and Chainlink listed as not integrated (live Chainlink Push price reads shipped in `get_token_price`). The do-not-overclaim guardrails remain broadly valid. For current status see `docs/INDEX.md`.
+
 > [!NOTE]
 > Pharos Pacific Mainnet (chain `1672`) is the default and live network. Any Atlantic Testnet (`688689`) references below are legacy/secondary context.
 

@@ -9,7 +9,7 @@
 > §11's `not_implemented` no longer holds) and **live Chainlink Push feed reads**
 > (`src/lib/price/priceResolver.ts`; §12's "no Chainlink call" no longer holds — the
 > no-overclaim rule still stands for CCIP/cross-chain). Current state:
-> [`docs/INDEX.md`](../INDEX.md) · [`AUDIT_REMEDIATION_2026-07.md`](./AUDIT_REMEDIATION_2026-07.md).
+> [`docs/INDEX.md`](../INDEX.md) · [`AUDIT_REMEDIATION_2026-07.md`](../reports/AUDIT_REMEDIATION_2026-07.md).
 > The snapshot below is kept unedited for provenance.
 
 > Maps every Pharos topic to SafeHands implementation status. Audit-only; no code
@@ -266,7 +266,7 @@ Safe/Fordefi, Dora VM/WASM) are realized as a read-only evidence layer:
 above marked *(future, 5D)* for **LI.FI/Jumper** intentionally stay future — both
 remain **to_verify** and are handled only as generic cross-chain intents
 (`REQUIRE_CONFIRMATION`), never as integrations. See
-[`PHAROS_ECOSYSTEM_INTEGRATIONS.md`](../PHAROS_ECOSYSTEM_INTEGRATIONS.md),
+[`PHAROS_ECOSYSTEM_INTEGRATIONS.md`](../PHAROS_ECOSYSTEM_EVIDENCE.md),
 [`PHAROS_ECOSYSTEM_EVIDENCE.md`](../PHAROS_ECOSYSTEM_EVIDENCE.md), and
 [`PHAROS_IMPLEMENTED_VS_ROADMAP.md`](./PHAROS_IMPLEMENTED_VS_ROADMAP.md).
 
@@ -284,5 +284,5 @@ future; execution disabled by default; no custody; no private keys). Demo script
 reviewer/dev examples only.
 
 *Ecosystem positioning guardrails:
-[`PHAROS_ECOSYSTEM_ALIGNMENT.md`](../PHAROS_ECOSYSTEM_ALIGNMENT.md).*
+[`PHAROS_ECOSYSTEM_ALIGNMENT.md`](./PHAROS_ECOSYSTEM_ALIGNMENT.md).*
 

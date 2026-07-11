@@ -1,3 +1,6 @@
+> [!WARNING]
+> **Historical snapshot (Phase 2 planning) — superseded.** Kept unedited for provenance; several statuses below are outdated: Pacific Mainnet read-only is **live and the default** (not "P1 target"), the mainnet Token Registry **shipped**, `eth_getProof`/SPV inclusion verification **shipped** (`get_spv_proof`, `verify_risk_inclusion`), and x402 mainnet USDC settlement exists as an **opt-in self-hosted** path. For current status see `docs/INDEX.md` and `docs/REALFI_RWA_ALIGNMENT.md`.
+
 > [!NOTE]
 > Pharos Pacific Mainnet (chain `1672`) is the default and live network. Any Atlantic Testnet (`688689`) references below are legacy/secondary context.
 

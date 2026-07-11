@@ -12,7 +12,7 @@
 > - **SPV / Merkle inclusion verification implemented** (`src/lib/pharos/spvVerifier.ts` via the `get_spv_proof` tool, `src/lib/riskInclusion.ts`; `test/spv-verifier.test.ts`, `test/risk-inclusion.test.ts`) — no longer "not implemented".
 >
 > For current state, start at [`docs/INDEX.md`](../INDEX.md) and
-> [`AUDIT_REMEDIATION_2026-07.md`](./AUDIT_REMEDIATION_2026-07.md). The snapshot below
+> [`AUDIT_REMEDIATION_2026-07.md`](../reports/AUDIT_REMEDIATION_2026-07.md). The snapshot below
 > is kept unedited for provenance.
 
 > A single honest separation of what SafeHands **actually does** (code + tests) from
@@ -20,7 +20,7 @@
 > tests; everything else is `experimental` / `roadmap` / `to_verify` / `not_implemented`.
 >
 > Sources: [`PHAROS_IMPLEMENTATION_MAP.md`](./PHAROS_IMPLEMENTATION_MAP.md),
-> [`PHAROS_ECOSYSTEM_INTEGRATIONS.md`](../PHAROS_ECOSYSTEM_INTEGRATIONS.md).
+> [`PHAROS_ECOSYSTEM_INTEGRATIONS.md`](../PHAROS_ECOSYSTEM_EVIDENCE.md).
 
 ---
 

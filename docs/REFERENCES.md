@@ -1,10 +1,15 @@
 > [!NOTE]
 > Pharos Pacific Mainnet (chain `1672`) is the default and live network. Any Atlantic Testnet (`688689`) references below are legacy/secondary context.
 
-# SafeHands Phase 2 — References
+# SafeHands — References
 
+> **Provenance:** this catalog was assembled during the Phase 2/5 audits and keeps that
+> era's status labels (some in-repo values in §6 are testnet-era; live mainnet contract
+> addresses and the canonical registry live in `src/data/ecosystemRegistry.data.ts` and
+> `docs/CANONICAL_CONTRACTS.md`). Official-source links remain valid.
+>
 > **Phase 5A audit:** official Pharos docs were re-verified live — see the
-> per-topic [`PHAROS_IMPLEMENTATION_MAP.md`](./reports/PHAROS_IMPLEMENTATION_MAP.md).
+> per-topic [`PHAROS_IMPLEMENTATION_MAP.md`](./archive/PHAROS_IMPLEMENTATION_MAP.md) (archived snapshot).
 >
 > Curated source links only. **No large official documentation text is copied
 > here** — each entry is a link plus a one-line purpose and a verification status.
@@ -127,9 +132,9 @@ From `src/lib/constants.ts` `docsSource` fields and existing config — all
 | https://docs.pharos.xyz/developer-guide/interoperability/call-evm-from-wasm | EVM ↔ WASM interop (Dora VM) — experimental | VERIFIED |
 | LI.FI / Jumper | Cross-chain aggregators — **not named** on the official cross-chain page | TO-VERIFY |
 
-> Ecosystem layer docs: [`PHAROS_ECOSYSTEM_INTEGRATIONS.md`](./PHAROS_ECOSYSTEM_INTEGRATIONS.md)
-> · [`PHAROS_ECOSYSTEM_EVIDENCE.md`](./PHAROS_ECOSYSTEM_EVIDENCE.md)
-> · [`PHAROS_IMPLEMENTED_VS_ROADMAP.md`](./reports/PHAROS_IMPLEMENTED_VS_ROADMAP.md). SafeHands is
+> Ecosystem layer doc: [`PHAROS_ECOSYSTEM_EVIDENCE.md`](./PHAROS_ECOSYSTEM_EVIDENCE.md)
+> (awareness registry + classifier; historical snapshot in
+> [`PHAROS_IMPLEMENTED_VS_ROADMAP.md`](./archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md)). SafeHands is
 > **ecosystem-aware, not directly integrated**; evidence is escalate-only and never
 > bypasses policy, custodies keys, or calls an external API. LI.FI/Jumper are **TO-VERIFY**.
 
@@ -137,10 +142,10 @@ From `src/lib/constants.ts` `docsSource` fields and existing config — all
 
 ## 7. How references are used
 
-- **Alignment** decisions and labels: `PHAROS_OFFICIAL_ALIGNMENT.md`.
-- **Ecosystem** positioning and overclaim guardrails: `PHAROS_ECOSYSTEM_ALIGNMENT.md`;
-  the Phase 5D evidence layer: `PHAROS_ECOSYSTEM_INTEGRATIONS.md`,
-  `PHAROS_ECOSYSTEM_EVIDENCE.md`, `PHAROS_IMPLEMENTED_VS_ROADMAP.md`.
+- **Alignment** decisions and labels: `archive/PHAROS_OFFICIAL_ALIGNMENT.md` (historical snapshot).
+- **Ecosystem** positioning and overclaim guardrails: `archive/PHAROS_ECOSYSTEM_ALIGNMENT.md` (historical snapshot);
+  the current evidence layer: `PHAROS_ECOSYSTEM_EVIDENCE.md` (historical split:
+  `archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md`).
 - **Final integration posture** (Phase 5E — capability flags, evidence matrix, safety
   boundary, self-host readiness — the `railwayReady` capability flag): SafeHands is a real
   **mainnet-first** read/check/analyze product; write/execution is gated and a future
@@ -163,5 +168,5 @@ From `src/lib/constants.ts` `docsSource` fields and existing config — all
 - Mainnet addresses and exact doc paths marked **TO-VERIFY** must be confirmed
   against official Pharos docs **before** any mainnet code path is enabled.
 
-*Cross-references:* `PHAROS_OFFICIAL_ALIGNMENT.md` · `PHAROS_ECOSYSTEM_ALIGNMENT.md`
+*Cross-references (archived snapshots):* `archive/PHAROS_OFFICIAL_ALIGNMENT.md` · `archive/PHAROS_ECOSYSTEM_ALIGNMENT.md`
 

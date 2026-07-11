@@ -4,7 +4,7 @@ Pharos is a Real-Fi chain: its thesis is tokenized real-world assets and real-wo
 
 **The claim, in one sentence:** before any AI agent moves a tokenized asset or settles a real-world payment on Pharos, SafeHands is the deterministic check that verifies the asset, enforces the transfer policy, caps the settlement — and, on the opt-in attested-broadcast path, writes a privacy-preserving audit record on-chain.
 
-Everything in the "Live today" column below is deployed and verifiable right now — contracts on Pharos Pacific Mainnet (chain `1672`), a read-only HTTP API you can self-host as a reference backend, and a runnable demo. The zero-custody hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2). Nothing in that column is aspirational — every row is running code you can verify today (known limits, like SPV verification being out of scope, are disclosed in [SECURITY.md](../SECURITY.md) and the RPC method matrix).
+Everything in the "Live today" column below is deployed and verifiable right now — contracts on Pharos Pacific Mainnet (chain `1672`), a read-only HTTP API you can self-host as a reference backend, and a runnable demo. The zero-custody hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2). Nothing in that column is aspirational — every row is running code you can verify today (known limits are disclosed honestly in [SECURITY.md](../SECURITY.md) and [PHAROS_RPC.md](./PHAROS_RPC.md)).
 
 ---
 

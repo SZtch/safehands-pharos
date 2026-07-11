@@ -48,10 +48,8 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | Doc | What it covers |
 |-----|----------------|
 | [REFERENCES.md](./REFERENCES.md) | External/official sources. Check before claiming ecosystem facts. |
-| [PHAROS_OFFICIAL_ALIGNMENT.md](./PHAROS_OFFICIAL_ALIGNMENT.md) · [PHAROS_ECOSYSTEM_ALIGNMENT.md](./PHAROS_ECOSYSTEM_ALIGNMENT.md) | How SafeHands aligns with Pharos. |
-| [PHAROS_ECOSYSTEM_EVIDENCE.md](./PHAROS_ECOSYSTEM_EVIDENCE.md) · [PHAROS_ECOSYSTEM_INTEGRATIONS.md](./PHAROS_ECOSYSTEM_INTEGRATIONS.md) | Integration evidence. |
-| [reports/PHAROS_IMPLEMENTATION_MAP.md](./reports/PHAROS_IMPLEMENTATION_MAP.md) · [reports/PHAROS_IMPLEMENTED_VS_ROADMAP.md](./reports/PHAROS_IMPLEMENTED_VS_ROADMAP.md) | What's implemented vs roadmap — **Phase 5D snapshots**; see the supersession banner (CLI/SDK, live Chainlink reads, and SPV verification have since shipped). |
-| [PHAROS_RPC_READ_ONLY.md](./PHAROS_RPC_READ_ONLY.md) · [PHAROS_RPC_METHOD_MATRIX.md](./PHAROS_RPC_METHOD_MATRIX.md) · [PHAROS_ZAN_RPC_OPTIONAL.md](./PHAROS_ZAN_RPC_OPTIONAL.md) | RPC read-only whitelist + optional providers. |
+| [PHAROS_ECOSYSTEM_EVIDENCE.md](./PHAROS_ECOSYSTEM_EVIDENCE.md) | Ecosystem awareness registry + escalate-only evidence classifier (awareness, never integration claims). |
+| [PHAROS_RPC.md](./PHAROS_RPC.md) | RPC read-only whitelist, full method matrix, SPV/proof status, optional premium providers. |
 
 ## Contracts, audits & deep dives
 
@@ -62,7 +60,17 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | [deployment/ARCHITECTURE_DECISION.md](./deployment/ARCHITECTURE_DECISION.md) | ADR for the optional self-hosted reference backend (single-instance profile). |
 | [deployment/FULL_SERVICE_DESIGN.md](./deployment/FULL_SERVICE_DESIGN.md) | Layout for running every endpoint/service self-hosted (API + x402 + worker). |
 | [indexing/GOLDSKY_ATTESTATION_INDEXING.md](./indexing/GOLDSKY_ATTESTATION_INDEXING.md) | Goldsky indexing design — mainnet contracts stay the source of truth. |
-| [POST_HACKATHON_NOTES.md](./POST_HACKATHON_NOTES.md) | Applied hardening notes, a known contract-layer design limitation, and the engine roadmap. |
+
+## Archive (historical snapshots — superseded, kept for provenance)
+
+Planning-era documents whose status labels no longer reflect the product. Each carries
+a supersession banner; **do not cite them for current capabilities.**
+
+| Doc | Era |
+|-----|-----|
+| [archive/PHAROS_OFFICIAL_ALIGNMENT.md](./archive/PHAROS_OFFICIAL_ALIGNMENT.md) · [archive/PHAROS_ECOSYSTEM_ALIGNMENT.md](./archive/PHAROS_ECOSYSTEM_ALIGNMENT.md) | Phase 2 planning |
+| [archive/PHAROS_IMPLEMENTATION_MAP.md](./archive/PHAROS_IMPLEMENTATION_MAP.md) · [archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md](./archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md) | Phase 5D snapshots (CLI/SDK, live Chainlink reads, and SPV verification have since shipped) |
+| [archive/POST_HACKATHON_NOTES.md](./archive/POST_HACKATHON_NOTES.md) | Post-hackathon hardening notes |
 
 ---
 
