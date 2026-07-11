@@ -76,7 +76,7 @@ The read-only checkpoint core is **real, not a bolt-on**: live Chainlink prices 
 | Item | Location | Verdict |
 |---|---|---|
 | `spenderVerified: true` literal | `src/tools/approveToken.ts` | **Fabricated claim** (H2) — the only true "mock presented as signal" found; now fixed |
-| Network-boundary mocks in tests | `test/*` | Legitimate (confined to fetch/RPC boundary; `mainnet-integration.test.ts` is hermetic — name overstates, content honest) |
+| Network-boundary mocks in tests | `test/*` | Legitimate (confined to fetch/RPC boundary; `mainnet-integration.test.ts` is hermetic — name overstated, content honest; since renamed to `policy-suite.test.ts`) |
 | Awareness registry "roadmap"/"to_verify" | `src/lib/pharos/ecosystem.ts` | Honest AWARENESS_ONLY, clearly labeled — not mock |
 | Provider-gated tools (Goldsky, pool info, exec history) | TS + Anvita | Honest `*_NOT_CONFIGURED` structured errors — model behavior, not stubs |
 
@@ -169,7 +169,7 @@ No demo JSON, no canned verdicts, no fake balances (`getWalletBalance` reports m
 3. Write-path modules (`userSignedBroadcaster`, `managedExecution`, `attestationPublisher`, `spvVerifier`) — **still deferred**.
 4. `SafeHandsGuardianAgent` — only non-gating live-smoke.
 5. Env pollution (M8) — **fixed**.
-6. Positive: contracts have real Hardhat tests in CI; `mainnet-integration.test.ts` is hermetic; mocks confined to network boundary; asset-drift test wired.
+6. Positive: contracts have real Hardhat tests in CI; `mainnet-integration.test.ts` (since renamed to `policy-suite.test.ts`) is hermetic; mocks confined to network boundary; asset-drift test wired.
 
 ## 15. Docs / claim gaps (all addressed)
 
