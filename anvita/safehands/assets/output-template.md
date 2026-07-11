@@ -1,9 +1,10 @@
 # SafeHands Safety Report — Output Template
 
-SafeHands is the transaction firewall for Pharos autonomous finance agents. For **meaningful
-checks** — wallet / contract / intent analysis, allowance and approval risk, and transaction
-introspection (estimate / simulate / status) — render the engine result in the exact format
-below. Every field is filled **only from engine output**; never invent a cell. Where evidence
+SafeHands is the transaction firewall for AI agent finance on Pharos. Hosted here it runs in
+no-custody mode: read-only safety verdicts only — it never signs, broadcasts, or executes.
+For **meaningful checks** — wallet / contract / intent analysis, allowance and approval risk,
+and transaction introspection (estimate / simulate / status) — render the engine result in the
+exact format below. Every field is filled **only from engine output**; never invent a cell. Where evidence
 is absent, use `UNKNOWN`, `INSUFFICIENT_EVIDENCE`, `NOT_CONFIGURED`, or `NOT_SUPPORTED`.
 
 ## Report format
@@ -59,8 +60,8 @@ layer has no evidence, not `PASS`.
 | **Intent** | `subjectType` / `action` | What the agent is trying to do; `WARN`/`FAIL` if the intent itself is disallowed or malformed. |
 | **Asset / Wallet** | `onChain`, `components` (recipient / tokenIn / tokenOut), `goplusTokenIdentity` (display-only) | Balance / nonce / token-surface evidence. |
 | **Contract / Target** | contract code + verification, `subject` | Empty code where a contract is expected, or unknown/unverified target → fail closed (`WARN`/`FAIL`), never `PASS`. |
-| **Permission** | `check_allowance.approvalRisk` (`none` / `scoped` / `unlimited`) | `unlimited` → `FAIL`; not applicable → `UNKNOWN`. |
-| **Execution** | `estimate_gas`, `simulate_transaction`, `get_transaction_status` | A revert / failed estimate is decisive → `FAIL`; not run → `UNKNOWN`. |
+| **Permission** | `check_allowance.approvalRisk` (`none` / `scoped` / `unlimited`), `components.calldata` (decoded approve/permit/Permit2/setApprovalForAll) | `unlimited` or a blanket operator grant to an unknown counterparty → `FAIL`; denylisted recipient → `FAIL`; revoke → `PASS`; not applicable → `UNKNOWN`. |
+| **Execution** | `estimate_gas`, `simulate_transaction`, `get_transaction_status`, `calldata` hints (decoded method / dangerous-admin / MultiSend) | A revert / failed estimate is decisive → `FAIL`; dangerous-admin or malformed calldata → `WARN`+; not run → `UNKNOWN`. |
 | **External Data** | `intel` (GoPlus), provider-gated reads | Provider unset → `NOT_CONFIGURED`; reachable-but-unusable → `WARN`/`FAIL`; unavailable intel → note reduced depth. |
 
 ## Data-quality codes are not a verdict

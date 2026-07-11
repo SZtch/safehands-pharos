@@ -23,15 +23,25 @@ Out (success):
 ```json
 { "success": true, "riskScore": 45, "recommendation": "warn", "riskLevel": "medium",
   "riskFactors": ["…"], "explanation": "…", "nextAction": "…",
-  "analysisDepth": "hosted-heuristic (on-chain reads only — not the full SafeHands analyzer suite)",
+  "analysisDepth": "hosted-heuristic (on-chain reads + offline calldata decode — not the full SafeHands analyzer suite)",
   "subject": { "type": "wallet", "address": "0x…" },
   "onChain": { "balanceWei": "0", "txCount": 0, "isContract": false },
   "intel": "on-chain + GoPlus threat intelligence | on-chain only (GoPlus unreachable)",
   "explorer": "https://www.pharosscan.xyz/address/0x…  (verify the subject yourself)",
-  "components": { "recipient|tokenIn|tokenOut": "sub-report (intent only)" },
+  "components": { "recipient|tokenIn|tokenOut|calldata": "sub-report (intent only)" },
   "network": "pacific-mainnet", "chainId": 1672, "timestamp": "…" }
 ```
 Bands: allow ≤ 30 < warn < 70 ≤ block. Levels: low ≤30, medium ≤60, high ≤85, critical >85.
+
+`components.calldata` (tx-carrying intents; offline decode, escalate-only floors):
+```json
+{ "decoded": true, "method": "approve", "category": "approval|transfer|admin|batch|unknown",
+  "selector": "0x095ea7b3", "token": "0x…?", "spender": "0x…?", "operator": "0x…?",
+  "recipient": "0x…?", "from": "0x…?", "amountRaw": "…?", "unlimited": false, "isRevoke": false,
+  "approved": null, "counterpartyKnown": false, "counterpartyLabel": null,
+  "recipientDenylisted": false, "dangerous": false, "factors": ["…"], "floor": 0, "notes": ["…"] }
+```
+Recognized selectors: approve, permit (ERC-2612), Permit2 approve, setApprovalForAll, transfer, transferFrom, increase/decreaseAllowance, transferOwnership, renounceOwnership, upgradeTo(AndCall), changeAdmin, MultiSend, Safe execTransaction. The recipient denylist is operator-supplied via `SAFEHANDS_RECIPIENT_DENYLIST` (empty by default — never a shipped list).
 
 ## query '<0xaddress>'
 Out (success):
@@ -58,8 +68,8 @@ check_allowance {token,owner,spender}
                                      approvalRisk:"none|scoped|unlimited", approvalRiskHint }
 get_transaction_status <txhash>  → { status:"pending|success|failed|not_found", blockNumber?, gasUsed?, from?, to?, explorer }
 estimate_gas {from?,to,data?,value?|valueWei?}
-                                 → { estimatedGas, estimatedGasHex, broadcast:false }
-simulate_transaction {…tx…}      → { reverted:false, returnData, broadcast:false }
+                                 → { estimatedGas, estimatedGasHex, calldata?, broadcast:false }
+simulate_transaction {…tx…}      → { reverted:false, returnData, calldata?, broadcast:false }
 get_spv_proof {address,storageKeys?,blockTag?}
                                  → { proof, blockTag, storageKeys }
 query_goldsky_subgraph {query,variables?}   → { provider, endpoint, data }   (gated)

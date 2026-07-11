@@ -20,6 +20,16 @@
  *   node safehands-engine.js get_execution_history '<json>'       // gated: assets/supported-protocols.json
  *   node safehands-engine.js get_pool_info '<json>'               // gated: assets/supported-protocols.json
  *
+ * `analyze` intents that carry tx calldata additionally get an OFFLINE decode of
+ * approval / transfer / admin selectors (unlimited-approval detection, operator
+ * denylist, dangerous-admin recognition) — pure string inspection, escalate-only
+ * risk floors, no extra RPC.
+ *
+ * Env overrides: PHAROS_RPC_URL, GOPLUS_API_BASE, SAFEHANDS_REGISTRY_ADDRESS,
+ * SAFEHANDS_ATTESTATION_ADDRESS, SAFEHANDS_RECIPIENT_DENYLIST (comma-separated
+ * 0x addresses the operator wants transfers/payments to hard-block on; EMPTY by
+ * default — SafeHands never ships a fabricated scam list).
+ *
  * Everything is READ-ONLY: eth_call / eth_get* / eth_gasPrice / eth_estimateGas only.
  * This engine never signs, broadcasts, approves, swaps, bridges, deposits, stakes,
  * pays, creates wallets, or publishes records.
@@ -54,7 +64,7 @@ const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
 // Engine version — MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
-const ENGINE_VERSION = "2.3.0";
+const ENGINE_VERSION = "2.4.0";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
@@ -64,6 +74,9 @@ const ATTEST_ADDR = process.env.SAFEHANDS_ATTESTATION_ADDRESS
   || (CMAP.SafeHandsAttestation && CMAP.SafeHandsAttestation.address) || "";
 
 // ── precomputed keccak-256 selectors (verified against standard vectors) ─
+// Single object by design: scripts/sync-anvita-assets.ts regex-parses this
+// block up to the FIRST closing brace — keep every selector in here and never
+// add a second selector object.
 const SEL = {
   name: "0x06fdde03", symbol: "0x95d89b41", decimals: "0x313ce567", totalSupply: "0x18160ddd",
   allowance: "0xdd62ed3e",          // allowance(address,address)
@@ -72,7 +85,26 @@ const SEL = {
   currentMerkleRoot: "0x9ea97190", currentDataURI: "0x59e99f26",
   isAuthorizedAgent: "0x6bf722ab", isAuthorizedOperator: "0x82d52c1e",
   reputationOf: "0xdb89c044",
+  // action selectors for the offline calldata decode (escalate-only floors)
+  approve: "0x095ea7b3",            // approve(address,uint256)
+  permit: "0xd505accf",             // ERC-2612 permit(owner,spender,value,deadline,v,r,s)
+  permit2Approve: "0x87517c45",     // Permit2 approve(token,spender,amount,expiration)
+  setApprovalForAll: "0xa22cb465",  // setApprovalForAll(operator,approved)
+  transferFrom: "0x23b872dd",       // transferFrom(from,to,amount)
+  transfer: "0xa9059cbb",           // transfer(to,amount)
+  increaseAllowance: "0x39509351", decreaseAllowance: "0xa457c2d7",
+  transferOwnership: "0xf2fde38b", renounceOwnership: "0x715018a6",
+  upgradeTo: "0x3659cfe6", upgradeToAndCall: "0x4f1ef286", changeAdmin: "0x8f283970",
+  multiSend: "0x8d80ff0a",          // Safe MultiSend multiSend(bytes)
+  execTransaction: "0x6a761202",    // Safe execTransaction(...)
 };
+
+// Approval-amount semantics, shared with the TS engine (isUnlimitedApprovalAmount):
+// any value >= 2^255 counts as unlimited. Permit2 amounts are uint160, so
+// type(uint160).max means "infinite" there.
+const UNLIMITED_FLOOR = 2n ** 255n;
+const PERMIT2_ADDRESS = "0x000000000022d473030f116ddee9f6b43ac78ba3"; // canonical singleton
+const PERMIT2_MAX = (1n << 160n) - 1n;
 
 // ── market-data + provider config (read-only sources only) ───────────────
 const ASSETS_CFG = loadJSON("supported-assets.json") || {};
@@ -227,7 +259,7 @@ function report(score, factors, subject, extra = {}) {
     nextAction: recommendation === "allow" ? "Proceed with normal caution."
       : recommendation === "warn" ? "Ask the user to confirm explicitly before proceeding."
       : "Do not proceed. Advise the user against this action.",
-    analysisDepth: "hosted-heuristic (on-chain reads only — not the full SafeHands analyzer suite)",
+    analysisDepth: "hosted-heuristic (on-chain reads + offline calldata decode — not the full SafeHands analyzer suite)",
     subject, network: "pacific-mainnet", chainId: CHAIN_ID, timestamp: new Date().toISOString(), ...extra,
   };
 }
@@ -427,19 +459,258 @@ const INTENT_TARGET_KEY = {
 };
 
 // Static URL risk analysis. The hosted engine NEVER fetches arbitrary
-// user-provided URLs — this inspects the string only.
+// user-provided URLs — this inspects the string only. IP-range coverage mirrors
+// the TS engine's isSuspiciousUrl/isBlockedIp at string level (no DNS lookups).
+function ipv4InCidr(ip, cidrBase, prefix) {
+  const parse = (s) => s.split(".").map(Number);
+  const a = parse(ip), b = parse(cidrBase);
+  if (a.length !== 4 || a.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
+  const toN = (o) => (((o[0] << 24) >>> 0) + (o[1] << 16) + (o[2] << 8) + o[3]) >>> 0;
+  const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+  return ((toN(a) & mask) >>> 0) === ((toN(b) & mask) >>> 0);
+}
+// Reserved/special-use IPv4 ranges beyond the classic private set: "this" net,
+// CGNAT, link-local (cloud metadata), IETF/TEST-NETs, benchmarking, multicast,
+// class E, broadcast.
+const RESERVED_IPV4 = [
+  ["0.0.0.0", 8], ["100.64.0.0", 10], ["169.254.0.0", 16], ["192.0.0.0", 24],
+  ["192.0.2.0", 24], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24],
+  ["224.0.0.0", 4], ["240.0.0.0", 4], ["255.255.255.255", 32],
+];
 function urlRisk(rawUrl) {
   const factors = []; let add = 0; let parsed;
   try { parsed = new URL(String(rawUrl)); } catch { return { valid: false, fetched: false, factors: ["URL is malformed"], add: 40 }; }
-  if (parsed.protocol !== "https:") { factors.push("URL is not HTTPS — payment/campaign links must be https"); add += 45; }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    factors.push(`URL scheme '${parsed.protocol}' is not a web link (javascript:/data:/file:-class) — never a legitimate payment/campaign target`); add += 60;
+  } else if (parsed.protocol !== "https:") { factors.push("URL is not HTTPS — payment/campaign links must be https"); add += 45; }
   if (parsed.username || parsed.password) { factors.push("URL embeds credentials — classic phishing pattern"); add += 50; }
   const host = parsed.hostname;
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) { factors.push("Host is a raw IP literal, not a domain"); add += 35; }
-  if (/^(localhost|127\.|0\.0\.0\.0$|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)) { factors.push("Host is local/private — not a public service"); add += 45; }
+  const bare = host.replace(/^\[|\]$/g, "").toLowerCase(); // WHATWG keeps [] around IPv6 literals
+  const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(bare);
+  if (isIpv4 || bare.includes(":")) { factors.push("Host is a raw IP literal, not a domain"); add += 35; }
+  if (/^(localhost|127\.|0\.0\.0\.0$|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(bare)) {
+    factors.push("Host is local/private — not a public service"); add += 45;
+  } else if (isIpv4 && RESERVED_IPV4.some(([base, prefix]) => ipv4InCidr(bare, base, prefix))) {
+    factors.push("Host is a reserved/special-use IPv4 address (link-local/CGNAT/test-net/multicast) — not a public service"); add += 45;
+  } else if (bare.includes(":") && (bare === "::1" || bare.startsWith("fc") || bare.startsWith("fd") || bare.startsWith("fe80:"))) {
+    factors.push("Host is a local/private IPv6 address — not a public service"); add += 45;
+  }
   if (host.split(".").some((l) => l.startsWith("xn--"))) { factors.push("Punycode hostname — possible homograph impersonation of a known brand"); add += 35; }
   if (parsed.port && parsed.port !== "443") { factors.push(`Non-standard port ${parsed.port}`); add += 15; }
   if (String(rawUrl).length > 2048) { factors.push("Unusually long URL"); add += 10; }
   return { valid: true, host, fetched: false, factors, add: Math.min(add, 90) };
+}
+
+// ── offline calldata decode (approval / transfer / admin / batch) ─────────
+// Hand-ported from the TS analyzers (analysis/calldata.ts, approval.ts,
+// safeTx.ts, recipientSafety.ts). Pure string inspection: no RPC, no fetch,
+// no keys. ESCALATE-ONLY: callers apply the returned floor via
+// score = Math.max(score, floor) — a decode can hold or raise a verdict, never
+// relax one; undecodable input is held, never treated as safe. The selector
+// dictionary is NON-EXHAUSTIVE: absence of a warning is not proof of safety.
+const DANGEROUS_ADMIN = {
+  [SEL.transferOwnership]: ["transferOwnership", "transfers contract ownership"],
+  [SEL.renounceOwnership]: ["renounceOwnership", "renounces contract ownership (irreversible)"],
+  [SEL.upgradeTo]: ["upgradeTo", "upgrades the contract implementation (proxy)"],
+  [SEL.upgradeToAndCall]: ["upgradeToAndCall", "upgrades the contract implementation and calls into it (proxy)"],
+  [SEL.changeAdmin]: ["changeAdmin", "changes the proxy admin"],
+};
+// Operator-configurable recipient denylist (comma-separated 0x addresses).
+// EMPTY by default — SafeHands ships NO fabricated scam list; operators point
+// this at their own known-bad set. Parsed per call so tests can pin the env.
+function recipientDenylist() {
+  const raw = process.env.SAFEHANDS_RECIPIENT_DENYLIST || "";
+  return new Set(raw.split(",").map((s) => s.trim().toLowerCase()).filter((s) => ADDRESS_RE.test(s)));
+}
+function isDenylistedRecipient(addr) {
+  return typeof addr === "string" && ADDRESS_RE.test(addr) && recipientDenylist().has(addr.toLowerCase());
+}
+// Counterparty recognition: canonical Pharos infrastructure (known-pharos.json)
+// or the Permit2 singleton ONLY. The hosted assets ship no addresses for
+// UNVERIFIED ecosystem protocols, so a recognition-only tier cannot occur here
+// and nothing can wrongly relax risk. Never a hardcoded "known spender" map.
+function classifyCounterparty(addr) {
+  const lower = String(addr || "").toLowerCase();
+  if (KNOWN_INFRA.has(lower)) return { known: true, label: CANON_CONTRACTS[lower] };
+  if (lower === PERMIT2_ADDRESS) return { known: true, label: "Permit2" };
+  return { known: false, label: null };
+}
+const wordAt = (body, i) => body.slice(i * 64, (i + 1) * 64);
+// A calldata address word must be zero-padded to 12 bytes; dirty padding is
+// malformed or deceptive calldata and decodes to null (invalid counterparty).
+function wordToAddress(w) { return /^0{24}[0-9a-f]{40}$/.test(w) ? "0x" + w.slice(24) : null; }
+// Shared approve-style floor matrix (approve/permit/permit2/increaseAllowance).
+function applyApprovalFloor(c, methodLabel) {
+  if (!c.spender) { c.floor = Math.max(c.floor, 90); c.factors.push(`${methodLabel} spender word is not a clean address — malformed or deceptive calldata`); return; }
+  if (c.isRevoke) { c.notes.push(`${methodLabel} revokes/zeroes the allowance for ${c.spender} — no new exposure`); return; }
+  if (c.unlimited && !c.counterpartyKnown) { c.floor = Math.max(c.floor, 90); c.factors.push(`UNLIMITED ${methodLabel} to an UNKNOWN spender (${c.spender}) — the spender could move the entire current and future token balance`); return; }
+  if (c.unlimited) { c.floor = Math.max(c.floor, 65); c.factors.push(`UNLIMITED ${methodLabel} to a known spender (${c.counterpartyLabel}) — high risk, confirm intent`); return; }
+  if (!c.counterpartyKnown) { c.floor = Math.max(c.floor, 45); c.factors.push(`${methodLabel} (amount ${c.amountRaw}) to an unknown spender (${c.spender}) — confirm before approving`); return; }
+  c.notes.push(`Limited ${methodLabel} to a known spender (${c.counterpartyLabel})`);
+}
+const MULTISEND_MAX_INNER = 64;
+// multiSend(bytes transactions): head = offset word + length word, then the
+// packed batch — per call: operation(1) | to(20) | value(32) | dataLen(32) | data.
+function decodeMultiSendInner(body) {
+  const offset = Number(BigInt("0x" + (wordAt(body, 0) || "0"))) * 2;
+  const len = Number(BigInt("0x" + (body.slice(offset, offset + 64) || "0"))) * 2;
+  if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(len)) return null;
+  const packed = body.slice(offset + 64, offset + 64 + len);
+  if (packed.length !== len) return null;
+  const calls = []; let i = 0; let overflow = false;
+  while (i < packed.length) {
+    if (calls.length >= MULTISEND_MAX_INNER) { overflow = true; break; }
+    const operation = parseInt(packed.slice(i, i + 2), 16); i += 2;
+    const to = "0x" + packed.slice(i, i + 40); i += 40;
+    const value = BigInt("0x" + (packed.slice(i, i + 64) || "0")); i += 64;
+    const dataLen = Number(BigInt("0x" + (packed.slice(i, i + 64) || "0"))) * 2; i += 64;
+    if (!Number.isSafeInteger(dataLen) || i + dataLen > packed.length) return null;
+    const data = "0x" + packed.slice(i, i + dataLen); i += dataLen;
+    if (!Number.isInteger(operation) || !/^0x[0-9a-f]{40}$/.test(to)) return null;
+    calls.push({ index: calls.length, operation, to, value: value.toString(), data });
+  }
+  return { calls, overflow };
+}
+function analyzeTxCalldata(data, to, depth = 0) {
+  const hex = String(data || "").toLowerCase();
+  const c = {
+    decoded: false, method: null, selector: null, category: "unknown", token: to || null,
+    spender: null, operator: null, recipient: null, from: null, amountRaw: null,
+    unlimited: false, isRevoke: false, approved: null, counterpartyKnown: false,
+    counterpartyLabel: null, recipientDenylisted: false, dangerous: false,
+    factors: [], floor: 0, notes: [],
+  };
+  if (!HEXDATA_RE.test(hex) || hex.length < 10) return c;
+  c.selector = hex.slice(0, 10);
+  const body = hex.slice(10);
+  const words = body.length / 64;
+  const malformed = (method) => {
+    c.method = method; c.floor = Math.max(c.floor, 45);
+    c.factors.push(`Calldata matches ${method} but the payload is malformed — held for review, never treated as safe`);
+    return c;
+  };
+  const classify = (addr) => { const k = classifyCounterparty(addr); c.counterpartyKnown = k.known; c.counterpartyLabel = k.label; };
+  const sel = c.selector;
+  if (sel === SEL.approve || sel === SEL.increaseAllowance) {
+    const method = sel === SEL.approve ? "approve" : "increaseAllowance";
+    if (words !== 2) return malformed(method);
+    c.method = method; c.category = "approval"; c.decoded = true;
+    c.spender = wordToAddress(wordAt(body, 0));
+    const amount = BigInt("0x" + (wordAt(body, 1) || "0"));
+    c.amountRaw = amount.toString(); c.unlimited = amount >= UNLIMITED_FLOOR; c.isRevoke = amount === 0n;
+    if (c.spender) classify(c.spender);
+    applyApprovalFloor(c, method);
+    if (method === "increaseAllowance" && !c.isRevoke) c.notes.push("increaseAllowance raises an existing allowance on top of the current one");
+  } else if (sel === SEL.permit) {
+    if (words !== 7) return malformed("permit");
+    c.method = "permit"; c.category = "approval"; c.decoded = true;
+    c.spender = wordToAddress(wordAt(body, 1));
+    const value = BigInt("0x" + (wordAt(body, 2) || "0"));
+    c.amountRaw = value.toString(); c.unlimited = value >= UNLIMITED_FLOOR; c.isRevoke = value === 0n;
+    if (c.spender) classify(c.spender);
+    applyApprovalFloor(c, "permit");
+    c.notes.push("ERC-2612 permit is a gasless, signature-based approval — the allowance is granted off-chain and can later authorize transfers");
+  } else if (sel === SEL.permit2Approve) {
+    if (words !== 4) return malformed("Permit2 approve");
+    c.method = "permit2_approve"; c.category = "approval"; c.decoded = true;
+    c.token = wordToAddress(wordAt(body, 0)) || c.token;
+    c.spender = wordToAddress(wordAt(body, 1));
+    const amount = BigInt("0x" + (wordAt(body, 2) || "0"));
+    c.amountRaw = amount.toString(); c.unlimited = amount >= PERMIT2_MAX; c.isRevoke = amount === 0n;
+    if (c.spender) classify(c.spender);
+    applyApprovalFloor(c, "Permit2 approval");
+    c.notes.push("Permit2 approval — authorizes the spender to move the token via Permit2 signatures; deep PermitSingle/PermitBatch decode is out of scope");
+  } else if (sel === SEL.setApprovalForAll) {
+    if (words !== 2) return malformed("setApprovalForAll");
+    const approvedWord = BigInt("0x" + (wordAt(body, 1) || "0"));
+    if (approvedWord > 1n) return malformed("setApprovalForAll");
+    c.method = "setApprovalForAll"; c.category = "approval"; c.decoded = true;
+    c.operator = wordToAddress(wordAt(body, 0)); c.approved = approvedWord === 1n;
+    if (!c.operator) { c.floor = Math.max(c.floor, 90); c.factors.push("setApprovalForAll operator word is not a clean address — malformed or deceptive calldata"); }
+    else {
+      classify(c.operator);
+      if (!c.approved) c.notes.push(`Revoking blanket operator approval for ${c.operator} — no new exposure`);
+      else if (!c.counterpartyKnown) { c.floor = Math.max(c.floor, 90); c.factors.push(`Blanket collection approval (setApprovalForAll) to an UNKNOWN operator (${c.operator}) — authorizes transfer of EVERY token in the collection, a common NFT-drainer vector`); }
+      else { c.floor = Math.max(c.floor, 65); c.factors.push(`Blanket collection approval to a known operator (${c.counterpartyLabel}) — high risk, confirm intent`); }
+    }
+  } else if (sel === SEL.transfer || sel === SEL.transferFrom) {
+    const isFrom = sel === SEL.transferFrom;
+    const method = isFrom ? "transferFrom" : "transfer";
+    if (words !== (isFrom ? 3 : 2)) return malformed(method);
+    c.method = method; c.category = "transfer"; c.decoded = true;
+    if (isFrom) c.from = wordToAddress(wordAt(body, 0));
+    c.recipient = wordToAddress(wordAt(body, isFrom ? 1 : 0));
+    c.amountRaw = BigInt("0x" + (wordAt(body, isFrom ? 2 : 1) || "0")).toString();
+    if (!c.recipient) { c.floor = Math.max(c.floor, 90); c.factors.push(`${method} recipient word is not a clean address — malformed or deceptive calldata`); }
+    else if (isDenylistedRecipient(c.recipient)) { c.recipientDenylisted = true; c.floor = Math.max(c.floor, 95); c.factors.push(`${method} recipient ${c.recipient} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST) — blocked`); }
+    else { c.floor = Math.max(c.floor, 35); c.factors.push(`${method} moves tokens to ${c.recipient} — recipient is not verified; confirm before signing`); }
+  } else if (sel === SEL.decreaseAllowance) {
+    if (words !== 2) return malformed("decreaseAllowance");
+    c.method = "decreaseAllowance"; c.category = "approval"; c.decoded = true;
+    c.spender = wordToAddress(wordAt(body, 0));
+    c.amountRaw = BigInt("0x" + (wordAt(body, 1) || "0")).toString();
+    if (c.spender) { classify(c.spender); c.notes.push(`decreaseAllowance lowers the existing allowance for ${c.spender} — no new exposure`); }
+    else { c.floor = Math.max(c.floor, 45); c.factors.push("decreaseAllowance spender word is not a clean address — malformed calldata, held for review"); }
+  } else if (DANGEROUS_ADMIN[sel]) {
+    const [method, label] = DANGEROUS_ADMIN[sel];
+    const expectedWords = { transferOwnership: 1, renounceOwnership: 0, upgradeTo: 1, changeAdmin: 1 };
+    if (method in expectedWords && words !== expectedWords[method]) return malformed(method);
+    if (method === "upgradeToAndCall" && words < 3) return malformed(method);
+    c.method = method; c.category = "admin"; c.decoded = true; c.dangerous = true;
+    const target = words >= 1 ? wordToAddress(wordAt(body, 0)) : null;
+    if (target) { c.spender = target; classify(target); }
+    c.floor = Math.max(c.floor, 61);
+    c.factors.push(`Dangerous/admin call: this transaction ${label}${target ? ` (target ${target})` : ""} — confirm this is intended`);
+    c.notes.push("Recognized as a privileged/admin function; the dangerous-selector list is NOT exhaustive — absence of a warning is not proof of safety");
+  } else if (sel === SEL.multiSend) {
+    c.method = "multiSend"; c.category = "batch"; c.decoded = true;
+    if (depth > 0) { c.floor = Math.max(c.floor, 45); c.factors.push("Nested MultiSend inside a batch — not decoded, held for review"); return c; }
+    let inner;
+    try { inner = decodeMultiSendInner(body); } catch { inner = null; }
+    if (!inner) { c.floor = Math.max(c.floor, 45); c.factors.push("MultiSend batch bytes could not be parsed — held for review"); return c; }
+    if (inner.overflow) { c.floor = Math.max(c.floor, 45); c.factors.push(`MultiSend batch exceeds ${MULTISEND_MAX_INNER} inner calls — oversized batch held for review`); }
+    c.notes.push(`MultiSend batch with ${inner.calls.length} decoded inner call(s); the aggregate follows the highest-risk inner call`);
+    for (const call of inner.calls) {
+      if (call.operation === 1) { c.floor = Math.max(c.floor, 45); c.factors.push(`MultiSend inner #${call.index} uses delegatecall — elevated risk`); }
+      if (call.data.length >= 10) {
+        const ic = analyzeTxCalldata(call.data, call.to, depth + 1);
+        c.floor = Math.max(c.floor, ic.floor);
+        for (const f of ic.factors) c.factors.push(`MultiSend inner #${call.index}: ${f}`);
+        c.recipientDenylisted = c.recipientDenylisted || ic.recipientDenylisted;
+        c.unlimited = c.unlimited || ic.unlimited;
+        c.dangerous = c.dangerous || ic.dangerous;
+      } else if (call.data.length > 2) {
+        c.floor = Math.max(c.floor, 45);
+        c.factors.push(`MultiSend inner #${call.index} carries a truncated calldata payload — held for review`);
+      } else if (BigInt(call.value) > 0n) {
+        c.floor = Math.max(c.floor, 35);
+        c.factors.push(`MultiSend inner #${call.index} moves native value to ${call.to} — recipient is not verified; confirm before signing`);
+      }
+    }
+  } else if (sel === SEL.execTransaction) {
+    c.method = "execTransaction"; c.category = "batch"; c.decoded = true;
+    c.floor = Math.max(c.floor, 45);
+    c.factors.push("Safe execTransaction recognized — nested call decode is not performed; verify the wrapped call independently before signing");
+  } else {
+    c.floor = Math.max(c.floor, 31);
+    c.factors.push(`Calldata selector ${c.selector} is not a recognized method — held for review, confirm before signing`);
+  }
+  return c;
+}
+// Label-only summary for estimate_gas / simulate_transaction output (additive
+// field; no scoring there — verdicts stay with analyze).
+function calldataSummary(data, to) {
+  if (typeof data !== "string" || !HEXDATA_RE.test(data) || data.length < 10) return null;
+  const c = analyzeTxCalldata(data, typeof to === "string" && ADDRESS_RE.test(to) ? to.toLowerCase() : null);
+  const out = {
+    method: c.method, category: c.category, selector: c.selector, unlimited: c.unlimited,
+    counterpartyKnown: c.counterpartyKnown, dangerous: c.dangerous,
+    hints: [...c.factors, ...c.notes],
+  };
+  if (c.spender) out.spender = c.spender;
+  if (c.operator) out.operator = c.operator;
+  if (c.recipient) out.recipient = c.recipient;
+  return out;
 }
 
 async function reputationOfTarget(addr) {
@@ -526,6 +797,14 @@ async function analyzeRealFiIntent(input, action) {
 
   // simulation + gas estimate (only when real calldata is provided; both read-only)
   if (input.to != null || input.data != null) {
+    // offline calldata decode — escalate-only floor, no extra RPC
+    if (typeof input.data === "string" && HEXDATA_RE.test(input.data) && input.data.length >= 10) {
+      const cd = analyzeTxCalldata(input.data, ADDRESS_RE.test(String(input.to || "")) ? String(input.to).toLowerCase() : null);
+      parts.calldata = cd;
+      evidenceUsed.push("offline calldata decode (approval/transfer/admin selectors; escalate-only)");
+      if (cd.factors.length) factors.push(...cd.factors);
+      score = Math.max(score, cd.floor);
+    }
     const { tx, errs } = buildTxObject(input);
     if (errs.length) {
       factors.push(`Provided tx object is invalid: ${errs.join("; ")}`); score += 10;
@@ -580,6 +859,7 @@ async function analyzeRealFiIntent(input, action) {
       parts.payTo = await analyzeWallet(payTo, { expect: "any" });
       evidenceUsed.push("payTo address analysis (on-chain + GoPlus)");
       if (parts.payTo.riskScore > 30) { factors.push(`payTo risk (${parts.payTo.riskLevel}): ${parts.payTo.riskFactors[0] || ""}`); score += Math.min(35, parts.payTo.riskScore / 2); }
+      if (isDenylistedRecipient(payTo)) { factors.push(`payTo ${payTo} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST) — blocked`); score = Math.max(score, 95); }
     } else {
       missingInputs.push("payTo (0x recipient) for recipient analysis");
     }
@@ -643,6 +923,7 @@ async function analyzeIntent(input) {
     const rec = await analyzeWallet(input.toAddress, { expect: "any" });
     parts.recipient = rec;
     if (rec.riskScore > 30) { factors.push(`Recipient risk: ${rec.riskFactors.join("; ") || rec.riskLevel}`); score += Math.min(35, rec.riskScore / 2); }
+    if (isDenylistedRecipient(input.toAddress)) { factors.push(`Recipient ${input.toAddress} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST) — blocked`); score = Math.max(score, 95); }
     const wei = input.amount != null ? prosToWei(input.amount) : null;
     if (input.amount != null && wei === null) return fail("VALIDATION_ERROR", "'amount' must be a positive decimal string, e.g. \"1.5\".");
     if (wei !== null) {
@@ -840,7 +1121,6 @@ async function cmdCheckAllowance(raw) {
     erc20Probe(j.token),
   ]);
   const allowance = decUint(alHex);
-  const UNLIMITED_FLOOR = 2n ** 255n;
   const approvalRisk = allowance === 0n ? "none" : allowance >= UNLIMITED_FLOOR ? "unlimited" : "scoped";
   const approvalRiskHint = approvalRisk === "unlimited"
     ? "UNLIMITED approval — the spender can move the owner's entire current and future balance of this token. High risk; revoke or scope it unless the spender is fully trusted."
@@ -893,11 +1173,13 @@ async function cmdEstimateGas(raw) {
   const cg = chainGuard(j); if (cg) return cg;
   const { tx, errs } = buildTxObject(j);
   if (errs.length) return fail("VALIDATION_ERROR", errs.join("; "));
+  const cd = calldataSummary(j.data, j.to);
   try {
     const hex = await rpc("eth_estimateGas", [tx]);
     return {
       success: true, command: "estimate_gas",
       estimatedGas: Number(decUint(hex)), estimatedGasHex: hex,
+      ...(cd ? { calldata: cd } : {}),
       broadcast: false, note: "eth_estimateGas is a node-side dry run — nothing was signed or broadcast",
       chainId: CHAIN_ID, timestamp: new Date().toISOString(),
     };
@@ -918,10 +1200,12 @@ async function cmdSimulateTransaction(raw) {
   const cg = chainGuard(j); if (cg) return cg;
   const { tx, errs } = buildTxObject(j);
   if (errs.length) return fail("VALIDATION_ERROR", errs.join("; "));
+  const cd = calldataSummary(j.data, j.to);
   try {
     const ret = await rpc("eth_call", [tx, "latest"]);
     return {
       success: true, command: "simulate_transaction", reverted: false, returnData: ret,
+      ...(cd ? { calldata: cd } : {}),
       broadcast: false, note: "eth_call simulation only — nothing was signed or broadcast",
       chainId: CHAIN_ID, timestamp: new Date().toISOString(),
     };

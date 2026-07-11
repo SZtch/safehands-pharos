@@ -467,9 +467,10 @@ See [.env.example](.env.example) for the full reference.
 
 The goal is simple: be the safety decision every AI agent consults *before* it acts on-chain. One rule holds at every phase: **the safety verdict stays deterministic. The model advises; the policy engine decides.** The arc is a single verdict engine moving from *advising* an action (hosted, today) to *gating* it (verdict-bound signing) without the safety logic ever changing.
 
-**Shipped (v2.3.0):**
+**Shipped (v2.4.0):**
 
 - 33-tool agent surface across MCP, HTTP, and CLI: preflight, risk scoring, on-chain reputation oracle, Merkle inclusion verifier, market/chain data, gated execution, per-agent policy, managed wallet
+- Hosted Anvita engine at read-path verdict parity: offline calldata/approval decoding (unlimited-approval detection, dangerous-admin recognition, MultiSend aggregation) plus an operator-supplied recipient denylist
 - Deterministic policy engine: mainnet guard, approval limits, SSRF guard, spend caps
 - Registry + attestation contracts live on Pharos Pacific Mainnet, verifiable on-chain
 - GoPlus token-security and Goldsky indexing integrations

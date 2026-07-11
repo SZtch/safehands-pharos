@@ -31,7 +31,7 @@ node scripts/safehands-engine.js health
 
 ## §B — Analyze (wallet / contract / intent)
 
-**Overview:** pre-execution risk analysis combining live on-chain reads (balance, nonce, code, ERC-20 surface) with GoPlus threat intelligence (honeypot, buy/sell tax, mintable, hidden owner, proxy, malicious-address flags — public keyless API). Check the `intel` field: when GoPlus is unreachable the engine falls back to on-chain heuristics and honestly reports reduced depth in `limits`.
+**Overview:** pre-execution risk analysis combining live on-chain reads (balance, nonce, code, ERC-20 surface) with GoPlus threat intelligence (honeypot, buy/sell tax, mintable, hidden owner, proxy, malicious-address flags — public keyless API). Check the `intel` field: when GoPlus is unreachable the engine falls back to on-chain heuristics and honestly reports reduced depth in `limits`. Intents that carry a raw tx object additionally get an **offline calldata decode** (approve / permit / Permit2 / setApprovalForAll / transfer / transferFrom / dangerous-admin / MultiSend selectors): an unlimited approval or blanket operator grant to an unknown counterparty blocks, a recipient on the operator denylist blocks, and unrecognized or malformed calldata is held — escalate-only floors that can raise the score but never relax it.
 
 **Command Templates:**
 ```bash
@@ -58,7 +58,9 @@ node scripts/safehands-engine.js analyze '{"subjectType":"intent","action":"swap
 | walletAddress | 0x-address | intent (all) | Acting wallet — required for balance/history checks. |
 | chainId | number | optional | If present must be 1672. |
 
-**Output Parsing:** top-level `{success:true, riskScore, recommendation, riskLevel, riskFactors[], explanation, nextAction, analysisDepth, subject, onChain?/components?, goplusTokenIdentity?}`. For intents, `components` holds per-part sub-reports (recipient / tokenIn / tokenOut) — cite the dominant factor, don't dump raw JSON. `goplusTokenIdentity` (contract analysis, when GoPlus reports it) is display-only `{tokenName?, tokenSymbol?}` — identity context for the user, never part of the score.
+**Output Parsing:** top-level `{success:true, riskScore, recommendation, riskLevel, riskFactors[], explanation, nextAction, analysisDepth, subject, onChain?/components?, goplusTokenIdentity?}`. For intents, `components` holds per-part sub-reports (recipient / tokenIn / tokenOut) — cite the dominant factor, don't dump raw JSON. For tx-carrying intents, `components.calldata` holds the decoded call: `{decoded, method, category:"approval"|"transfer"|"admin"|"batch"|"unknown", selector, token?, spender?, operator?, recipient?, from?, amountRaw?, unlimited, isRevoke, approved?, counterpartyKnown, counterpartyLabel?, recipientDenylisted, dangerous, factors[], notes[]}` — its `factors` are already merged into the top-level `riskFactors`; use `notes` for context (e.g. permit-signature caveats). `goplusTokenIdentity` (contract analysis, when GoPlus reports it) is display-only `{tokenName?, tokenSymbol?}` — identity context for the user, never part of the score.
+
+**Recipient denylist (operator config, local deployments):** `SAFEHANDS_RECIPIENT_DENYLIST` — comma-separated 0x addresses the operator wants hard-blocked as fund recipients (calldata transfer/transferFrom recipients, transfer-intent `toAddress`, URL-intent `payTo`). **EMPTY by default** — SafeHands never ships a fabricated scam list, so an empty denylist means "no operator list configured", never "no scam risk".
 
 **Error Handling:** `VALIDATION_ERROR` → fix the input (message says which field) — never guess addresses; `CHAIN_NOT_SUPPORTED` → refuse, mainnet-only; `KEY_MATERIAL_REJECTED` → tell the user secrets must never be shared, do not retry with the secret; `PHAROS_RPC_UNAVAILABLE`/`RPC_TIMEOUT` → run §A, retry once, then report outage.
 
@@ -126,8 +128,9 @@ node scripts/safehands-engine.js get_spv_proof '{"address":"0x…","storageKeys"
 **Output Parsing:**
 - `check_allowance` → `{allowanceRaw, allowanceFormatted?, tokenSymbol?, tokenDecimals?, approvalRisk:"none"|"scoped"|"unlimited", approvalRiskHint}`. **unlimited** (≥2²⁵⁵) is high risk — spender controls the whole balance.
 - `get_transaction_status` → `{status:"pending"|"success"|"failed"|"not_found", blockNumber?, gasUsed?, from?, to?, explorer}`.
-- `estimate_gas` → `{estimatedGas, broadcast:false}` or `ESTIMATE_FAILED` (`reverted?`, sanitized reason).
-- `simulate_transaction` → `{reverted:false, returnData, broadcast:false}` or `SIMULATION_REVERTED` (sanitized reason).
+- `estimate_gas` → `{estimatedGas, calldata?, broadcast:false}` or `ESTIMATE_FAILED` (`reverted?`, sanitized reason).
+- `simulate_transaction` → `{reverted:false, returnData, calldata?, broadcast:false}` or `SIMULATION_REVERTED` (sanitized reason).
+- `calldata?` (when `data` decodes) is a **label-only** block `{method, category, selector, unlimited, spender?/operator?/recipient?, counterpartyKnown, dangerous, hints[]}` — surface its hints (e.g. "UNLIMITED approve to an UNKNOWN spender") next to the estimate/simulation; scoring stays with §B analyze.
 - `get_spv_proof` → `{proof}` or `NOT_SUPPORTED` when the RPC lacks `eth_getProof`.
 
 **Value fields:** `value` is decimal PROS (e.g. `"1.5"`); `valueWei` is a base-10 integer string. `data` must be 0x-even-length hex.
@@ -166,7 +169,7 @@ node scripts/safehands-engine.js get_pool_info '{"poolAddress":"0x…"}'
 ## §E — Unsupported operations (decline honestly)
 
 - **Publish risk record / attestation on-chain:** requires the SafeHands operator backend (signing writes `commitRiskRoot`/`attest`); not part of this hosted deployment. Never fabricate a txHash.
-- **tx-hash deep analysis, approval-graph analysis, bespoke sell-simulation:** backend analyzer suite features — recommend them as follow-up, do not simulate their output.
+- **tx-hash deep analysis, historical approval-graph analysis, bespoke sell-simulation:** backend analyzer suite features — recommend them as follow-up, do not simulate their output. (Offline calldata/approval decoding of a *pending* transaction IS supported hosted as of v2.4.0 — that's §B/§H, not this list.)
 - **Any signing/execution/custody, other chains, fund recovery, financial advice.**
 
 ---

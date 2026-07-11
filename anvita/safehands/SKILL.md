@@ -1,13 +1,13 @@
 ---
 name: safehands
-description: SafeHands is the transaction firewall for Pharos autonomous finance agents. Use this skill to check wallets, tokens, contracts, approvals, swaps, transfers, bridges, vault deposits, staking, tokenized-asset actions, and x402 payments before anything is signed; read token prices, gas, allowances, and transaction status; and return an evidence-backed, deterministic allow/warn/block verdict. Zero-custody and read-only on Pharos Pacific Mainnet (chainId 1672) — never signs, broadcasts, approves, swaps, bridges, deposits, stakes, pays, or custodies.
+description: SafeHands is the transaction firewall for AI agent finance on Pharos. Use this skill to check wallets, tokens, contracts, approvals, swaps, transfers, bridges, vault deposits, staking, tokenized-asset actions, and x402 payments before anything is signed; decode approval/transfer/admin calldata offline (unlimited-approval and drainer-pattern detection); read token prices, gas, allowances, and transaction status; and return an evidence-backed, deterministic allow/warn/block verdict. Zero-custody and read-only on Pharos Pacific Mainnet (chainId 1672) — never signs, broadcasts, approves, swaps, bridges, deposits, stakes, pays, or custodies.
 ---
 
 # SafeHands
 
 ## Overview
 
-SafeHands is **the transaction firewall for Pharos autonomous finance agents**. It checks wallets, tokens, contracts, approvals, swaps, transfers, bridges, vault deposits, staking intents, tokenized market actions, and x402 payments before anything is signed, then returns an evidence-backed **allow / warn / block** verdict. It is the security checkpoint that sits in front of wallet signing — not a trading, yield, bridge, staking, or wallet-management agent.
+SafeHands is **the transaction firewall for AI agent finance on Pharos**. It checks wallets, tokens, contracts, approvals, swaps, transfers, bridges, vault deposits, staking intents, tokenized market actions, and x402 payments before anything is signed — including an offline decode of approval/transfer/admin calldata (unlimited approvals, blanket operator grants, dangerous-admin calls, MultiSend batches) — then returns an evidence-backed **allow / warn / block** verdict. It is the security checkpoint that sits in front of wallet signing — not a trading, yield, bridge, staking, or wallet-management agent.
 
 This Skill is **fully hosted** and reads **Pharos Pacific Mainnet (chainId 1672)** directly via public JSON-RPC (`https://rpc.pharos.xyz`) using the bundled engine at `scripts/safehands-engine.js`. It is **non-custodial by design**: a transaction firewall that sits in front of wallet signing, not behind it. It holds no keys, never signs, never broadcasts, never executes, and never custodies funds. On-chain access is verification-only (`eth_call`, `eth_get*`, `eth_gasPrice`, `eth_estimateGas`) so the checkpoint can never become the attack surface it guards against.
 
@@ -83,6 +83,7 @@ If a required input is missing, ask a single, specific follow-up for exactly wha
 7. If a target contract is unknown or unverified, fail closed (warn or block) — never allow by default.
 8. Never hardcode a price (including stablecoins). Prices come only from live Chainlink Push feed reads; a stale feed is reported as `FEED_STALE`, never quoted as current.
 9. All provider failures return structured JSON — no free-text guesses.
+10. The recipient denylist (`SAFEHANDS_RECIPIENT_DENYLIST`) is operator-supplied and **empty by default**. Never fabricate, imply, or claim a shipped scam list; an empty denylist means "no operator list configured", never evidence of safety.
 
 ## Natural-language behavior
 
@@ -118,4 +119,4 @@ Politely decline and explain:
 - **Executing, signing, approving, swapping, bridging, depositing, staking, or paying** anything; creating/managing wallets; recovering funds; financial or trading advice; guaranteeing an asset, campaign, or vault is safe.
 - **Publishing risk records or attestations on-chain** — requires the SafeHands operator backend, not part of this hosted deployment. This deployment is the checkpoint before the signature, not the executor.
 - Any chain other than Pharos Pacific Mainnet (1672).
-- Full source-code audits, sell-simulation, or off-chain RWA-backing verification (recommend deeper review for high-value actions; honeypot/tax flags ARE covered via GoPlus when reachable).
+- Full source-code audits, sell-simulation, or off-chain RWA-backing verification (recommend deeper review for high-value actions; honeypot/tax flags ARE covered via GoPlus when reachable, and approval/transfer/admin calldata decoding IS covered offline).

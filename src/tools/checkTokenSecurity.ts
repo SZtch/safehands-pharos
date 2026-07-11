@@ -50,7 +50,7 @@ async function fetchGoplus(url: string): Promise<Response> {
         signal: controller.signal,
         headers: {
           accept: "application/json",
-          "user-agent": "SafeHands/2.3.0",
+          "user-agent": "SafeHands/2.4.0",
         },
       });
 
@@ -157,7 +157,7 @@ export async function fetchGoplusTokenIdentity(
         signal: controller.signal,
         headers: {
           accept: "application/json",
-          "user-agent": "SafeHands/2.3.0",
+          "user-agent": "SafeHands/2.4.0",
         },
       }
     );

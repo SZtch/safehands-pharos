@@ -43,6 +43,8 @@ The zero-dependency hosted engine (`anvita/safehands/scripts/safehands-engine.js
 
 It has no `PREPARE_ONLY` because it never executes anything. When its threat-intel dependency (GoPlus) is unreachable, an unverified subject is floored to at least `warn` (never `allow`) — see the fail-closed floor in the engine.
 
+Since v2.4.0 the hosted engine also performs an **offline calldata decode** (approve / permit / Permit2 / setApprovalForAll / transfer / dangerous-admin / MultiSend selectors) plus an operator-supplied recipient denylist (`SAFEHANDS_RECIPIENT_DENYLIST`, empty by default). These contribute **escalate-only score floors** applied via `Math.max` (e.g. unlimited-approval-to-unknown 90, denylisted recipient 95, dangerous-admin 61, malformed 45, unknown selector 31) — they can raise a score into `warn`/`block` but never lower one. The bands and thresholds in this section are unchanged.
+
 ## Thresholds (documented divergence)
 
 The two score-based engines use **different, intentional** block boundaries:

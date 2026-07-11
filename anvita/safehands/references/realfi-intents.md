@@ -19,8 +19,9 @@ Output (all intents): standard `report()` fields (`riskScore`, `recommendation`,
 | target analysis | target contract present | `analyzeContract`; **no code → block (~95)**; not canonical & unverified → fail-closed floor (deposit-class 45, else 31) |
 | allowance exposure | `token` + `owner`(defaults to wallet) + `spender`(defaults to target) | live `allowance(owner,spender)`; unlimited flagged |
 | simulation + gas | `to`/`data` tx object present | `eth_call` (revert = major risk) + `eth_estimateGas`; both dry-run |
+| calldata decode | tx object carries `data` | **offline** decode of approve/permit/Permit2/setApprovalForAll/transfer/admin/MultiSend selectors → `components.calldata`; escalate-only floors (unlimited-to-unknown & blanket-operator → block, denylisted recipient → block, malformed/unknown → held); recipient denylist from `SAFEHANDS_RECIPIENT_DENYLIST` (empty by default) |
 | target reputation | Attestation configured | `reputationOf(target)` (neutral when zero) |
-| URL risk | url-centric intents | **static string inspection only — never fetched** |
+| URL risk | url-centric intents | **static string inspection only — never fetched**; `payTo` recipients are also checked against the operator denylist |
 
 **Fund-moving intents** (`bridge`, `yield_deposit`, `vault_deposit`, `staking`, `tokenized_asset`) require a valid `walletAddress`. **URL-centric intents** (`fiat_ramp`, `reward_campaign`, `x402_payment`) do not.
 

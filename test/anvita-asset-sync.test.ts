@@ -49,4 +49,21 @@ describe("anvita/safehands/assets are generated from the canonical registry", ()
   it("engine artifacts are consistent (ABI methods, engine selectors, ENGINE_VERSION == package version)", () => {
     assert.deepStrictEqual(verifyAnvitaEngineConsistency(), []);
   });
+
+  it("the SEL drift-parser still sees the whole selector block (truncation is silent)", () => {
+    // The consistency checker regex-reads `const SEL = {...}` up to the FIRST
+    // closing brace, so a `};` accidentally introduced inside the block (even in
+    // a comment) would silently truncate the parse. Assert the parsed map spans
+    // from the original read selectors to the v2.4.0 action selectors.
+    const engineSrc = readFileSync(path.join(ASSETS_DIR, "..", "scripts", "safehands-engine.js"), "utf8");
+    const selBlock = engineSrc.match(/const SEL = \{([\s\S]*?)\};/);
+    assert.ok(selBlock, "SEL block not found in the engine source");
+    const parsed = new Map<string, string>();
+    for (const m of selBlock[1].matchAll(/(\w+):\s*"(0x[0-9a-fA-F]{8})"/g)) {
+      parsed.set(m[1], m[2]);
+    }
+    for (const name of ["reputationOf", "allowance", "approve", "setApprovalForAll", "multiSend", "execTransaction"]) {
+      assert.ok(parsed.has(name), `SEL parser no longer sees "${name}" — the block was truncated or renamed`);
+    }
+  });
 });
