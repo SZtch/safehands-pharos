@@ -1,8 +1,8 @@
-# SafeHands × Real-Fi & RWA — How a Safety Gateway Serves Real-World Assets
+# SafeHands × Real-Fi & RWA — How a Pre-Execution Transaction Firewall Serves Real-World Assets
 
-Pharos is a Real-Fi chain: its thesis is tokenized real-world assets and real-world payments settled on a fast EVM L1. SafeHands is the layer that makes those flows safe to automate.
+Pharos is a Real-Fi chain: its thesis is tokenized real-world assets and real-world payments settled on a fast EVM L1. As AI agents start handling those workflows — payments, treasury actions, swaps, bridges, liquidity operations, and interactions with tokenized assets — they need a deterministic firewall *before* execution. SafeHands is that firewall: no-custody, read-only safety verdicts in hosted Anvita mode, and the same policy model available to gate execution itself in self-hosted integrations.
 
-**The claim, in one sentence:** before any AI agent moves a tokenized asset or settles a real-world payment on Pharos, SafeHands is the deterministic check that verifies the asset, enforces the transfer policy, caps the settlement, and writes a privacy-preserving audit record on-chain.
+**The claim, in one sentence:** before any AI agent moves a tokenized asset or settles a real-world payment on Pharos, SafeHands is the deterministic check that verifies the asset, enforces the transfer policy, caps the settlement — and, on the opt-in attested-broadcast path, writes a privacy-preserving audit record on-chain.
 
 Everything in the "Live today" column below is deployed and verifiable right now — contracts on Pharos Pacific Mainnet (chain `1672`), a read-only HTTP API you can self-host as a reference backend, and a runnable demo. The zero-custody hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2). Nothing in that column is aspirational — every row is running code you can verify today (known limits, like SPV verification being out of scope, are disclosed in [SECURITY.md](../SECURITY.md) and the RPC method matrix).
 
@@ -85,8 +85,8 @@ curl -s -X POST http://localhost:4022/tools/get_agent_reputation \
         └─────────────────────────────────────────┘
 ```
 
-SafeHands never holds keys and never signs for users — in Real-Fi terms: it is the compliance checkpoint and audit layer, not a custodian.
+SafeHands never holds keys and never signs for users — in Real-Fi terms: it is the pre-execution checkpoint and audit layer, not a custodian.
 
 ## Honest scope
 
-SafeHands is not an RWA issuance platform, a KYC provider, or a licensed transfer agent. It is the **infrastructure those flows sit on**: deterministic pre-signature checks, on-chain audit records, composable risk and reputation reads, and safe stablecoin settlement rails — live on Pharos Pacific Mainnet today, with compliance-provider integrations (TRM, Circle CCTP) as explicit roadmap items.
+SafeHands is not an RWA issuance platform, a KYC provider, or a licensed transfer agent. It does not issue tokenized assets, does not custody or manage real-world assets, and does not by itself make a flow compliant — deterministic pre-execution checks are one necessary layer of a compliance story, not the whole stack. What it is: the **infrastructure those flows sit on** — deterministic pre-signature verdicts, opt-in on-chain audit records, composable risk and reputation reads, and safe stablecoin settlement rails — live on Pharos Pacific Mainnet today, with compliance-provider integrations (TRM, Circle CCTP) as explicit roadmap items.

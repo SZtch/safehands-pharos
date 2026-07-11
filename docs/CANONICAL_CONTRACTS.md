@@ -1,6 +1,6 @@
 # Canonical Pharos Contracts
 
-SafeHands acts as an intelligent firewall for AI Agents on Pharos. A critical part of its Policy Engine is distinguishing between random unverified contracts and official, audited ecosystem infrastructure.
+SafeHands is the pre-execution transaction firewall for AI agents on Pharos. A critical part of its Policy Engine is distinguishing between random unverified contracts and official, audited ecosystem infrastructure.
 
 This document serves as the ground truth for all canonical contracts recognized natively by the SafeHands Preflight Engine.
 

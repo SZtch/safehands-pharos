@@ -2,7 +2,7 @@
 
 ## Scope
 
-SafeHands is a **mainnet-first, read-only** safety gateway for AI agents on **Pharos Pacific (chain 1672)**: read/check/analyze runs on mainnet by default, and the hosted backend holds no keys. **Attestations publish on Pacific Mainnet using a segregated operational key**. The safety architecture is production-inspired but is **not audited for mainnet custody**, which is why user execution/signing remains strictly offline/self-hosted.
+SafeHands is a **mainnet-first, read-only-by-default** transaction firewall for AI agents on **Pharos Pacific (chain 1672)**: read/check/analyze runs on mainnet, and the hosted backend holds no keys. **Attestations publish on Pacific Mainnet using a segregated operational key**. The safety architecture is production-inspired but is **not audited for mainnet custody**, which is why user execution/signing remains strictly offline/self-hosted.
 
 ## Threat Model
 

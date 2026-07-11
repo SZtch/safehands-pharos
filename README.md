@@ -1,32 +1,38 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="SafeHands — transaction-safety gateway for AI agents on Pharos Pacific Mainnet" width="100%">
+  <img src="assets/banner.svg" alt="SafeHands — the transaction firewall for AI agent finance on Pharos Pacific Mainnet" width="100%">
 </p>
 
 # SafeHands
 
-**A transaction-safety gateway for AI agents on Pharos Pacific Mainnet — the compliance checkpoint Real-Fi needs before any tokenized-asset transaction is signed.**
+**The transaction firewall for AI agent finance on Pharos — deterministic `ALLOW` / `REQUIRE_CONFIRMATION` / `BLOCK` verdicts *before* a wallet signs.**
 
-An AI agent can sign almost anything: an unlimited token approval, a swap on the wrong chain, a payment to a malicious x402 endpoint, a transfer of a tokenized asset to an unvetted counterparty. SafeHands is the check that runs *before* the signature. A deterministic policy engine evaluates every action and returns one of four decisions (`ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATION`, `PREPARE_ONLY`) with a plain-English reason — and when SafeHands relays a verified broadcast (an opt-in path, off by default), it attests that broadcast on-chain, building a privacy-preserving audit trail and a composable reputation layer. You act on your own wallet; SafeHands never holds keys and never signs for you.
+*No custody. No blind signing. Policy first, execution second.*
 
-It ships as an MCP server, an HTTP API, and a CLI, exposing 33 tools that any agent in the Pharos ecosystem can call.
+AI agents are starting to run real financial workflows on Pharos — payments, treasury actions, swaps, bridges, liquidity operations, and interactions with tokenized real-world assets. An agent doing that work can sign almost anything: an unlimited token approval, a swap on the wrong chain, a payment to a malicious x402 endpoint, a transfer of a tokenized asset to an unvetted counterparty. SafeHands is the firewall that stands *before* the signature. A deterministic policy engine analyzes each intent — calldata, token, spender, counterparty, amount, chain — and returns one of four verdicts (`ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATION`, `PREPARE_ONLY`) with a plain-English reason: the verdict an agent consults before it acts, and the gate a signing path should be bound to. And when SafeHands relays a verified broadcast (an opt-in path, off by default), it attests that broadcast on-chain, building a privacy-preserving audit trail and a composable reputation layer. You act on your own wallet; SafeHands never holds keys and never signs for you.
+
+In **hosted Anvita mode**, SafeHands provides no-custody, read-only safety verdicts — it does not sign, broadcast, or execute transactions today. In **self-hosted integrations**, the same policy model can gate execution itself, before payments, swaps, bridges, liquidity operations, and RWA workflows run.
+
+It ships as an MCP server, an HTTP API, and a CLI, exposing 33 tools that any agent in the Pharos ecosystem can call against Pharos Pacific Mainnet (chain `1672`).
 
 ### Which SafeHands is for me?
 
-SafeHands is one deterministic policy engine behind three surfaces — pick the one that matches you:
+One deterministic policy engine, delivered where you need the verdict — from a zero-infra hosted call to a self-hosted integration:
 
 | You are… | Use | What it is |
 |---|---|---|
-| A **user or Steward agent** that just wants a safety check | the **Anvita Flow hosted skill** | Zero-infra, read-only, no keys — the hosted deliverable in [`anvita/safehands/`](anvita/safehands/) (being published to Anvita). |
-| A **developer** adding safety to your own agent | the **npm package** — MCP server, CLI & SDK | `npx … --demo`, drop it into any MCP client, or `import { evaluateActionPolicy } from "safehands-pharos"`. Read-only by default; write tools stay gated behind env flags + a signer. |
-| An **operator** who wants the HTTP API | the **self-hosted read-only backend** | `node dist/api/server.js` → `http://localhost:4022` — free read endpoints plus the optional x402-gated `/paid/*` bundle. |
+| A **user or Steward agent** that wants a pre-execution verdict | the **Anvita Flow hosted skill** | Zero-infra, no keys, no custody — you get the verdict *before* you sign. The hosted deliverable in [`anvita/safehands/`](anvita/safehands/) (being published to Anvita). |
+| A **developer** wiring safety into your own agent | the **npm package** — MCP server, CLI & SDK | `npx … --demo`, drop it into any MCP client, or `import { evaluateActionPolicy } from "safehands-pharos"`. The verdict path is the product; write tools are reference-only and stay gated behind env flags + a signer + the same verdict. |
+| An **operator** who wants the HTTP API | the **self-hosted reference backend** | `node dist/api/server.js` → `http://localhost:4022` — free verdict endpoints plus the optional x402-gated `/paid/*` bundle. |
+
+> **Read-only hosted mode is a security property, not a tier.** Because the hosted verdict layer holds no keys and signs nothing, every other agent can safely put it *in front of* their transactions — a firewall that can't move funds is one nobody has to trust with funds. Signing stays with you.
 
 > **Two verdict vocabularies, one logic.** The compact hosted engine returns an `allow / warn / block` risk recommendation; the full policy engine (npm/API) returns the four-value decision `ALLOW / BLOCK / REQUIRE_CONFIRMATION / PREPARE_ONLY`. They map cleanly: `block ↔ BLOCK`, `warn ↔ REQUIRE_CONFIRMATION`, `allow ↔ ALLOW` or `PREPARE_ONLY` (safe — you sign it yourself).
 
 ---
 
-## 🏆 SafeHands on Anvita Flow — a fully-hosted Service Agent (Agent Carnival Phase 2, launching)
+## 🏆 SafeHands on Anvita Flow — a hosted pre-execution verdict layer (Agent Carnival Phase 2, launching)
 
-SafeHands is packaged as a **fully-hosted, zero-infrastructure Service Agent** for [Anvita Flow](https://flow.anvita.xyz/home) (Pharos Agent Carnival, Phase 2). **Once published**, any Steward Agent on the marketplace can discover and call it — no server, no keys, no custody anywhere in the running system.
+SafeHands is packaged as a **fully-hosted, zero-infrastructure Service Agent** for [Anvita Flow](https://flow.anvita.xyz/home) (Pharos Agent Carnival, Phase 2): a Steward Agent asks it about an action and gets a deterministic verdict back *before* anything is signed. **Once published**, any Steward Agent on the marketplace can discover and call it — no server, no keys, no custody anywhere in the running system.
 <!-- after publish: replace the sentence above with the live marketplace link + "tell your Steward: go find SafeHands" -->
 
 ```
@@ -53,13 +59,13 @@ User → Steward Agent → Anvita Flow marketplace → SafeHands (hosted skill)
 
 Every verdict is **computed by code, not guessed by an LLM** — the AI layer only handles conversation. Every analysis links to [Pharosscan](https://www.pharosscan.xyz) so users verify the evidence themselves. The engine is deterministic and dependency-free, so identical inputs always yield an identical verdict.
 
-> **Why read-only is the feature, not the limitation:** a security layer that *could* move funds is a security risk. SafeHands holds no keys, signs nothing, and custodies nothing — which is exactly why every other agent can trust it in front of their transactions.
+> **Read-only is the security advantage, not a limitation.** A decision layer that *could* move funds is itself an attack surface. SafeHands holds no keys, signs nothing, and custodies nothing — it renders the verdict, you keep the signature. That separation is exactly why every other agent can safely place it in front of their transactions.
 
 [![CI](https://github.com/SZtch/safehands-pharos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SZtch/safehands-pharos/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Pharos Pacific Mainnet](https://img.shields.io/badge/Pharos_Pacific_Mainnet-1672-6d28d9)
 ![33 tools](https://img.shields.io/badge/tools-33-0891b2)
-![Hosted mode: read-only](https://img.shields.io/badge/hosted-read--only-16a34a)
+![Hosted mode: no-custody verdict](https://img.shields.io/badge/hosted-no--custody_verdict-16a34a)
 ![License: MIT](https://img.shields.io/badge/license-MIT-black)
 
 ---
@@ -73,9 +79,9 @@ npx -y github:SZtch/safehands-pharos --demo
 # (after npm publish: npx safehands-pharos --demo · or locally: git clone → npm install → node dist/index.js --demo)
 ```
 
-Watch the deterministic policy engine issue real `ALLOW` / `BLOCK` decisions against Pharos Pacific Mainnet. The hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2) — see the section above.
+Watch the deterministic policy engine issue real safety decisions (`ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATION`) against Pharos Pacific Mainnet. The hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2) — see the section above.
 
-It runs twelve deterministic safety checks in your terminal (wallet health, ALLOW/BLOCK decisions, token-registry lookups, x402 preflight, SSRF blocking, risk scoring, RWA transfer-compliance and settlement-cap scenarios) and touches nothing on-chain.
+It runs twelve deterministic safety checks in your terminal (wallet health, policy decisions, token-registry lookups, x402 preflight, SSRF blocking, risk scoring, RWA transfer-compliance and settlement-cap scenarios) and touches nothing on-chain.
 
 <details>
 <summary>Sample output — one of the twelve checks</summary>
@@ -168,7 +174,7 @@ The decision is **deterministic**: the policy engine decides, not a model. An LL
 
 ## Why this matters for Real-Fi & RWA
 
-Pharos is a Real-Fi chain, and tokenized real-world assets carry real-world obligations that memecoins do not: asset legitimacy, transfer restrictions, audit trails, settlement discipline, counterparty trust. SafeHands provides that layer on mainnet today — the read/policy path is live, and the write-side attestation path is a working opt-in. The table marks each honestly:
+Pharos is a Real-Fi chain: the execution environment where agent-driven payments, treasury operations, and tokenized real-world assets settle. As AI agents take over those workflows, a mistake a human makes once, an agent can repeat a thousand times — and tokenized assets carry real-world obligations that memecoins do not: asset legitimacy, transfer restrictions, audit trails, settlement discipline, counterparty trust. SafeHands is the pre-execution safety layer for exactly those obligations — the read/policy path is live on mainnet today, and the write-side attestation path is a working opt-in. The table marks each honestly:
 
 | RWA requirement | SafeHands capability | Status |
 |---|---|---|
@@ -186,11 +192,13 @@ Demo scenarios 11–12 show the RWA flows end-to-end. Full mapping, with an hone
 
 ## What it is — and is not
 
-SafeHands is a **safety layer**, not a wallet. It is not a custody service, a private-key manager, a signer, a DEX, or a bridge.
+SafeHands is a **transaction firewall**, not a wallet. It is not a custody service, a private-key manager, a signer, a DEX, or a bridge. It does not issue tokenized assets, does not manage real-world assets, and is not a compliance authority — it is the deterministic checkpoint agent-finance flows run through before execution. It renders the verdict; you keep the signature.
 
-In hosted mode (Anvita Flow) it is **read-only and zero-custody**: it holds no keys, signs nothing, and broadcasts nothing. It reads chain state, evaluates policy, and returns decisions. You always sign and send with your own wallet.
+**Today — hosted (Anvita Flow):** a read-only, zero-custody pre-execution verdict. It holds no keys, signs nothing, broadcasts nothing, and executes nothing. It reads chain state, evaluates policy, and returns a decision *before* you act. You always sign and send with your own wallet.
 
-Execution tools (`execute_swap`, `send_payment`, `approve_token`, …) exist in the codebase but are gated behind explicit environment flags and are only meant to run **self-hosted and single-tenant**, on a machine you control. These write tools are **experimental and unaudited** — they ship disabled and require explicit opt-in. The public server refuses to enable them: a boot guard fails fast if managed execution is configured on a public host (the guard runs when `NODE_ENV=production` — always set it for self-hosted deployments).
+**Advanced — self-hosted integration (MCP / CLI / SDK / HTTP API):** the same verdict engine, embeddable in your own agent — and the mode where "transaction firewall" is most literal. Execution tools (`execute_swap`, `send_payment`, `approve_token`, …) exist in the codebase as a **reference** for how a signing path binds to the verdict — every write is gated by the policy engine plus the write-execution gate (`actionPolicyEngine` is the sole ALLOW/BLOCK decider; `writeExecutionGate` refuses to proceed without a passing verdict wired in). They are **OFF by default, experimental, and unaudited**, run **self-hosted and single-tenant only**, and the public server refuses to enable them: a boot guard fails fast if managed execution is configured on a public host (the guard runs when `NODE_ENV=production` — always set it for self-hosted deployments). The audited, production surface is the read-only verdict layer.
+
+**Future:** if a hosted write path becomes available, the *same deterministic verdict* becomes the gate in front of it — one policy deciding payments, swaps, bridges, liquidity operations, and tokenized-asset (RWA) interactions, before any of them is signed.
 
 ---
 
@@ -457,7 +465,7 @@ See [.env.example](.env.example) for the full reference.
 
 ## Roadmap
 
-The goal is simple: be the safety check every AI agent runs *before* it acts on-chain. One rule holds at every phase: **the ALLOW/BLOCK decision stays deterministic. The model advises; the policy engine decides.**
+The goal is simple: be the safety decision every AI agent consults *before* it acts on-chain. One rule holds at every phase: **the safety verdict stays deterministic. The model advises; the policy engine decides.** The arc is a single verdict engine moving from *advising* an action (hosted, today) to *gating* it (verdict-bound signing) without the safety logic ever changing.
 
 **Shipped (v2.3.0):**
 
@@ -468,6 +476,8 @@ The goal is simple: be the safety check every AI agent runs *before* it acts on-
 - x402 preflight and gated `pay_and_fetch` with SSRF/redirect protection
 
 **Next:** L1 risk-root committer automation, a data-availability serving endpoint, broader cross-agent reputation reads, and compliance-provider integrations for RWA flows (TRM Labs screening, Circle CCTP settlement — currently roadmap, not integrated).
+
+**Vision:** when hosted write support is available, the same verdict becomes the gate — not just an advisory before a payment, swap, bridge, liquidity operation, or tokenized-asset transfer, but the deterministic verdict that path is bound to. Same policy, same reasons, same on-chain attestation trail; the only thing that changes is that a `BLOCK` can *stop* the action, not just warn about it.
 
 ---
 

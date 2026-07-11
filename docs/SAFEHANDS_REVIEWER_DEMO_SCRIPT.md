@@ -4,7 +4,7 @@ Current as of v2.3.0 — Pharos Pacific Mainnet (chain `1672`), Anvita Flow host
 
 ## 1. Project one-liner
 
-SafeHands is a transaction-safety gateway for AI agents on Pharos Pacific Mainnet: a deterministic policy engine that evaluates every agent action *before* the signature and returns `ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY` with a plain-English reason. The hosted deployment is **read-only and zero-custody** — it holds no keys, signs nothing, and broadcasts nothing on its own.
+SafeHands is the transaction firewall for AI agent finance on Pharos Pacific Mainnet: a deterministic policy engine that evaluates every agent action — payments, approvals, swaps, x402 calls, tokenized-asset moves — *before* the signature and returns `ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY` with a plain-English reason. The hosted deployment is **read-only and zero-custody** — it holds no keys, signs nothing, and broadcasts nothing on its own.
 
 For the Real-Fi & RWA angle — how the attestation ledger, risk registry, token verification, and USDC settlement rails serve tokenized real-world assets — see [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md).
 

@@ -1,7 +1,7 @@
 # SafeHands Production Backend (Phase 6)
 
-> **SafeHands is a real, mainnet-first, read-only SafeHands Agent for Pharos Pacific
-> read/check/analyze.** This document describes the production backend (the read-only
+> **SafeHands is a mainnet-first transaction firewall for Pharos Pacific; this backend is
+> its read-only read/check/analyze surface.** This document describes the production backend (the read-only
 > SafeHands API), its endpoints, and its hardening. Hosted default is read-only: **no
 > private keys, no custody, no signing or transaction sending.** Write / prepare-tx /
 > broadcast are future **gated** phases.

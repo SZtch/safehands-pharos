@@ -30,7 +30,7 @@ investment.
 
 ## 2. Context
 
-SafeHands is a mainnet-first transaction-safety gateway, verified-broadcast relay,
+SafeHands is a mainnet-first pre-execution transaction firewall, verified-broadcast relay,
 and privacy-preserving on-chain proof system for AI agents on Pharos Pacific. Its
 runtime state — prepared transactions, the attestation lifecycle queue, x402
 replay protection, and the audit trail — is held in an **atomic file-backed

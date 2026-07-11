@@ -12,15 +12,15 @@
 
 ## 1. SafeHands-as-a-layer thesis
 
-SafeHands is a **universal pre-execution SafeHands layer for Pharos**, not a
+SafeHands is a **universal pre-execution transaction firewall for Pharos**, not a
 standalone wallet or execution app. Any user, dApp, wallet, Safe, payment agent, or
 AI agent calls SafeHands **before** an on-chain action and receives one of:
 `ALLOW` · `BLOCK` · `REQUIRE_CONFIRMATION` · `PREPARE_ONLY`.
 
-The SafeHands **checks and decides**; it never holds keys, never custodies funds,
+SafeHands **checks and decides**; it never holds keys, never custodies funds,
 and does not execute by default.
 
-> **SafeHands Phase 2 is mainnet-first for Pharos Pacific read-only SafeHands checks.
+> **SafeHands Phase 2 is mainnet-first for Pharos Pacific read-only safety checks.
 > Execution, signing, managed wallets, and on-chain publishing are advanced
 > self-hosted modes and remain disabled by default.** Pacific Mainnet (1672, PROS) is
 > the primary network for read-only checks; Atlantic Testnet is for demo,

@@ -1,7 +1,10 @@
 # SafeHands Docs — Index & Reading Order
 
-SafeHands is a Pharos-native **transaction safety layer**: it checks risky approvals,
-contract calls, AI-agent actions, and prepared transactions before any on-chain action.
+SafeHands is the **transaction firewall for AI agent finance on Pharos**: it renders a
+deterministic safety verdict (`ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY`) on risky
+approvals, contract calls, payments, swaps, and prepared transactions *before* a wallet or
+agent signs. Hosted mode is a no-custody, read-only verdict you consult ahead of execution;
+self-hosted integrations can gate execution on the same verdict (write tools off by default).
 Default network is **Pharos Pacific Mainnet** (chain `1672`, `PROS`), with live contracts.
 The hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2); once live it will be discoverable and callable
 by any Steward Agent; to hit the HTTP API directly, self-host the read-only backend locally

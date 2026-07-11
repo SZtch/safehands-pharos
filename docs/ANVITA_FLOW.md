@@ -57,7 +57,7 @@ The `safehands_preflight_check` returns a strict JSON decision: `ALLOW`, `BLOCK`
 
 ## 4. Why This Wins Phase 2 (The Blockchain Edge)
 
-**Real-Fi & RWA fit.** Pharos is a Real-Fi chain, and this agent is the compliance checkpoint those flows need: it verifies asset legitimacy before an agent touches a tokenized asset (token registry + GoPlus security checks), enforces transfer restrictions deterministically (per-agent caps, human-in-the-loop `REQUIRE_CONFIRMATION`), caps stablecoin settlements on the x402 rail, and — on the opt-in relayed-broadcast path (off by default) — writes a privacy-preserving audit record on-chain for every verified broadcast it relays. See [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) for the full live-vs-roadmap mapping.
+**Real-Fi & RWA fit.** Pharos is a Real-Fi chain, and this agent is the pre-execution safety checkpoint those flows need: it verifies asset legitimacy before an agent touches a tokenized asset (token registry + GoPlus security checks), enforces transfer restrictions deterministically (per-agent caps, human-in-the-loop `REQUIRE_CONFIRMATION`), caps stablecoin settlements on the x402 rail, and — on the opt-in relayed-broadcast path (off by default) — writes a privacy-preserving audit record on-chain for every verified broadcast it relays. See [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) for the full live-vs-roadmap mapping.
 
 Unlike traditional agents that rely solely on LLM hallucinations, the SafeHands Agent uses **deterministic on-chain data**:
 - It pulls live liquidity from **FaroSwap**.
@@ -65,4 +65,4 @@ Unlike traditional agents that rely solely on LLM hallucinations, the SafeHands 
 - It halts **unlimited token approvals** dynamically based on the exact token address.
 - After a verified user-signed broadcast, it publishes a permanent **Attestation** to the on-chain `SafeHandsAttestation` contract on Pharos Pacific Mainnet (1672) — gated by `SAFEHANDS_ATTESTATION_REQUIRED` and a segregated attester key — building a decentralized reputation layer for AI agents on top of `SafeHandsRegistry`.
 
-By following this flow, you have transformed raw Phase 1 Skills into an enterprise-grade, transaction-firewalled Agent ready to serve users 24/7 on Pharos!
+By following this flow, you have transformed raw Phase 1 Skills into an enterprise-grade Agent behind a deterministic transaction firewall — every action decided by the policy engine before anything is signed — ready to serve users 24/7 on Pharos!

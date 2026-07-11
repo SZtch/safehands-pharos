@@ -1,7 +1,7 @@
 {
   "name": "safehands-pharos",
   "version": "2.3.0",
-  "description": "Open-source reusable Pharos Skill — production-oriented mainnet safety and execution gateway for AI agent on-chain actions on Pharos Pacific.",
+  "description": "Open-source reusable Pharos Skill — the transaction firewall for AI agent finance on Pharos Pacific Mainnet: deterministic safety verdicts before any wallet signs. Read-only by default; write tools optional, gated, off by default.",
   "type": "module",
   "main": "dist/sdk.js",
   "types": "dist/sdk.d.ts",
