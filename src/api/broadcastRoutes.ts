@@ -80,6 +80,9 @@ export async function handleBroadcastSigned(raw: unknown) {
   let txHash: string | undefined;
   let broadcastStatus: "success" | "verify_only_passed" = "verify_only_passed";
   let attestationStatus = "skipped";
+  // Deliberately static: this relay returns right after eth_sendRawTransaction and
+  // never waits for the receipt, so the on-chain outcome is genuinely unknown here.
+  // Callers poll get_transaction_status with the returned txHash for the mined result.
   const executionStatus = "UNKNOWN";
   let message = "Transaction signature and fields verified successfully. Broadcast is disabled in verify-only mode.";
 
@@ -119,7 +122,7 @@ export async function handleBroadcastSigned(raw: unknown) {
     });
 
     broadcastStatus = "success";
-    message = "Transaction verified and successfully broadcast.";
+    message = "Transaction verified and broadcast. The execution outcome is not awaited — poll get_transaction_status with the returned txHash for the mined receipt.";
   }
 
   return {
