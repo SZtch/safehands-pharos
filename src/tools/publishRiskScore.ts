@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { isAddress, keccak256, stringToHex } from "viem";
-import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
 import {
-  SAFEHANDS_REGISTRY_ADDRESS, SAFEHANDS_REGISTRY_ABI,
+  SAFEHANDS_REGISTRY_ADDRESS,
   CHAIN_ID, PHAROS_ENVIRONMENT, REQUIRE_AUTHORIZED_AGENT_FOR_WRITE,
 } from "../lib/constants.js";
 import { IS_MAINNET } from "../lib/constants.js";

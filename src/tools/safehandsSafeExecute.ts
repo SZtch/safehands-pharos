@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { formatEther } from "viem";
 import { fail, ok, requireWriteToolsEnabled, type ToolResponse } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { handleSafeHandsPreflightCheck } from "./safehandsPreflightCheck.js";

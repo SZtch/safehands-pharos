@@ -52,6 +52,6 @@ export async function broadcastSignedTransaction(rawSignedTx: string, chainId: n
 
     return json.result;
   } catch (error) {
-    throw new Error(`Broadcast failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Broadcast failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
 }

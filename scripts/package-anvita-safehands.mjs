@@ -57,7 +57,7 @@ try {
 }
 
 // ── verify structure ─────────────────────────────────────────────────────
-let listing = "";
+let listing;
 try { listing = execFileSync("unzip", ["-l", OUT], { encoding: "utf8" }); }
 catch { listing = execFileSync("tar", ["-t", "-f", OUT], { encoding: "utf8" }); }
 if (!/safehands\/SKILL\.md/.test(listing))

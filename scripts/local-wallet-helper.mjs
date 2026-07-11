@@ -14,7 +14,6 @@
 
 import readline from "node:readline/promises";
 import { privateKeyToAccount } from "viem/accounts";
-import { parseGwei } from "viem";
 import { handleWalletPrepare } from "../dist/api/walletPrepareRoutes.js";
 import { handleBroadcastSigned } from "../dist/api/broadcastRoutes.js";
 

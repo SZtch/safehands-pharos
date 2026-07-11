@@ -50,7 +50,6 @@ import {
   resolveCorsConfig,
   corsOriginValue,
   resolveJsonLimit,
-  resolveRateLimitConfig,
   resolveQuotaConfig,
   resolveActivityConfig,
   resolveLoggingConfig,

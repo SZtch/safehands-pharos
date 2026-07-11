@@ -8,13 +8,7 @@
 
 import { safeHandsStateDir } from "./persistentJsonStore.js";
 
-function isProduction(): boolean {
-  return process.env.NODE_ENV === "production";
-}
 
-function truthy(v: string | undefined): boolean {
-  return v === "true";
-}
 
 export interface PostureIssue {
   level: "warn" | "fatal";

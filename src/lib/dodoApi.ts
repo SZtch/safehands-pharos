@@ -308,7 +308,7 @@ export async function getDodoRoute(params: {
   walletAddress: string;
   slippage?: number;
 }): Promise<DodoQuote> {
-  let quote = await _getDodoRouteCore(params);
+  const quote = await _getDodoRouteCore(params);
   
   if (!quote.routeAvailable && !IS_MAINNET) {
     const fromUpper = params.fromToken.toUpperCase();

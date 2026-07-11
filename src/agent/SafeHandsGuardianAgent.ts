@@ -18,7 +18,6 @@ import { formatDecision, type AgentDecision } from "./agentDecisionFormatter.js"
 import { obligationFor, type CallerObligation } from "./agentRuntime.js";
 import { enrich } from "./agentEnrich.js";
 import { isDenylistedRecipient } from "../lib/recipientSafety.js";
-import { handleSafeHandsSafeExecute } from "../tools/safehandsSafeExecute.js";
 import { POLICY_VERSION } from "../lib/policy/policyPresets.js";
 
 export interface GuardianAgentOptions {

@@ -92,7 +92,7 @@ function installRpcMock(cfg: MockConfig) {
       if (marker.mockHttpStatus) {
         return new Response("rate limited", { status: marker.mockHttpStatus });
       }
-      throw new TypeError("fetch failed");
+      throw new TypeError("fetch failed", { cause: err });
     }
   }) as typeof globalThis.fetch;
 

@@ -1,6 +1,6 @@
 import { broadcastSignedSchema } from "./schemas.js";
 import { getPreparedTx, markPreparedTxUsed } from "../lib/preparedTxStore.js";
-import { parseTransaction, recoverTransactionAddress, keccak256, isAddressEqual, toHex } from "viem";
+import { parseTransaction, recoverTransactionAddress, keccak256, isAddressEqual } from "viem";
 import { broadcastSignedTransaction } from "../lib/pharos/userSignedBroadcaster.js";
 import { checkAttestationConfig, publishAttestation, getAttestationRecord } from "../lib/pharos/attestationPublisher.js";
 import { lookupAttestationInGoldsky, lookupAttestationOnchain } from "../lib/goldsky.js";
@@ -80,7 +80,7 @@ export async function handleBroadcastSigned(raw: unknown) {
   let txHash: string | undefined;
   let broadcastStatus: "success" | "verify_only_passed" = "verify_only_passed";
   let attestationStatus = "skipped";
-  let executionStatus = "UNKNOWN";
+  const executionStatus = "UNKNOWN";
   let message = "Transaction signature and fields verified successfully. Broadcast is disabled in verify-only mode.";
 
   if (isBroadcastEnabled) {

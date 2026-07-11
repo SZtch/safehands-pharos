@@ -6,7 +6,7 @@ import { z } from "zod";
 import { formatEther, formatUnits } from "viem";
 import { publicClient } from "../lib/pharosClient.js";
 import { ERC20_ABI, activeUsdcAddress, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, MAX_X402_PAYMENT_USDC, SAFEHANDS_REGISTRY_ADDRESS, REQUIRE_AUTHORIZED_AGENT_FOR_WRITE } from "../lib/constants.js";
-import { fail, ok, classifyExternalError, type ToolResponse } from "../lib/toolResponse.js";
+import { ok, classifyExternalError, type ToolResponse } from "../lib/toolResponse.js";
 import { getSigner, isSignerFailure } from "../lib/signer/index.js";
 import { walletStore } from "../lib/wallet/index.js";
 import { isAgentAuthorized } from "../lib/safeHandsRegistry.js";

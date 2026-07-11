@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { keccak256, toHex, hexToBytes, bytesToHex } from "viem";
+import { hexToBytes } from "viem";
 
 export interface SPVProofNode {
   proofNode: string; // hex
@@ -84,7 +84,6 @@ export function verifyPharosSPV(
 ): boolean {
   if (!proof || proof.length === 0) return false;
 
-  const keyHash = sha256Hex(key);
   
   if (isExist) {
     // EXISTENCE PROOF VERIFICATION

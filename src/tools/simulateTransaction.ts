@@ -1,7 +1,7 @@
 // ─── Tool: simulate_transaction ────────────────────────────────────────
 import { z } from "zod";
 import { publicClient } from "../lib/pharosClient.js";
-import { getDodoRoute, isNativeToken, resolveTokenDecimals, fromWei } from "../lib/dodoApi.js";
+import { getDodoRoute } from "../lib/dodoApi.js";
 import { parseEther, formatEther } from "viem";
 import { ok, fail } from "../lib/toolResponse.js";
 import { validatePositiveAmount, validateAddress } from "../lib/validation.js";

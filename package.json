@@ -1,7 +1,7 @@
 {
   "name": "safehands-pharos",
   "version": "2.3.0",
-  "description": "Open-source reusable Pharos Skill \u2014 production-oriented mainnet safety and execution gateway for AI agent on-chain actions on Pharos Pacific.",
+  "description": "Open-source reusable Pharos Skill — production-oriented mainnet safety and execution gateway for AI agent on-chain actions on Pharos Pacific.",
   "type": "module",
   "main": "dist/sdk.js",
   "types": "dist/sdk.d.ts",
@@ -45,9 +45,10 @@
     "test": "tsx --test test/policy-suite.test.ts test/action-policy.test.ts test/calldata-decoder.test.ts test/risk-inclusion.test.ts test/risk-engine.test.ts test/http-ssrf.test.ts test/x402-gate.test.ts test/x402-daily-cap.test.ts test/write-auth.test.ts test/write-path-gates.test.ts test/write-tools-risk-gate.test.ts test/attestation-publisher.test.ts test/spv-verifier.test.ts test/agent-policy-guard.test.ts test/sdk-exports.test.ts test/wallet-crypto.test.ts test/execution-hardening.test.ts test/p1-hardening.test.ts test/token-security-failclosed.test.ts test/token-registry-metadata.test.ts test/price-resolver.test.ts test/price-tools.test.ts test/ecosystem-registry.test.ts test/registry-defaults.test.ts test/truth-model.test.ts test/ecosystem-registry-schema.test.ts test/anvita-asset-sync.test.ts test/registry-failclosed.test.ts test/anvita-engine.test.mjs",
     "test:live": "tsx --test test/live-smoke.test.ts",
     "typecheck:test": "tsc -p tsconfig.test.json",
+    "lint": "eslint .",
     "test:contracts": "node scripts/run-contract-tests.mjs",
     "test:live-broadcast": "node scripts/live-broadcast-test.mjs",
-    "test:all": "npm run build && npm run typecheck:test && npm test && npm run demo && npm run test:contracts",
+    "test:all": "npm run build && npm run typecheck:test && npm run lint && npm test && npm run demo && npm run test:contracts",
     "package:anvita": "node scripts/package-anvita-safehands.mjs",
     "sync:anvita": "tsx scripts/sync-anvita-assets.ts",
     "sync:anvita:check": "tsx scripts/sync-anvita-assets.ts --check",
@@ -107,6 +108,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@nomicfoundation/hardhat-toolbox": "^7.0.0",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
     "@openzeppelin/contracts": "^5.6.1",
@@ -116,10 +118,12 @@
     "@types/node": "^22.15.0",
     "chai": "^6.2.2",
     "dotenv": "^17.4.2",
+    "eslint": "^10.7.0",
     "hardhat": "^3.9.0",
     "mocha": "^11.7.6",
     "tsx": "^4.20.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.63.0"
   },
   "overrides": {
     "ws": "^8.21.0",

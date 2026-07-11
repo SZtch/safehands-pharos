@@ -316,7 +316,7 @@ function main(): void {
   for (const name of Object.keys(GENERATED_ASSETS)) {
     const filePath = path.join(ASSETS_DIR, name);
     const generated = renderAsset(name);
-    let current: string | null = null;
+    let current: string | null;
     try {
       current = readFileSync(filePath, "utf8");
     } catch {
