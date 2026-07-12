@@ -73,8 +73,14 @@
       "note": "No officially published Asseto contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
     },
     "aquaflux": {
-      "verificationStatus": "unverified",
-      "note": "No officially published AquaFlux contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
+      "verificationStatus": "verified",
+      "contracts": {
+        "0x0da98a8447b6b4add9733011a812922954d3e127": "AquaFluxCore",
+        "0x1c041b61a6cf43881be7e9394bb198b472ae17a2": "AquaFlux TokenFactory",
+        "0x94eb66e69b158ed58edf2d4150638920205e3c88": "AquaFlux SwapRouter",
+        "0x11625aab301ec4444ff38239f31e67735cae54ee": "AquaFlux LiquidityRouter"
+      },
+      "note": "Verified 2026-07-12 from AquaFlux's own docs Contracts page + on-chain checks (incl. the proxy's EIP-1967 slot matching the published implementation). Verification relaxes recognition only: an unlimited approval to AquaFlux contracts still requires confirmation. Implementation addresses, the shared Uniswap v4 AMM stack the docs also list (PoolManager, UniversalRouter, V4Quoter, StateView, PositionManager), Permit2, the timelock, and per-asset P/C/S token addresses are NOT bundled; assets are issued dynamically, verify each per use."
     },
     "zona": {
       "verificationStatus": "unverified",

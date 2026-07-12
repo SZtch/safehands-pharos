@@ -32,7 +32,7 @@ describe("anvita/safehands/assets are generated from the canonical registry", ()
     for (const addr of Object.values(parsed.canonicalTokens)) {
       assert.strictEqual(addr, addr.toLowerCase());
     }
-    assert.strictEqual(Object.keys(parsed.canonicalContracts).length, 17); // 14 infra + 3 Morpho (VERIFIED 2026-07-11)
+    assert.strictEqual(Object.keys(parsed.canonicalContracts).length, 21); // 14 infra + 3 Morpho (VERIFIED 2026-07-11) + 4 AquaFlux (VERIFIED 2026-07-12)
     assert.strictEqual(Object.keys(parsed.canonicalTokens).length, 4);
   });
 
