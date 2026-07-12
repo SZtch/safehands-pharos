@@ -5,7 +5,7 @@ description: Pharos Pacific Mainnet-first SafeHands Agent for AI-agent transacti
 
 # SafeHands Pharos
 
-SafeHands is a **SafeHands Agent composed of 33 registered MCP tools** for the Pharos ecosystem. It protects AI agents by checking transaction intent before the agent signs, approves, swaps, pays an x402 resource, or publishes risk data, and exposes an **on-chain agent reputation oracle** (`get_agent_reputation`) so any agent can read a counterparty's verified-safe track record as a composable trust signal.
+SafeHands is an **agent surface of 33 registered MCP tools** for the Pharos ecosystem. It protects AI agents by checking transaction intent before the agent signs, approves, swaps, pays an x402 resource, or publishes risk data, and exposes an **on-chain agent reputation oracle** (`get_agent_reputation`) so any agent can read a counterparty's verified-safe track record as a composable trust signal.
 
 SafeHands is:
 

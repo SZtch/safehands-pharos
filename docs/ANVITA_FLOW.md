@@ -1,6 +1,6 @@
 # Integrating SafeHands with Anvita Flow (Phase 2: Agent Arena)
 
-Welcome to the **SafeHands Agent** documentation for Phase 2 of the Pharos Skill-to-Agent Dual Cascade Hackathon. 
+This document covers the **SafeHands Agent** for Pharos Agent Carnival Phase 2 (Agent Arena).
 
 SafeHands began as a suite of native Pharos Skills (Phase 1). For Phase 2, these are orchestrated into a complete **Intelligent SafeHands Agent** (33 tools across MCP, HTTP, and CLI) ready to be deployed on **Anvita Flow**.
 
@@ -33,7 +33,7 @@ SafeHands is entirely Mainnet-first and zero-custody. To ensure the agent operat
 *(Optional for advanced enrichment)*:
 | Variable | Description |
 |----------|-------------|
-| `ZAN_API_KEY` | To enable premium Node RPC analysis on Pharos. |
+| `ZAN_PHAROS_MAINNET_RPC_URL` (or the `PHAROS_ZAN_RPC_URL` alias) | Full ZAN RPC endpoint URL (key embedded in the URL) to route read-only RPC through ZAN instead of the public endpoint. Optional; see `docs/PHAROS_RPC.md` section 6. |
 
 ## 3. Assembling the SafeHands Agent Workflow
 
@@ -55,14 +55,14 @@ The `safehands_preflight_check` returns a strict JSON decision: `ALLOW`, `BLOCK`
 - **If `ALLOW` / `PREPARE_ONLY`** (default, zero-custody): Route to the **user-signed prepare flow**: call the SafeHands API `POST /wallet/prepare` to get an unsigned `walletRequest` + `preparedTransactionId`, have the user sign it in their own wallet, then `POST /broadcast/signed`. SafeHands holds no keys and signs nothing in this path.
 - **Optional (self-hosted, opt-in managed execution):** if, and only if, you run your own MCP server with `WRITE_TOOLS_ENABLED=true` and a managed wallet authorized in `SafeHandsRegistry`, you may instead route to `execute_swap` / `send_payment`. This mode signs and broadcasts from a managed wallet (it is **not** zero-custody) and is disabled by default.
 
-## 4. Why This Wins Phase 2 (The Blockchain Edge)
+## 4. What the on-chain grounding adds
 
 **Real-Fi & RWA fit.** Pharos is a Real-Fi chain, and this agent is the pre-execution safety checkpoint those flows need: it verifies asset legitimacy before an agent touches a tokenized asset (token registry + GoPlus security checks), enforces transfer restrictions deterministically (per-agent caps, human-in-the-loop `REQUIRE_CONFIRMATION`), caps stablecoin settlements on the x402 rail, and, on the opt-in relayed-broadcast path (off by default), writes a privacy-preserving audit record on-chain for every verified broadcast it relays. See [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) for the full live-vs-roadmap mapping.
 
-Unlike traditional agents that rely solely on LLM hallucinations, the SafeHands Agent uses **deterministic on-chain data**:
+Rather than relying on model output for safety-relevant facts, the SafeHands Agent grounds its checks in **deterministic on-chain data**:
 - It pulls live liquidity from **FaroSwap**.
 - It prevents SSRF attacks in **x402 Agent Payments**.
 - It halts **unlimited token approvals** dynamically based on the exact token address.
 - After a verified user-signed broadcast, it publishes a permanent **Attestation** to the on-chain `SafeHandsAttestation` contract on Pharos Pacific Mainnet (1672), gated by `SAFEHANDS_ATTESTATION_REQUIRED` and a segregated attester key, building a decentralized reputation layer for AI agents on top of `SafeHandsRegistry`.
 
-By following this flow, you have transformed raw Phase 1 Skills into an enterprise-grade Agent behind a deterministic transaction firewall (every action decided by the policy engine before anything is signed), ready to serve users 24/7 on Pharos!
+The result is the Phase 1 Skills assembled into a single agent behind a deterministic transaction firewall: every action is decided by the policy engine before anything is signed.

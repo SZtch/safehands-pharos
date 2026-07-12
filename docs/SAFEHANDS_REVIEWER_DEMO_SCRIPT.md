@@ -42,7 +42,9 @@ curl -s -X POST http://localhost:4022/tools/get_agent_reputation \
   -H "content-type: application/json" \
   -d '{"address":"0x6730d3a2A217108AB53CCFe60ffdAd05D3C124e5"}'
 
-# x402 paid endpoint: returns a real HTTP 402 challenge (mainnet USDC, eip155:1672)
+# x402 paid endpoint. Fail-closed by default: without x402 config this returns 503.
+# With X402_PAY_TO and a reachable external X402_FACILITATOR_URL set, it returns a
+# real HTTP 402 challenge (mainnet USDC, eip155:1672).
 curl -s -i http://localhost:4022/paid/risk-report
 ```
 
@@ -95,7 +97,7 @@ npm ci && npm run build
 npm run demo          # or: npx -y github:SZtch/safehands-pharos --demo
 ```
 
-### The firewall reading raw calldata (v2.4.0: 60-second wow)
+### The firewall reading raw calldata (v2.4.0, 60-second demonstration)
 
 The hosted engine decodes approval/transfer/admin calldata **offline**: no simulation service, no third-party API. Feed it a drainer-style transaction and watch it block from the raw bytes:
 

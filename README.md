@@ -26,11 +26,11 @@ One deterministic policy engine, delivered where you need the verdict: from a ze
 
 > **Read-only hosted mode is a security property, not a tier.** Because the hosted verdict layer holds no keys and signs nothing, every other agent can safely put it *in front of* their transactions: a firewall that can't move funds is one nobody has to trust with funds. Signing stays with you.
 
-> **Two verdict vocabularies, one logic.** The compact hosted engine returns an `allow / warn / block` risk recommendation; the full policy engine (npm/API) returns the four-value decision `ALLOW / BLOCK / REQUIRE_CONFIRMATION / PREPARE_ONLY`. They map cleanly: `block ↔ BLOCK`, `warn ↔ REQUIRE_CONFIRMATION`, `allow ↔ ALLOW` or `PREPARE_ONLY` (safe; you sign it yourself).
+> **Two verdict vocabularies, one policy model.** The compact hosted engine returns an `allow / warn / block` risk recommendation; the full policy engine (npm/API) returns the four-value decision `ALLOW / BLOCK / REQUIRE_CONFIRMATION / PREPARE_ONLY`. They map cleanly: `block ↔ BLOCK`, `warn ↔ REQUIRE_CONFIRMATION`, `allow ↔ ALLOW` or `PREPARE_ONLY` (safe; you sign it yourself). The two engines score independently and their thresholds intentionally differ (see [`docs/DECISION_CONTRACT.md`](docs/DECISION_CONTRACT.md)); never compare raw scores across them.
 
 ---
 
-## 🏆 SafeHands on Anvita Flow: a hosted pre-execution verdict layer (Agent Carnival Phase 2, launching)
+## 🏆 SafeHands on Anvita Flow: a hosted pre-execution verdict layer (Agent Carnival Phase 2)
 
 SafeHands is packaged as a **fully-hosted, zero-infrastructure Service Agent** for [Anvita Flow](https://flow.anvita.xyz/home) (Pharos Agent Carnival, Phase 2): a Steward Agent asks it about an action and gets a deterministic verdict back *before* anything is signed. **Once published**, any Steward Agent on the marketplace can discover and call it: no server, no keys, no custody anywhere in the running system.
 <!-- after publish: replace the sentence above with the live marketplace link + "tell your Steward: go find SafeHands" -->
@@ -139,7 +139,9 @@ curl -s -X POST http://localhost:4022/tools/get_agent_reputation \
   -H "content-type: application/json" \
   -d '{"address":"0x6730d3a2A217108AB53CCFe60ffdAd05D3C124e5"}'
 
-# x402-gated endpoint: returns a real HTTP 402 challenge (mainnet USDC, eip155:1672)
+# x402-gated endpoint. Fail-closed by default: without x402 config this returns 503.
+# With X402_PAY_TO and a reachable external X402_FACILITATOR_URL set, it returns a
+# real HTTP 402 challenge (mainnet USDC, eip155:1672).
 curl -s -i http://localhost:4022/paid/risk-report
 ```
 
@@ -471,7 +473,7 @@ The goal is simple: be the safety decision every AI agent consults *before* it a
 **Shipped (v2.4.0):**
 
 - 33-tool agent surface across MCP, HTTP, and CLI: preflight, risk scoring, on-chain reputation oracle, Merkle inclusion verifier, market/chain data, gated execution, per-agent policy, managed wallet
-- Hosted Anvita engine at read-path verdict parity: offline calldata/approval decoding (unlimited-approval detection, dangerous-admin recognition, MultiSend aggregation) plus an operator-supplied recipient denylist
+- Hosted Anvita engine at read-path capability parity (thresholds intentionally diverge; see `docs/DECISION_CONTRACT.md`): offline calldata/approval decoding (unlimited-approval detection, dangerous-admin recognition, MultiSend aggregation) plus an operator-supplied recipient denylist
 - Deterministic policy engine: mainnet guard, approval limits, SSRF guard, spend caps
 - Registry + attestation contracts live on Pharos Pacific Mainnet, verifiable on-chain
 - GoPlus token-security and Goldsky indexing integrations

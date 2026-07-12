@@ -62,7 +62,7 @@ async function main() {
     text: "Why is an unlimited approval risky?",
   });
 
-  console.log("\n✅ SafeHands Agent demo complete: Enriched using live Mainnet data.");
+  console.log("\n✅ SafeHands Agent demo complete: enriched using live mainnet data.");
   process.exit(0);
 }
 
