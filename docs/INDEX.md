@@ -56,6 +56,7 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | Doc | What it covers |
 |-----|----------------|
 | [CANONICAL_CONTRACTS.md](./CANONICAL_CONTRACTS.md) | Ground truth for the official Pharos canonical contracts the preflight engine recognizes. |
+| [CONTRACTS_V2_DESIGN.md](./CONTRACTS_V2_DESIGN.md) | Design note for a second contract iteration: known limits of the v1 registry, committed-root history, content-addressed DA, revocation, intent tickets. Designed, not scheduled. |
 | [reports/AUDIT_REMEDIATION_2026-07.md](./reports/AUDIT_REMEDIATION_2026-07.md) | Full July 2026 repository audit + remediation record: every finding, fix, and verification gate. |
 | [deployment/ARCHITECTURE_DECISION.md](./deployment/ARCHITECTURE_DECISION.md) | ADR for the optional self-hosted reference backend (single-instance profile). |
 | [deployment/FULL_SERVICE_DESIGN.md](./deployment/FULL_SERVICE_DESIGN.md) | Layout for running every endpoint/service self-hosted (API + x402 + worker). |

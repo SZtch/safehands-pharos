@@ -481,6 +481,8 @@ The goal is simple: be the safety decision every AI agent consults *before* it a
 
 **Next:** L1 risk-root committer automation, a data-availability serving endpoint, broader cross-agent reputation reads, and compliance-provider integrations for RWA flows (TRM Labs screening, Circle CCTP settlement; currently roadmap, not integrated).
 
+**Contracts v2 (designed, not scheduled):** committed-root history (proofs that outlive the next batch), content-addressed data availability (IPFS CID instead of a mutable URL), verdict revocation, reproducible verdicts (recompute the score from the published deterministic engine instead of trusting the operator), and intent tickets that bind a verdict to one exact transaction with a short expiry and single-use nonce. The full reasoning, including the known limits of the v1 registry it fixes, is in **[docs/CONTRACTS_V2_DESIGN.md](docs/CONTRACTS_V2_DESIGN.md)**.
+
 **Vision:** when hosted write support is available, the same verdict becomes the gate: not just an advisory before a payment, swap, bridge, liquidity operation, or tokenized-asset transfer, but the deterministic verdict that path is bound to. Same policy, same reasons, same on-chain attestation trail; the only thing that changes is that a `BLOCK` can *stop* the action, not just warn about it.
 
 ---
