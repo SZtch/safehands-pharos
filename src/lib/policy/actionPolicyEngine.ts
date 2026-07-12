@@ -215,9 +215,11 @@ function classifyRisk(checks: PolicyCheck[]): PolicyRiskLevel {
 
 function defaultDecision(riskLevel: PolicyRiskLevel, checks: PolicyCheck[]): PolicyDecision {
   if (checks.some((c) => c.status === "fail")) return "BLOCK";
-  if (riskLevel === "MEDIUM") return "REQUIRE_CONFIRMATION";
-  if (riskLevel === "UNKNOWN") return "REQUIRE_TOKEN_REVIEW";
-  return "ALLOW";
+  if (riskLevel === "LOW") return "ALLOW";
+  // classifyRisk only produces MEDIUM here (HIGH/CRITICAL imply a fail, caught
+  // above). Any other level, including a future UNKNOWN, lands here fail-closed
+  // rather than falling through to ALLOW.
+  return "REQUIRE_CONFIRMATION";
 }
 
 export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResult {

@@ -149,6 +149,21 @@ describe("ActionPolicyEngine — risk evidence checks (sole decider)", () => {
     assert.strictEqual(gate!.error.code, "POLICY_BLOCKED", "a risk-score BLOCK must not be confirmable");
   });
 
+  it("boundary: score exactly AT the block threshold (80) passes; 81 fails (strict >)", () => {
+    // RISK_BLOCK_THRESHOLD is 80 and the check is `score > threshold`, so 80 is
+    // the last passing value and 81 the first failing one. Pin both edges so a
+    // future `>=` (or threshold constant) change is caught here, not in prod.
+    const atThreshold = evaluateActionPolicy({ ...CLEAN_PAYMENT, risk: { score: 80, degraded: false } });
+    assert.ok(atThreshold.checks.some((c) => c.name === "risk_score" && c.status === "pass"), "score 80 must pass the risk_score check");
+    assert.strictEqual(atThreshold.decision, "ALLOW");
+
+    const overThreshold = evaluateActionPolicy({ ...CLEAN_PAYMENT, risk: { score: 81, degraded: false } });
+    assert.ok(failed("risk_score", overThreshold), "score 81 must fail the risk_score check");
+    assert.strictEqual(overThreshold.decision, "BLOCK");
+    const gate = enforceWriteDecision(overThreshold, { confirmed: true, toolName: "send_payment", requireRiskEvidence: true });
+    assert.strictEqual(gate!.error.code, "POLICY_BLOCKED");
+  });
+
   it("BLOCKs on a critical counterparty even when the weighted score is low", () => {
     const r = evaluateActionPolicy({ ...CLEAN_PAYMENT, risk: { score: 20, degraded: false, counterpartyRisk: 95 } });
     assert.strictEqual(r.decision, "BLOCK");
