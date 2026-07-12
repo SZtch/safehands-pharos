@@ -5,6 +5,7 @@
 // ────────────────────────────────────────────────────────────────────────
 
 import { createHash } from "crypto";
+import { fetchWithTimeoutAndRetry } from "./http.js";
 import { readJsonFile, stateFile, writeJsonFileAtomic } from "./persistentJsonStore.js";
 
 interface ReplayFileState {
@@ -26,13 +27,18 @@ async function upstashCommand(args: unknown[]): Promise<unknown> {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.SAFEHANDS_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.SAFEHANDS_REDIS_REST_TOKEN;
   if (!url || !token) throw new Error("Upstash Redis REST is not configured");
-  const res = await fetch(url, {
+  // The URL is operator-controlled env, so it goes through the SSRF-safe layer.
+  // A failed call falls back to the file store (or throws when
+  // SAFEHANDS_X402_REPLAY_REDIS_REQUIRED=true), so the retry budget stays small.
+  const res = await fetchWithTimeoutAndRetry(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(args),
+    timeoutMs: 5_000,
+    retries: 1,
   });
   if (!res.ok) throw new Error(`Upstash Redis REST returned ${res.status}`);
   const body = await res.json() as { result?: unknown; error?: string };

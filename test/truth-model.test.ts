@@ -80,14 +80,32 @@ describe("rule 2 · caller trust flags are claims — omission is not safety", (
 });
 
 describe("rule 3 · negative provider evidence beats registry recognition (hermetic, mocked fetch)", () => {
+  // GoPlus calls go through the SSRF-safe layer; only its loopback bypass
+  // (ALLOW_LOCAL_X402_FETCH + loopback host) routes through global fetch, so pin
+  // GOPLUS_API_BASE to loopback and enable the bypass (snapshot + restore).
+  const PINNED_ENV: Record<string, string> = {
+    GOPLUS_API_BASE: "http://127.0.0.1:19999",
+    ALLOW_LOCAL_X402_FETCH: "true",
+    NODE_ENV: "test",
+  };
+
   async function withMockedGoplus<T>(payload: unknown, fn: () => Promise<T>): Promise<T> {
     const realFetch = globalThis.fetch;
+    const savedEnv: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(PINNED_ENV)) {
+      savedEnv[k] = process.env[k];
+      process.env[k] = v;
+    }
     globalThis.fetch = (async () =>
       new Response(JSON.stringify(payload), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
     try {
       return await fn();
     } finally {
       globalThis.fetch = realFetch;
+      for (const [k, v] of Object.entries(savedEnv)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
     }
   }
 

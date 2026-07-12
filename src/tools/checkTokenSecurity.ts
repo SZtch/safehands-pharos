@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { isAddress } from "viem";
 import { CHAIN_ID, IS_MAINNET, PHAROS_ENVIRONMENT, activeTokenMap } from "../lib/constants.js";
+import { fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { classifyExternalError, fail, ok } from "../lib/toolResponse.js";
 
 export const checkTokenSecuritySchema = z.object({
@@ -30,46 +31,20 @@ function goplusApiBase(): string {
   return (process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io").replace(/\/+$/, "");
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isRetryableStatus(status: number): boolean {
-  return status === 408 || status === 425 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
-}
-
-async function fetchGoplus(url: string): Promise<Response> {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt <= 2; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
-
-    try {
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          accept: "application/json",
-          "user-agent": "SafeHands/2.4.0",
-        },
-      });
-
-      if (!isRetryableStatus(res.status) || attempt === 2) {
-        return res;
-      }
-
-      lastError = new Error(`GoPlus API returned status ${res.status}`);
-    } catch (err) {
-      lastError = err;
-      if (attempt === 2) throw err;
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    await sleep(300 * (attempt + 1));
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+// GOPLUS_API_BASE is operator-controlled, so both GoPlus call sites go through the
+// SSRF-safe layer (DNS-pinned, blocklist-enforcing) instead of bare fetch. The
+// security check keeps the stronger retry budget; identity enrichment stays
+// single-attempt with a short timeout (see fetchGoplusTokenIdentity).
+function fetchGoplus(url: string): Promise<Response> {
+  return fetchWithTimeoutAndRetry(url, {
+    timeoutMs: 10_000,
+    retries: 2,
+    retryDelayMs: 300,
+    headers: {
+      accept: "application/json",
+      "user-agent": "SafeHands/2.4.0",
+    },
+  });
 }
 
 // ─── GoPlus schema parsing (P0-1 fail-closed) ───────────────────────────────
@@ -148,13 +123,12 @@ export async function fetchGoplusTokenIdentity(
 ): Promise<{ tokenName?: string; tokenSymbol?: string }> {
   const address = tokenAddress.toLowerCase().trim();
   if (!isAddress(address)) return {};
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3_000);
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeoutAndRetry(
       `${goplusApiBase()}/api/v1/token_security/${chainId}?contract_addresses=${address}`,
       {
-        signal: controller.signal,
+        timeoutMs: 3_000,
+        retries: 0,
         headers: {
           accept: "application/json",
           "user-agent": "SafeHands/2.4.0",
@@ -171,8 +145,6 @@ export async function fetchGoplusTokenIdentity(
     };
   } catch {
     return {};
-  } finally {
-    clearTimeout(timeout);
   }
 }
 

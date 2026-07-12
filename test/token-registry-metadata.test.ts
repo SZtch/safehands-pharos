@@ -9,7 +9,12 @@
 //   • registry tokens are never enriched (no GoPlus call at all).
 //   • the same is_honeypot-less payload that yields metadata here still makes
 //     check_token_security fail closed (P0-1 untouched).
-// Hermetic — globalThis.fetch is mocked and restored.
+// Hermetic — globalThis.fetch is mocked and restored. GoPlus calls now go through
+// the SSRF-safe layer (src/lib/http.ts), whose DNS-pinned path bypasses global
+// fetch; only the loopback bypass (ALLOW_LOCAL_X402_FETCH + loopback host) routes
+// through global fetch. So the helper pins GOPLUS_API_BASE to a loopback URL and
+// enables the bypass itself (snapshot + restore — CI exports ALLOW_LOCAL_X402_FETCH
+// job-wide, so never rely on ambient env; see the CLAUDE.md CI-env-leak note).
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import { handleTokenRegistryStatus } from "../src/tools/tokenRegistryStatus.js";
@@ -19,13 +24,28 @@ const CUSTOM = "0x000000000000000000000000000000000000dead";
 
 type MockFetch = () => Promise<Response>;
 
+const PINNED_ENV: Record<string, string> = {
+  GOPLUS_API_BASE: "http://127.0.0.1:19999",
+  ALLOW_LOCAL_X402_FETCH: "true",
+  NODE_ENV: "test",
+};
+
 async function withMockedFetch<T>(mock: MockFetch, fn: () => Promise<T>): Promise<T> {
   const realFetch = globalThis.fetch;
+  const savedEnv: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(PINNED_ENV)) {
+    savedEnv[k] = process.env[k];
+    process.env[k] = v;
+  }
   globalThis.fetch = mock as typeof fetch;
   try {
     return await fn();
   } finally {
     globalThis.fetch = realFetch;
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
   }
 }
 
