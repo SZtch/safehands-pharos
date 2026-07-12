@@ -4,7 +4,7 @@
 // decode: unlimited-approval detection, operator denylist, dangerous-admin
 // recognition, MultiSend aggregation, and the escalate-only floor semantics.
 // Every test pins SAFEHANDS_RECIPIENT_DENYLIST in the child env (CI exports
-// job-wide env vars — see the CLAUDE.md CI-leak note).
+// job-wide env vars — see the env block in .github/workflows/ci.yml).
 // ───────────────────────────────────────────────────────────────────────────
 import { describe, it, after } from "node:test";
 import assert from "node:assert";

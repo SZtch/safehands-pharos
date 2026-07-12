@@ -13,7 +13,11 @@ import { validatePositiveAmount } from "../lib/validation.js";
 import { deriveActionHash, checkManagedWalletAuthorization, riskLevelToEnum, recommendationToEnum } from "../lib/safeHandsRegistry.js";
 import { queueRiskRecord } from "../lib/merkleBatcher.js";
 
-const PKG_VERSION = "2.2.0";
+import { createRequire } from "module";
+
+// Default policyVersion follows the package version (same pattern as index.ts),
+// so on-chain risk records never carry a stale hardcoded version label.
+const PKG_VERSION: string = (createRequire(import.meta.url)("../../package.json") as { version: string }).version;
 
 export const publishRiskScoreSchema = z.object({
   action: z.enum(["swap", "transfer"]).describe("Type of on-chain action to assess"),

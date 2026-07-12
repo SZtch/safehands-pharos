@@ -14,7 +14,7 @@
 // fetch; only the loopback bypass (ALLOW_LOCAL_X402_FETCH + loopback host) routes
 // through global fetch. So the helper pins GOPLUS_API_BASE to a loopback URL and
 // enables the bypass itself (snapshot + restore — CI exports ALLOW_LOCAL_X402_FETCH
-// job-wide, so never rely on ambient env; see the CLAUDE.md CI-env-leak note).
+// job-wide in .github/workflows/ci.yml, so never rely on ambient env).
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import { handleTokenRegistryStatus } from "../src/tools/tokenRegistryStatus.js";
