@@ -1,4 +1,4 @@
-# SafeHands: Policy Profiles & Hardening (P8C)
+# SafeHands: Policy Profiles & Hardening
 
 Policy presets let an operator (or a caller, tighten-only) select a named SafeHands policy for
 the **agent runtime**. They are layered on the **existing escalate-only `applyPolicy`**

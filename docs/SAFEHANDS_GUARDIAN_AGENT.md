@@ -1,6 +1,6 @@
 # SafeHands Agent
 
-> SafeHands Phase 4 is mainnet-first for Pharos Pacific read-only SafeHands checks.
+> The SafeHands Agent is mainnet-first for Pharos Pacific read-only SafeHands checks.
 > Execution, signing, managed wallets, and on-chain publishing are advanced
 > self-hosted modes and remain **disabled by default**.
 
@@ -20,20 +20,20 @@ SafeHands is **not** a wallet, token, NFT, DEX, bridge, custody product,
 private-key manager, or auto-execution bot. It holds no keys and never signs,
 sends, approves, swaps, creates/loads wallets, or publishes. It only *advises*.
 
-## How it is built (layered on Phases 1–3)
+## How it is built (layered on the core preflight + analyzer layers)
 
 The agent is a thin **orchestration layer**: it adds classification, policy, and
 formatting, but **does not duplicate decision logic**:
 
-- **Phase 1: decision contract & boundaries** (`src/lib/guardian/decision.ts`,
+- **Decision contract & boundaries** (`src/lib/guardian/decision.ts`,
   `src/lib/networks.ts`, `src/lib/config.ts`): the four public decisions, the
   mainnet-first network registry, and the four safety gates (all `false` by
   default).
-- **Phase 2: read-only analyzers** (`src/lib/analysis/`): EVM call, tx-hash,
+- **Read-only analyzers** (`src/lib/analysis/`): EVM call, tx-hash,
   contract intel, approval, Safe/MultiSend, x402, gas, token.
-- **Phase 3: read-only HTTP handlers** (`src/api/routes.ts`): the agent routes
-  intents through these pure handlers (which wrap the Phase 2 analyzers).
-- **Phase 1 tools as evidence** (offline-safe): `classifyTokenRegistryStatus`
+- **Read-only HTTP handlers** (`src/api/routes.ts`): the agent routes
+  intents through these pure handlers (which wrap the analyzers).
+- **Preflight tools as evidence** (offline-safe): `classifyTokenRegistryStatus`
   enriches token/contract evidence. RPC-dependent tools (preflight, wallet-health,
   risk-report) are optional live integrations, not used in the offline path.
 
@@ -42,7 +42,7 @@ formatting, but **does not duplicate decision logic**:
 | File | Responsibility |
 |------|----------------|
 | `agentIntentClassifier.ts` | Deterministic classification into 11 intents. |
-| `agentToolRouter.ts` | Routes an intent to the matching Phase 3 handler / analyzer. |
+| `agentToolRouter.ts` | Routes an intent to the matching HTTP handler / analyzer. |
 | `agentPolicyResolver.ts` | Configurable policy; **escalate-only** enforcement. |
 | `agentDecisionFormatter.ts` | Builds the `AgentDecision`; applies `PREPARE_ONLY`. |
 | `agentRuntime.ts` | Agent-to-Agent obligation contract + demo runner. |
@@ -85,7 +85,7 @@ analyzer verdict.
 - Pharos Pacific Mainnet **read/check/analyze: yes**.
 - Execution / signing / sending / publishing: **disabled by default**.
 - Managed wallets: **disabled by default**. No private keys. No custody.
-- Read-only **by construction**: `src/agent/` imports only analyzers, Phase 3
+- Read-only **by construction**: `src/agent/` imports only analyzers, HTTP
   handlers, and config; never a signer, managed-wallet, write-tool, or publish
   module.
 
@@ -106,13 +106,13 @@ All demos are offline (no RPC, no keys) and self-checking.
 | Capability | Status |
 |------------|--------|
 | Intent classification, policy resolution, decision formatting, A2A contract | **Live** (read-only) |
-| Routing to Phase 2 analyzers / Phase 3 handlers | **Live** (read-only) |
+| Routing to analyzers / HTTP handlers | **Live** (read-only) |
 | Deep Safe/MultiSend decode, Permit2 deep decode | **Experimental** (read-only, flagged) |
 | Live mainnet read-only checks via injected RPC | **Live capability** (default wiring) |
 | Execution / signing / managed wallets / on-chain publishing | **Advanced self-hosted / disabled by default** |
 | x402 mainnet USDC settlement + paid `/paid/*` API | **Opt-in self-hosted** (off by default; hosted mode never pays) |
 | Ecosystem integrations (wallet/custody vendors, CCTP, …) | **Roadmap** |
 
-See also: [`AGENT_ARENA.md`](./AGENT_ARENA.md) and
+See also: [`examples/agent-arena/`](../examples/agent-arena/) and
 [`AGENT_TO_AGENT.md`](./AGENT_TO_AGENT.md).
 

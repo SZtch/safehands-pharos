@@ -1,7 +1,7 @@
-# SafeHands: Observability & Public Activity API (Phase 7)
+# SafeHands: Observability & Public Activity API
 
-SafeHands runs as a **read-only**, mainnet-first safety layer for Pharos Pacific. Phase 7 adds
-the production observability and **public activity surface** that lets a future SafeHands
+SafeHands runs as a **read-only**, mainnet-first safety layer for Pharos Pacific. It adds
+a production observability and **public activity surface** that lets a future SafeHands
 site show a landing page, "how to use", a live activity feed, and public metrics;
 **without** ever storing payloads, secrets, or enabling any write/sign/execution path.
 
@@ -150,7 +150,7 @@ URLs, raw signed transactions. Toggle with `SAFEHANDS_REQUEST_LOG_ENABLED=false`
 
 ---
 
-## 5b. Caller identity in activity (P8A)
+## 5b. Caller identity in activity
 
 Activity items also carry sanitized caller identity: `accessTier` (anonymous|api-key|agent|a2a),
 `keyId` (hash prefix only), `agentId`, `a2aPeerId` (untrusted, charset+length-validated, dropped
@@ -158,7 +158,7 @@ if malformed), alongside the existing endpoint-class `callerType`. `GET /activit
 `totals.byAccessTier` (aggregate counts only); `GET /metrics/public` adds `scopedApiKeysAvailable`.
 **Never stored/exposed:** raw API keys, `Authorization`/other headers, client IP, raw payloads.
 
-P8B (quota) adds to `/metrics/public`: `quotaControlsAvailable:true`, the safe `quota` config
+Tiered quota adds to `/metrics/public`: `quotaControlsAvailable:true`, the safe `quota` config
 (`windowSeconds` + per-tier limits, **no identifiers**), and `rateLimitedByTier` (aggregate 429
 counts). Responses carry `X-RateLimit-*` headers. See [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md).
 
@@ -181,12 +181,12 @@ Behavior:
 - When `SAFEHANDS_REQUIRE_API_KEY=true`, these stay open regardless: `/health`,
   `/infra/status`, `/public-config`, `/activity/summary`, `/activity/recent`,
   `/metrics/public`.
-- Rate limiting (the unchanged Phase 6 limiter) buckets authenticated clients by `keyId`
+- Rate limiting (the API limiter) buckets authenticated clients by `keyId`
   (their own quota) and anonymous clients by IP (as before).
 
-## 7. Future direction: x402-paid endpoints (NOT in Phase 7)
+## 7. Future direction: x402-paid endpoints (not implemented)
 
-Paid/premium endpoints are intentionally **not** implemented in Phase 7:
+Paid/premium endpoints are intentionally **not** implemented in the read-only surface:
 `premiumEndpointsAvailable: false`, `x402PaidEndpointsAvailable: false`. When introduced,
 **paid access will be gated by x402** (HTTP 402 payment-required), distinct from the API-key
 identity layer above. The API key foundation here is for identity/quota/access-control, not

@@ -20,27 +20,15 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md) | Guided reviewer walkthrough: live URLs, live contracts, expected outputs. |
 | [DECISION_CONTRACT.md](./DECISION_CONTRACT.md) | The public 4-value decision vocabulary, its internal mappings, and the confirmation trust anchor. Load-bearing. |
 | [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) | How SafeHands serves Real-Fi & RWA on Pharos: what is live today vs roadmap. |
-| [PRODUCTION_BACKEND.md](./PRODUCTION_BACKEND.md) | The read-only SafeHands HTTP API: endpoints, capability flags, request safety. |
-| [PREPARE_TRANSACTION.md](./PREPARE_TRANSACTION.md) | P9 prepare-only mode: `POST /prepare/tx` returns an unsigned tx; the user signs externally. |
-| [WALLET_HANDOFF.md](./WALLET_HANDOFF.md) | P10A: `POST /wallet/prepare` returns a wallet-ready request for an external wallet to sign + send. |
-
-## API, deployment & operations
-
-| Doc | What it covers |
-|-----|----------------|
-| [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) | Scoped API keys, tiered quota, rate-limit headers. |
-| [POLICY_PROFILES.md](./POLICY_PROFILES.md) | Policy presets (tighten-only), policy version metadata. |
-| [OBSERVABILITY_AND_ACTIVITY.md](./OBSERVABILITY_AND_ACTIVITY.md) | Sanitized activity feed, public metrics, request IDs, structured logging. |
-| [PRODUCTION_BACKEND.md](./PRODUCTION_BACKEND.md) | Optional self-host of the read-only reference backend (Docker / VPS / any container host). |
-| [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md) | Copy-paste curl smoke tests against a self-hosted backend. |
 
 ## Agent & integration
 
 | Doc | What it covers |
 |-----|----------------|
+| [TOOLS.md](./TOOLS.md) | The 33 MCP/HTTP/CLI tools, grouped by surface (safety preflight, risk, market/chain, gated execution, policy, managed wallet). |
 | [SAFEHANDS_GUARDIAN_AGENT.md](./SAFEHANDS_GUARDIAN_AGENT.md) | The read-only SafeHands Agent surface. |
 | [AGENT_TO_AGENT.md](./AGENT_TO_AGENT.md) | A2A check flow + obligations. |
-| [AGENT_ARENA.md](./AGENT_ARENA.md) | Example agents in `examples/agent-arena/`. |
+| [examples/agent-arena/](../examples/agent-arena/) | Example agents that consult SafeHands before acting (payment, DeFi, treasury, user scenarios). |
 | [ANVITA_FLOW.md](./ANVITA_FLOW.md) | Assembling the SafeHands Agent in Anvita Flow. |
 
 ## Pharos alignment & evidence (source-of-truth)
@@ -58,6 +46,20 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | [CANONICAL_CONTRACTS.md](./CANONICAL_CONTRACTS.md) | Ground truth for the official Pharos canonical contracts the preflight engine recognizes. |
 | [CONTRACTS_V2_DESIGN.md](./CONTRACTS_V2_DESIGN.md) | Design note for a second contract iteration: known limits of the v1 registry, committed-root history, content-addressed DA, revocation, intent tickets. Designed, not scheduled. |
 | [reports/AUDIT_REMEDIATION_2026-07.md](./reports/AUDIT_REMEDIATION_2026-07.md) | Full July 2026 repository audit + remediation record: every finding, fix, and verification gate. |
+
+## Self-hosting & advanced backend
+
+Real features you run yourself against the read-only reference backend. Every write or
+execution capability here is **off by default** behind env gates; hosted mode never signs or
+broadcasts. Not needed for the reviewer path above.
+
+| Doc | What it covers |
+|-----|----------------|
+| [PRODUCTION_BACKEND.md](./PRODUCTION_BACKEND.md) | The read-only SafeHands HTTP API and how to self-host it: endpoints, capability flags, request safety (Docker / VPS / any container host). |
+| [PREPARE_AND_HANDOFF.md](./PREPARE_AND_HANDOFF.md) | Prepare-only mode (`POST /prepare/tx`, unsigned tx) and wallet-ready handoff (`POST /wallet/prepare`); the user signs externally. |
+| [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) | Scoped API keys, tiered quota, rate-limit headers. |
+| [POLICY_PROFILES.md](./POLICY_PROFILES.md) | Policy presets (tighten-only), policy version metadata. |
+| [OBSERVABILITY_AND_ACTIVITY.md](./OBSERVABILITY_AND_ACTIVITY.md) | Sanitized activity feed, public metrics, request IDs, structured logging. |
 | [deployment/ARCHITECTURE_DECISION.md](./deployment/ARCHITECTURE_DECISION.md) | ADR for the optional self-hosted reference backend (single-instance profile). |
 | [deployment/FULL_SERVICE_DESIGN.md](./deployment/FULL_SERVICE_DESIGN.md) | Layout for running every endpoint/service self-hosted (API + x402 + worker). |
 | [indexing/GOLDSKY_ATTESTATION_INDEXING.md](./indexing/GOLDSKY_ATTESTATION_INDEXING.md) | Goldsky indexing design; mainnet contracts stay the source of truth. |
@@ -69,8 +71,8 @@ a supersession banner; **do not cite them for current capabilities.**
 
 | Doc | Era |
 |-----|-----|
-| [archive/PHAROS_OFFICIAL_ALIGNMENT.md](./archive/PHAROS_OFFICIAL_ALIGNMENT.md) · [archive/PHAROS_ECOSYSTEM_ALIGNMENT.md](./archive/PHAROS_ECOSYSTEM_ALIGNMENT.md) | Phase 2 planning |
-| [archive/PHAROS_IMPLEMENTATION_MAP.md](./archive/PHAROS_IMPLEMENTATION_MAP.md) · [archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md](./archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md) | Phase 5D snapshots (CLI/SDK, live Chainlink reads, and SPV verification have since shipped) |
+| [archive/PHAROS_OFFICIAL_ALIGNMENT.md](./archive/PHAROS_OFFICIAL_ALIGNMENT.md) · [archive/PHAROS_ECOSYSTEM_ALIGNMENT.md](./archive/PHAROS_ECOSYSTEM_ALIGNMENT.md) | Early planning |
+| [archive/PHAROS_IMPLEMENTATION_MAP.md](./archive/PHAROS_IMPLEMENTATION_MAP.md) · [archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md](./archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md) | Later planning snapshots (CLI/SDK, live Chainlink reads, and SPV verification have since shipped) |
 | [archive/POST_HACKATHON_NOTES.md](./archive/POST_HACKATHON_NOTES.md) | Post-hackathon hardening notes |
 
 ---

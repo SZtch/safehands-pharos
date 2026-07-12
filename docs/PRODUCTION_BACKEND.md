@@ -1,10 +1,10 @@
-# SafeHands Production Backend (Phase 6)
+# SafeHands Production Backend
 
 > **SafeHands is a mainnet-first transaction firewall for Pharos Pacific; this backend is
 > its read-only read/check/analyze surface.** This document describes the production backend (the read-only
 > SafeHands API), its endpoints, and its hardening. Hosted default is read-only: **no
 > private keys, no custody, no signing or transaction sending.** Write / prepare-tx /
-> broadcast are future **gated** phases.
+> broadcast are future **gated** capabilities.
 
 ---
 
@@ -26,46 +26,46 @@ From `getCapabilityFlags()` (`src/lib/config.ts`), surfaced on `/infra/status` +
   `guardianApiAvailable`, `agentApiAvailable`, `a2aAvailable`, `pharosEvidenceAvailable`,
   `rpcEvidenceAvailable`, `gasEvidenceAvailable`, `tokenRegistryEvidenceAvailable`,
   `canonicalContractEvidenceAvailable`, `ecosystemEvidenceAvailable`,
-  `x402PreflightAvailable`, `railwayReady`, and the Phase 7 read-only flags
+  `x402PreflightAvailable`, `railwayReady`, and the read-only observability flags
   `publicReadApiAvailable`, `apiKeyAuthAvailable`, `activityApiAvailable`,
   `metricsApiAvailable`, `structuredLoggingAvailable`, `requestIdAvailable`, and the
-  Phase 9 prepare-only flag `prepareTxAvailable` (unsigned prepare; no signing/broadcast).
+  prepare-only flag `prepareTxAvailable` (unsigned prepare; no signing/broadcast).
 - **`false`:** `userSignedBroadcastAvailable`, `signingAvailable`,
   `managedWalletAvailable`, `autoExecutionAvailable`, `onchainPublishingAvailable`,
   `custodyAvailable`, and the paid-surface flags `premiumEndpointsAvailable`,
-  `x402PaidEndpointsAvailable` (paid endpoints are a future, x402-gated phase, not Phase 7).
+  `x402PaidEndpointsAvailable` (paid endpoints are a future, x402-gated capability, not part of the read-only surface).
 
 ## 3. Request safety
 
 CORS (env allowlist; wildcard default) · JSON body limit (`SAFEHANDS_JSON_LIMIT`,
-default `64kb`) · **tiered in-memory quota** (P8B; dependency-free, no Redis/DB; `X-RateLimit-*`
+default `64kb`) · **tiered in-memory quota** (dependency-free, no Redis/DB; `X-RateLimit-*`
 + `Retry-After` headers; bucketed by trusted keyId/IP only; `/health` exempt) · consistent
 error shape with **no stack traces** (generic 500 message when `NODE_ENV=production`) ·
 consistent **404** · security headers (`nosniff`, `no-referrer`, no `x-powered-by`).
 Config helpers live in `src/api/httpHardening.ts` (pure, offline-testable).
 
-**Access control (P8A):** optional **scoped API keys** (`SAFEHANDS_API_KEYS`, format
+**Access control:** optional **scoped API keys** (`SAFEHANDS_API_KEYS`, format
 `rawKey` or `rawKey#scopeA|scopeB`; bare keys get the default read bundle); identity /
 access-control only, **never payment**. Public read API stays **open by default**; scopes are
 enforced only in require-key mode (`SAFEHANDS_REQUIRE_API_KEY=true`): invalid key ⇒ 401, valid
 key missing the endpoint scope ⇒ 403. Raw keys are never stored/logged (keyId only). See
 [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md).
 
-**Policy profiles (P8C):** named SafeHands presets (`standard`/`strict`/`agent`/`x402-preflight`,
+**Policy profiles:** named SafeHands presets (`standard`/`strict`/`agent`/`x402-preflight`,
 `SAFEHANDS_POLICY_PRESET`) govern the **agent path**, layered on the existing escalate-only
 `applyPolicy`: **no preset/request can weaken a decision**. Request presets are tighten-only;
 responses carry `policyPreset`/`policyVersion`. See [`POLICY_PROFILES.md`](./POLICY_PROFILES.md).
 
-**Prepare-only mode (P9):** `POST /prepare/tx` returns an **UNSIGNED** transaction after a
+**Prepare-only mode:** `POST /prepare/tx` returns an **UNSIGNED** transaction after a
 SafeHands check (`requiresUserSignature: true`, `decision: PREPARE_ONLY`; a BLOCK prepares
 nothing). SafeHands signs/broadcasts nothing; `signingAvailable`/`broadcastAvailable` stay
-false; the caller signs externally. See [`PREPARE_TRANSACTION.md`](./PREPARE_TRANSACTION.md).
+false; the caller signs externally. See [`PREPARE_AND_HANDOFF.md`](./PREPARE_AND_HANDOFF.md).
 
-**Wallet-ready handoff (P10A):** `POST /wallet/prepare` reads wallet context
+**Wallet-ready handoff:** `POST /wallet/prepare` reads wallet context
 (`userAddress`/`from`) from the request and returns a `walletRequest`
 (`{from,to,data,value,chainId}`) for an **external** wallet to sign and send. Missing wallet
 context → `requiresWalletConnection: true`; a BLOCK produces no `walletRequest`. SafeHands
-signs/broadcasts nothing and creates no wallet. See [`WALLET_HANDOFF.md`](./WALLET_HANDOFF.md).
+signs/broadcasts nothing and creates no wallet. See [`PREPARE_AND_HANDOFF.md`](./PREPARE_AND_HANDOFF.md).
 
 ## 4. Endpoint matrix
 
@@ -86,11 +86,11 @@ on-chain read when configured (falls back to offline-deterministic evidence othe
 | `POST /analyze/x402` | x402 preflight (no payment) | ✅ | ❌ | ❌ |
 | `POST /agent/check` | SafeHands Agent verdict | ✅ | optional | ❌ |
 | `POST /agent/a2a/check` | Agent-to-agent verdict + caller obligation | ✅ | optional | ❌ |
-| `POST /prepare/tx` | Prepare-only UNSIGNED tx after SafeHands check (P9) | ✅ | optional | ❌ |
-| `POST /wallet/prepare` | Wallet-ready request for an external wallet (P10A) | ✅ | optional | ❌ |
-| `GET /activity/recent` | Public sanitized activity feed (Phase 7) | ✅ | ❌ | ❌ |
-| `GET /activity/summary` | Aggregate activity counts (Phase 7) | ✅ | ❌ | ❌ |
-| `GET /metrics/public` | Safe aggregate metrics (Phase 7) | ✅ | ❌ | ❌ |
+| `POST /prepare/tx` | Prepare-only UNSIGNED tx after SafeHands check | ✅ | optional | ❌ |
+| `POST /wallet/prepare` | Wallet-ready request for an external wallet | ✅ | optional | ❌ |
+| `GET /activity/recent` | Public sanitized activity feed | ✅ | ❌ | ❌ |
+| `GET /activity/summary` | Aggregate activity counts | ✅ | ❌ | ❌ |
+| `GET /metrics/public` | Safe aggregate metrics | ✅ | ❌ | ❌ |
 
 Decision/analysis endpoints (`/guardian/check`, `/analyze/*`, `/agent/*`) are recorded as
 **sanitized** activity items (coarse target only, no payloads/secrets). Every response also

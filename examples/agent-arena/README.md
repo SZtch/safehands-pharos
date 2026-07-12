@@ -1,9 +1,8 @@
 # SafeHands in the Agent Arena
 
-The **Agent Arena** scenarios show how other agents (payment, DeFi, treasury,
-user) consult the **SafeHands Agent** *before* acting. Every scenario is
-offline (no RPC, no keys) and self-checking. SafeHands only advises: it never
-executes.
+These scenarios show how other agents (payment, DeFi, treasury, user) consult the **SafeHands
+Agent** *before* acting. Every scenario is offline (no RPC, no keys) and self-checking. SafeHands
+only advises: it never executes.
 
 ## Run
 
@@ -52,9 +51,8 @@ A user asks whether a raw contract call is safe. SafeHands classifies the call.
 
 ## What this proves
 
-- The SafeHands returns the **public four-value decision** for every action.
+- SafeHands returns the **public four-value decision** for every action.
 - **Caller obligations** are surfaced on every verdict (see
-  [`AGENT_TO_AGENT.md`](./AGENT_TO_AGENT.md)).
+  [`docs/AGENT_TO_AGENT.md`](../../docs/AGENT_TO_AGENT.md)).
 - Everything is **read-only**: `readOnly: true`, `executionAvailable: false`.
   No scenario signs, sends, approves, swaps, or publishes.
-

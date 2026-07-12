@@ -2,7 +2,7 @@
 
 This document covers the **SafeHands Agent** for Pharos Agent Carnival Phase 2 (Agent Arena).
 
-SafeHands began as a suite of native Pharos Skills (Phase 1). For Phase 2, these are orchestrated into a complete **Intelligent SafeHands Agent** (33 tools across MCP, HTTP, and CLI) ready to be deployed on **Anvita Flow**.
+SafeHands began as a suite of native Pharos Skills; for Agent Carnival Phase 2 these are orchestrated into a complete **Intelligent SafeHands Agent** (33 tools across MCP, HTTP, and CLI) ready to be deployed on **Anvita Flow**.
 
 This guide demonstrates how to construct the SafeHands Agent visually in Anvita Flow and configure it for **Pharos Pacific Mainnet (Chain 1672)**.
 
@@ -65,4 +65,4 @@ Rather than relying on model output for safety-relevant facts, the SafeHands Age
 - It halts **unlimited token approvals** dynamically based on the exact token address.
 - After a verified user-signed broadcast, it publishes a permanent **Attestation** to the on-chain `SafeHandsAttestation` contract on Pharos Pacific Mainnet (1672), gated by `SAFEHANDS_ATTESTATION_REQUIRED` and a segregated attester key, building a decentralized reputation layer for AI agents on top of `SafeHandsRegistry`.
 
-The result is the Phase 1 Skills assembled into a single agent behind a deterministic transaction firewall: every action is decided by the policy engine before anything is signed.
+The result is those Skills assembled into a single agent behind a deterministic transaction firewall: every action is decided by the policy engine before anything is signed.

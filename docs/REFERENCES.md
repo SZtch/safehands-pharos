@@ -3,12 +3,12 @@
 
 # SafeHands: References
 
-> **Provenance:** this catalog was assembled during the Phase 2/5 audits and keeps that
+> **Provenance:** this catalog was assembled during earlier audits and keeps that
 > era's status labels (some in-repo values in §6 are testnet-era; live mainnet contract
 > addresses and the canonical registry live in `src/data/ecosystemRegistry.data.ts` and
 > `docs/CANONICAL_CONTRACTS.md`). Official-source links remain valid.
 >
-> **Phase 5A audit:** official Pharos docs were re-verified live; see the
+> **Documentation audit:** official Pharos docs were re-verified live; see the
 > per-topic [`PHAROS_IMPLEMENTATION_MAP.md`](./archive/PHAROS_IMPLEMENTATION_MAP.md) (archived snapshot).
 >
 > Curated source links only. **No large official documentation text is copied
@@ -19,7 +19,7 @@
 > - **TO-VERIFY**: expected/likely; confirm the exact URL at integration time.
 > - **TESTNET-ONLY**: an Atlantic-testnet value in the current repo; not a mainnet claim.
 
-> **SafeHands Phase 2 is mainnet-first for Pharos Pacific read-only SafeHands checks.
+> **SafeHands is mainnet-first for Pharos Pacific read-only SafeHands checks.
 > Execution, signing, managed wallets, and on-chain publishing are advanced
 > self-hosted modes and remain disabled by default.** Pharos Pacific Mainnet network
 > facts below (chain 1672, PROS, `rpc.pharos.xyz`) are **VERIFIED**; Atlantic Testnet
@@ -150,15 +150,15 @@ From `src/lib/constants.ts` `docsSource` fields and existing config; all
 - **Final integration posture** (Phase 5E: capability flags, evidence matrix, safety
   boundary, self-host readiness; the `railwayReady` capability flag): SafeHands is a real
   **mainnet-first** read/check/analyze product; write/execution is gated and a future
-  phase (disabled by default); no custody, no private keys; demo scripts are reviewer/dev
+  capability (disabled by default); no custody, no private keys; demo scripts are reviewer/dev
   examples only.
-- **Optional self-host of the reference backend** (Phase 6: read-only): `PRODUCTION_BACKEND.md`
+- **Optional self-host of the reference backend** (read-only): `PRODUCTION_BACKEND.md`
   (build/start, env matrix, health check, Docker option, endpoint matrix + request-safety);
   the read-only curl smoke set now lives in `SAFEHANDS_REVIEWER_DEMO_SCRIPT.md`. `npm start`
   runs the compiled read-only SafeHands API on `0.0.0.0:$PORT`; no private keys, no custody, no
   signing/sending in self-host mode. This is an optional developer/reviewer reference deploy,
   not the production service; the hosted agent is being published to Anvita Flow (https://flow.anvita.xyz/home) (Agent Carnival Phase 2).
-- **Observability + public activity API** (Phase 7: read-only):
+- **Observability + public activity API** (read-only):
   `OBSERVABILITY_AND_ACTIVITY.md` covers request IDs, ephemeral-host-safe structured logging
   (stdout only, no persistent volume), the
   sanitized in-memory activity feed (`GET /activity/summary`, `/activity/recent`), public

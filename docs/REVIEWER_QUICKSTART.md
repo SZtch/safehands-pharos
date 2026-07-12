@@ -25,8 +25,26 @@ Expected:
 
 - `npm run build` compiles TypeScript.
 - `npm test` runs the hermetic deterministic suite: policy engine, write gate, x402 gate, token-security fail-closed behavior, execution hardening, SDK exports, wallet crypto, and risk inclusion; no network, never broadcasts. Live read-only RPC checks run separately via `npm run test:live`.
-- `npm run demo` runs 12 non-destructive demo scenarios.
+- `npm run demo` runs 12 non-destructive demo scenarios (no private key, no wallet, no broadcast).
 - `npm pack --dry-run` includes `dist`, contracts, core docs, `SKILL.md`, and the default policy.
+
+<details>
+<summary>The 12 demo scenarios</summary>
+
+1. `safehands_wallet_health` returns read-only/default wallet status.
+2. `safehands_preflight_check` allows a small PROS payment intent on Pharos Pacific Mainnet.
+3. `safehands_preflight_check` blocks an unlimited USDC approval.
+4. `token_registry_status` recognizes Pacific Mainnet USDC from the active mainnet registry.
+5. `safehands_x402_preflight` validates an x402 URL, amount, and Pacific USDC payment token without signing.
+6. `x402_pay_and_fetch` fetches a free endpoint without payment.
+7. `x402_pay_and_fetch` refuses paid execution while write tools are disabled.
+8. SSRF protection blocks localhost/private-IP fetches by default.
+9. `send_payment` fails closed because write tools are disabled by default.
+10. `explain_risk` returns a human-readable reason for the blocked approval.
+11. **Tokenized-asset (RWA) transfer compliance**: an approval on an unregistered asset token with an unverified spender returns `REQUIRE_CONFIRMATION` (risk `MEDIUM`).
+12. **Real-Fi settlement cap**: an x402/USDC settlement over the active policy cap returns `BLOCK` (risk `HIGH`).
+
+</details>
 
 `npm run test:contracts` is available for Solidity tests when the Hardhat compiler is available. Some environments need network access or a cached compiler to run it.
 

@@ -1,13 +1,13 @@
-# SafeHands: Access Control & Scoped API Keys (P8A)
+# SafeHands: Access Control & Scoped API Keys
 
-SafeHands is **mainnet-first, read-only** for Pharos Pacific. P8A adds an optional
+SafeHands is **mainnet-first, read-only** for Pharos Pacific. It offers an optional
 **scoped API-key** access-control layer + **sanitized caller identity**, while keeping the
 public read API **open by default**. API keys are **identity / access-control only, never
 payment**; future paid endpoints will use **x402** gating (`x402PaidEndpointsAvailable:false`
 stays false). Everything here is in-memory, read-only; no signing/wallet/DB/external calls.
 
-> **P8A scope:** access control + scoped keys + caller identity only. Quota (P8B) and policy
-> profiles (P8C) are **not** in this slice.
+> **This document's scope:** access control + scoped keys + caller identity. Tiered quota is
+> covered in §6b; policy profiles in [`POLICY_PROFILES.md`](./POLICY_PROFILES.md).
 
 ---
 
@@ -32,12 +32,12 @@ Configure via `SAFEHANDS_API_KEYS` (comma-separated). Each entry may be:
 rawKey                          # bare key → default read scopes
 rawKey#guardian:check|analyze:read   # scoped key → only those scopes
 ```
-- A **bare key (no `#`)** receives the **default read bundle**, so existing keys behave
-  exactly as before P8A.
+- A **bare key (no `#`)** receives the **default read bundle**, so existing bare keys keep
+  the same behavior.
 - Scopes: `guardian:check`, `agent:check`, `a2a:check`, `analyze:read`, `activity:read`,
   `metrics:read`, `prepare:tx`, `wallet:prepare` (the default bundle) + reserved `future:attest`,
   `future:premium` (**defined only, never granted by default; no live endpoint**).
-  `prepare:tx` (P9) and `wallet:prepare` (P10A) are read-only; they build UNSIGNED / wallet-ready
+  `prepare:tx` and `wallet:prepare` are read-only; they build UNSIGNED / wallet-ready
   requests for external signing; neither signs or broadcasts.
 - Unknown scope tokens are dropped (fail-closed). Split is on the **first `#`** only.
 - Keys are **sha256-hashed at load**; only the 8-char `keyId` is ever stored/logged. **The raw
@@ -84,7 +84,7 @@ display-only**: validated against `^[A-Za-z0-9._:-]{1,64}$` and **dropped if mal
 - `GET /metrics/public` adds `scopedApiKeysAvailable:true`. No keys/IPs/payloads/headers are
   ever exposed.
 
-## 6b. Tiered quota (P8B)
+## 6b. Tiered quota
 In-memory, dependency-free (no Redis/DB). Per-tier limits (`SAFEHANDS_QUOTA_*`): `anonymous`
 defaults to the rate-limit max (120/60s), `api-key`/`agent`/`a2a` default to 600/60s. Buckets are
 keyed by a **trusted identifier only**: `keyId` for a valid key, else the client IP; untrusted
@@ -95,7 +95,7 @@ Reset`; a 429 adds `Retry-After` (the existing `RATE_LIMITED` body shape). `/hea
 
 ## 7. Capability flags
 `publicReadApiAvailable:true`, `apiKeyAuthAvailable:true`, **`scopedApiKeysAvailable:true`**,
-**`quotaControlsAvailable:true`**, **`prepareTxAvailable:true`** (P9 prepare-only: unsigned, no signing/broadcast).
+**`quotaControlsAvailable:true`**, **`prepareTxAvailable:true`** (prepare-only: unsigned, no signing/broadcast).
 Env-gated (default `false` until explicitly configured): `premiumEndpointsAvailable`,
 `x402PaidEndpointsAvailable` (true when `X402_PAY_TO` + a facilitator are set),
 `signingAvailable`, `managedWalletAvailable`, `onchainPublishingAvailable`,
