@@ -21,6 +21,7 @@ SafeHands may perform read-only calls to these approved public sources only:
 - **GoPlus public token-security API**: keyless honeypot / tax / owner / malicious-address intelligence.
 - **Bundled registries**: canonical contracts and the official Pharos Token Registry (`assets/known-pharos.json`).
 - **Configured public providers**: subgraph / indexer / pool endpoints **only if present in `assets/supported-protocols.json`, public, verified, and keyless**. When absent, the matching command returns a structured `*_NOT_CONFIGURED` error.
+- **Registry-committed risk-batch file**: the `query` command fetches the batch file at the `currentDataURI` the SafeHands registry owner committed on-chain (https only, 8 s timeout, size-capped). No other URL is ever fetched.
 
 It never fetches arbitrary user-provided URLs (payment/campaign links are analyzed as strings, never retrieved), never uses API keys / pass-keys / auth headers / cookies, never scrapes explorers or websites, and never treats a DEX/pool quote as a canonical price (canonical pricing is Chainlink Push only). See `references/capability-scope.md`.
 

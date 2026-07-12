@@ -11,11 +11,12 @@ SafeHands is a **zero-custody, read-only, pre-execution safety gateway**. This f
 | GoPlus public token-security API | keyless honeypot / tax / owner / malicious-address intel | built-in (`GOPLUS_API_BASE`) |
 | Bundled registries | canonical contracts + official Pharos Token Registry | `assets/known-pharos.json` |
 | Configured public providers | subgraph / indexer / pool, **only if public, verified, keyless, DNS-resolvable** | `assets/supported-protocols.json` |
+| Registry-committed risk-batch file | the `query` command fetches the batch file at the `currentDataURI` the SafeHands registry owner committed on-chain; **https only**, 8 s timeout, response size capped | on-chain `SafeHandsRegistry.currentDataURI` |
 
 ## Forbidden
 
 - **No writes of any kind**: never sign, broadcast, approve, swap, bridge, deposit, stake, pay x402, create/manage wallets, or publish records/attestations.
-- **No arbitrary URL fetching.** Payment/campaign links are analyzed as strings, never retrieved. (There is no hosted x402 fetcher.)
+- **No arbitrary URL fetching.** Payment/campaign links are analyzed as strings, never retrieved. (There is no hosted x402 fetcher.) The single non-RPC, non-provider fetch is the registry-committed dataURI batch listed above: an https URL the registry owner committed on-chain, not caller input.
 - **No secrets, ever**: no private keys, seed phrases, mnemonics, signatures, API keys, pass-keys, auth headers, or cookies, on input or to any provider.
 - **No keyed/quote APIs**: no DODO API keys; no FaroSwap pass-keys or internal frontend endpoints; no GraphQL hosts that don't resolve over public DNS.
 - **No scraping** of explorers or websites.

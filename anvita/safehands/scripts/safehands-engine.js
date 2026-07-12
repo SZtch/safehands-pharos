@@ -967,11 +967,16 @@ async function cmdQuery(subject) {
   if (!ADDRESS_RE.test(String(subject || ""))) return fail("VALIDATION_ERROR", "query expects a valid 0x EVM address argument.");
   const out = { success: true, subject, registry: { configured: false }, reputation: { configured: false }, records: [], recordsSource: null, network: "pacific-mainnet", chainId: CHAIN_ID, timestamp: new Date().toISOString() };
   if (ADDRESS_RE.test(REGISTRY_ADDR)) {
-    const [root, uriHex, agentHex] = await Promise.all([
-      ethCall(REGISTRY_ADDR, SEL.currentMerkleRoot),
-      ethCall(REGISTRY_ADDR, SEL.currentDataURI),
-      ethCall(REGISTRY_ADDR, SEL.isAuthorizedAgent + encAddr(subject)),
-    ]);
+    // Sequential reads on purpose: the public Pharos RPC rate-limits parallel
+    // eth_call bursts (same reason get_token_price reads sequentially). Each
+    // read retries once so a single transient limit hit does not fail the query.
+    const readRegistry = async (data) => {
+      try { return await ethCall(REGISTRY_ADDR, data); }
+      catch { return await ethCall(REGISTRY_ADDR, data); }
+    };
+    const root = await readRegistry(SEL.currentMerkleRoot);
+    const uriHex = await readRegistry(SEL.currentDataURI);
+    const agentHex = await readRegistry(SEL.isAuthorizedAgent + encAddr(subject));
     const dataURI = decString(uriHex);
     out.registry = {
       configured: true, contractAddress: REGISTRY_ADDR, currentMerkleRoot: root,
@@ -979,7 +984,7 @@ async function cmdQuery(subject) {
       isAuthorizedAgent: decUint(agentHex) === 1n,
       explorer: `${EXPLORER}/address/${REGISTRY_ADDR}`,
     };
-    if (dataURI && /^https?:\/\//.test(dataURI)) {
+    if (dataURI && /^https:\/\//.test(dataURI)) {
       try {
         const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
         const res = await fetch(dataURI, { signal: ctl.signal }); clearTimeout(t);
@@ -994,6 +999,10 @@ async function cmdQuery(subject) {
         }));
         out.recordsSource = "dataURI";
       } catch { out.recordsSource = "dataURI-unreachable"; }
+    } else if (dataURI) {
+      // The committed batch URI is fetched over https only; any other scheme
+      // (http, ipfs, file, ...) is reported, never fetched.
+      out.recordsSource = "dataURI-scheme-not-fetchable";
     }
   }
   if (ADDRESS_RE.test(ATTEST_ADDR)) {
