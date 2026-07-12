@@ -200,7 +200,7 @@ function buildRouteConfig(cfg: X402GateConfig) {
     "GET /paid/check-token-security": entry(`Verify contract token security profile (USDC ${cfg.priceUsdc})`),
     "GET /paid/simulate-transaction": entry(`Simulate EVM execution before broadcast (USDC ${cfg.priceUsdc})`),
     "GET /paid/token-price": entry(`Real-time token price via DODO/FaroSwap (USDC ${cfg.priceUsdc})`),
-    "GET /paid/pool-info": entry(`DODO/FaroSwap pool data — ratio, impact, fees (USDC ${cfg.priceUsdc})`),
+    "GET /paid/pool-info": entry(`DODO/FaroSwap pool data: ratio, impact, fees (USDC ${cfg.priceUsdc})`),
     "GET /paid/swap-route": entry(`Swap route with estimated output via DODO (USDC ${cfg.priceUsdc})`),
     "GET /paid/risk-report": entry(`Full SafeHands risk report bundle (USDC ${cfg.priceUsdc})`),
   };

@@ -1,4 +1,4 @@
-// ─── Agent Arena — Payment Agent (x402) ────────────────────────────────
+// ─── Agent Arena: Payment Agent (x402) ────────────────────────────────
 // A Payment Agent asks SafeHands whether an x402 paid request is safe BEFORE
 // paying. SafeHands checks URL (SSRF), amount vs policy/limit, token, and payTo.
 // Live Execution: Reads live from Pharos Pacific Mainnet RPC and DODO API.
@@ -21,7 +21,7 @@ function expect(name: string, actual: string, allowed: string[]) {
 async function main() {
   const agent = createGuardianAgent();
 
-  // Fixture 1 — safe URL, small amount within limits. Safe, but execution is
+  // Fixture 1: safe URL, small amount within limits. Safe, but execution is
   // disabled by default → PREPARE_ONLY (caller must prepare/hand off, not pay).
   const safe = await agent.checkForAgent("payment-agent", {
     url: "https://api.example.com/paid-resource",
@@ -31,7 +31,7 @@ async function main() {
   expect("safe small payment", safe.decision, ["PREPARE_ONLY"]);
   expect("  caller obligation", safe.caller.obligation, ["prepare_handoff_no_execute"]);
 
-  // Fixture 2 — unsafe URL (localhost SSRF) → BLOCK.
+  // Fixture 2: unsafe URL (localhost SSRF) → BLOCK.
   const unsafe = await agent.checkForAgent("payment-agent", {
     url: "http://localhost:8545/paid",
     paymentAmountUsdc: "0.001",
@@ -39,7 +39,7 @@ async function main() {
   expect("localhost SSRF", unsafe.decision, ["BLOCK"]);
   expect("  caller obligation", unsafe.caller.obligation, ["stop"]);
 
-  // Fixture 3 — amount over a tighter agent policy but under the hard cap →
+  // Fixture 3: amount over a tighter agent policy but under the hard cap →
   // policy escalates to REQUIRE_CONFIRMATION.
   const strict = createGuardianAgent({ owner: "agent", policy: { maxX402PaymentUsdc: "0.005" } });
   const overPolicy = await strict.checkForAgent("payment-agent", {
@@ -49,7 +49,7 @@ async function main() {
   expect("over agent policy", overPolicy.decision, ["REQUIRE_CONFIRMATION"]);
   expect("  caller obligation", overPolicy.caller.obligation, ["ask_user_or_admin"]);
 
-  // Fixture 4 — amount over the hard payment cap → BLOCK.
+  // Fixture 4: amount over the hard payment cap → BLOCK.
   const overCap = await agent.check({ url: "https://api.example.com/paid", paymentAmountUsdc: "999999" });
   expect("over hard cap", overCap.decision, ["BLOCK"]);
 

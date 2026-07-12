@@ -2,7 +2,7 @@
 
 The **Agent Arena** scenarios show how other agents (payment, DeFi, treasury,
 user) consult the **SafeHands Agent** *before* acting. Every scenario is
-offline (no RPC, no keys) and self-checking. SafeHands only advises — it never
+offline (no RPC, no keys) and self-checking. SafeHands only advises: it never
 executes.
 
 ## Run

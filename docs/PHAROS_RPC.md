@@ -1,4 +1,4 @@
-# SafeHands — Pharos JSON-RPC: Read-Only Access, Method Matrix & Optional Providers
+# SafeHands Pharos JSON-RPC: Read-Only Access, Method Matrix & Optional Providers
 
 > How SafeHands talks to Pharos JSON-RPC. **SafeHands uses Pharos read-only RPC
 > methods for SafeHands checks. Hosted mode blocks write RPC methods.
@@ -21,14 +21,14 @@
 Every live read in the SafeHands path passes one fail-closed gate before any network
 I/O:
 
-- **`src/lib/pharos/rpcMethods.ts`** — the method matrix (single source of truth) and
+- **`src/lib/pharos/rpcMethods.ts`**: the method matrix (single source of truth) and
   `assertHostedReadOnlyMethod(method)`. Read methods pass; **write / signing / account /
   unknown methods throw** (`RpcMethodBlockedError`).
-- **`src/lib/pharos/rpc.ts`** — `PharosReadOnlyRpc`. `request()` / `tryRequest()` /
+- **`src/lib/pharos/rpc.ts`**: `PharosReadOnlyRpc`. `request()` / `tryRequest()` /
   `guarded()` all call the gate **first**, so a blocked method never reaches the
   transport. The transport is injectable (tests) and defaults to a fetch JSON-RPC POST
   whose URL is resolved from env only.
-- **`src/api/server.ts`** `buildReadOnlyAccess()` — the live HTTP read access
+- **`src/api/server.ts`** `buildReadOnlyAccess()`: the live HTTP read access
   (`eth_getCode` / `eth_estimateGas` / `eth_gasPrice` / `eth_getTransactionReceipt`) is
   wrapped in `rpc.guarded(...)`, so every live read passes the whitelist at runtime.
 
@@ -39,10 +39,10 @@ transport).
 
 **Classifications:** `read_only` (allowed) · `experimental_read_only` (allowed,
 best-effort/graceful fallback) · `write_blocked` (BLOCKED in hosted mode) ·
-`unsupported` (not on Pharos / never auto-called) · `to_verify` (unconfirmed —
+`unsupported` (not on Pharos / never auto-called) · `to_verify` (unconfirmed;
 blocked by default). Unknown methods fail closed (blocked).
 
-### Read-only (allowed in hosted mode) — IMPLEMENTED
+### Read-only (allowed in hosted mode): IMPLEMENTED
 
 | Method | Risk relevance |
 |--------|----------------|
@@ -62,10 +62,10 @@ blocked by default). Unknown methods fail closed (blocked).
 | `eth_getBlockByHash` / `eth_getBlockByNumber` | Block lookup. |
 | `eth_getBlockReceipts` | All receipts in a block. |
 | `eth_getLogs` | Event logs (≤100 blocks when rate-limited). |
-| `eth_getAccount` | Account details (balance/nonce) — officially supported. |
+| `eth_getAccount` | Account details (balance/nonce); officially supported. |
 | `eth_syncing` / `net_version` / `web3_clientVersion` | Node/network metadata. |
 
-### Experimental read-only — EXPERIMENTAL
+### Experimental read-only: EXPERIMENTAL
 
 | Method | Status | Notes |
 |--------|--------|-------|
@@ -73,7 +73,7 @@ blocked by default). Unknown methods fail closed (blocked).
 | `debug_traceTransaction` | experimental | Heavy execution trace; best-effort only. |
 | `trace_filter` | experimental | Filtered traces (≤500 blocks); best-effort only. |
 
-### Write — BLOCKED in hosted read-only mode
+### Write: BLOCKED in hosted read-only mode
 
 | Method | Why blocked |
 |--------|-------------|
@@ -87,19 +87,19 @@ blocked by default). Unknown methods fail closed (blocked).
 | `personal_newAccount` / `personal_importRawKey` | Account creation / key import; blocked. |
 | `wallet_addEthereumChain` / `wallet_switchEthereumChain` / `wallet_watchAsset` / `wallet_requestPermissions` | Wallet management; blocked. Unknown `wallet_*` / `personal_*` are blocked by default. |
 
-### Unsupported on Pharos — NOT_IMPLEMENTED (never auto-called)
+### Unsupported on Pharos: NOT_IMPLEMENTED (never auto-called)
 
 | Method | Notes |
 |--------|-------|
 | `eth_accounts` | Returns `[]` (node manages no accounts); not relied upon. |
 | `eth_coinbase` / `eth_mining` / `eth_hashrate` | Deprecated PoW-era; not used. |
-| *(any unknown method)* | Fails closed — never auto-called. |
+| *(any unknown method)* | Fails closed; never auto-called. |
 
 Each matrix entry carries `method`, `classification`, `officialDocsUrl`,
 `safehandsStatus`, `riskRelevance`, and `hostedModeBehavior`. Summary counts are
 surfaced in `rpcEvidence.methods`.
 
-## 3. eth_getProof / SPV — inclusion verification is live
+## 3. eth_getProof / SPV: inclusion verification is live
 
 `eth_getProof` (EIP-1186 account/storage Merkle proof) is **officially supported** by
 Pharos and classified read-only (experimental at the RPC-availability level: not every
@@ -132,22 +132,22 @@ true when no live estimator is supplied (the offline default). **Status: IMPLEME
 
 API and Agent responses carry (additively, without changing existing fields):
 
-- `rpcEvidence` — provider (redacted), method-matrix counts, `writeBlocked` list,
+- `rpcEvidence`: provider (redacted), method-matrix counts, `writeBlocked` list,
   `eth_getProof`/fee capabilities, `readOnly`, `executionAvailable`, `network`/`chainId`.
-- `gasEvidence` — the gas/fee capability descriptor above.
-- `pharosEvidence` — alias of `rpcEvidence`.
+- `gasEvidence`: the gas/fee capability descriptor above.
+- `pharosEvidence`: alias of `rpcEvidence`.
 
 Surfaced on `GET /infra/status`, `GET /public-config`, `POST /guardian/check`,
 `POST /analyze/{tx,contract,approval,safe,x402}`, and (inside `evidence`)
-`POST /agent/check` + `POST /agent/a2a/check`. **Evidence is metadata — it never
+`POST /agent/check` + `POST /agent/a2a/check`. **Evidence is metadata: it never
 relaxes a SafeHands decision** (a known method/provider does not make a risky action
 safe).
 
-## 6. Optional premium providers (ZAN / Alchemy / Nirvana) — env-only
+## 6. Optional premium providers (ZAN / Alchemy / Nirvana): env-only
 
 **ZAN RPC is optional and never required.** The hosted default uses the public Pharos
 RPC. If ZAN (or another provider) env vars are set, SafeHands uses them for read-only
-calls — but **secrets are never exposed through public config**. SafeHands holds no
+calls, but **secrets are never exposed through public config**. SafeHands holds no
 keys and never hardcodes a premium/keyed URL.
 
 ZAN supports Pharos mainnet + testnet. Official URL format (API key required):
@@ -168,7 +168,7 @@ RPC URL resolution precedence (mainnet) in `src/lib/networks.ts` `resolveRpcUrl`
 `PHAROS_RPC_PROVIDER` label may name a custom provider for evidence purposes only.
 Multiple comma-separated endpoints fail over in `pharosClient.ts` (`PHAROS_RPC_URLS`).
 
-### Secrets are never exposed — IMPLEMENTED
+### Secrets are never exposed: IMPLEMENTED
 
 Public/status responses include only a **redacted** provider descriptor
 (`resolveRpcProvider` → `rpcEvidence.provider`):
@@ -195,7 +195,7 @@ provider: { name: "zan" | "alchemy" | "nirvana" | "custom" | "pharos-public",
 ### Hard rules
 
 Do not hardcode premium RPC keys. Do not expose env secrets. ZAN/Alchemy/Nirvana are
-optional read-only providers — they add **no** execution, signing, wallet, or key
+optional read-only providers; they add **no** execution, signing, wallet, or key
 capability. The read-only method whitelist applies regardless of provider.
 
 ## 7. Read-only boundary

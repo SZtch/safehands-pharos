@@ -111,7 +111,7 @@ export async function handleGetAgentWalletBalance(
       isFunded,
       fundingInstructions: isFunded
         ? null
-        : `Wallet is unfunded. Fund it with PROS on ${PHAROS_ENVIRONMENT} — wallet address: ${address}`,
+        : `Wallet is unfunded. Fund it with PROS on ${PHAROS_ENVIRONMENT}; wallet address: ${address}`,
     });
   } catch (err) {
     return classifyExternalError("pharos_rpc", err);

@@ -90,7 +90,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     riskRelevance:
       "Permit2 manages ERC-20 allowances and can later authorize transfers via signatures; an approval to Permit2 delegates allowance management to it.",
     recommendedSafeHandsBehavior:
-      "Recognize as canonical, but do NOT treat as automatically safe — unlimited approvals still REQUIRE_CONFIRMATION (deep Permit2 decode is experimental).",
+      "Recognize as canonical, but do NOT treat as automatically safe: unlimited approvals still REQUIRE_CONFIRMATION (deep Permit2 decode is experimental).",
   },
   "0xca11bde05977b3631167028862be2a173976ca11": {
     label: "Multicall3",
@@ -110,7 +110,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     source: "official_docs",
     status: "implemented",
     riskRelevance: "ERC-4337 account-abstraction entrypoint; executes bundled UserOperations.",
-    recommendedSafeHandsBehavior: "Recognize as canonical; UserOperation contents are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+    recommendedSafeHandsBehavior: "Recognize as canonical; UserOperation contents are not decoded; treat the action as REQUIRE_CONFIRMATION.",
   },
   "0x0000000071727de22e5e9d8baf0edac6f37da032": {
     label: "ERC-4337 EntryPoint v0.7",
@@ -120,7 +120,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     source: "official_docs",
     status: "implemented",
     riskRelevance: "ERC-4337 account-abstraction entrypoint; executes bundled UserOperations.",
-    recommendedSafeHandsBehavior: "Recognize as canonical; UserOperation contents are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+    recommendedSafeHandsBehavior: "Recognize as canonical; UserOperation contents are not decoded; treat the action as REQUIRE_CONFIRMATION.",
   },
 
   // ── Pharos Pacific Mainnet official addresses (canonical-contracts page) ──
@@ -171,7 +171,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     status: "implemented",
     riskRelevance: "Deterministic contract-deployment factory (CREATE2/CREATE3); can deploy arbitrary contracts.",
     recommendedSafeHandsBehavior:
-      "Recognize as the canonical CreateX deployer on Pacific Mainnet; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+      "Recognize as the canonical CreateX deployer on Pacific Mainnet; deployment payloads are not decoded; treat the action as REQUIRE_CONFIRMATION.",
     note: "Listed for Pacific Mainnet in the Pharos canonical-contracts page; Atlantic deployment not asserted.",
   },
   "0x13b0d85ccb8bf860b6b79af3029fca081ae9bef2": {
@@ -183,7 +183,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     status: "implemented",
     riskRelevance: "CREATE2 contract-deployment factory; can deploy arbitrary contracts at deterministic addresses.",
     recommendedSafeHandsBehavior:
-      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded; treat the action as REQUIRE_CONFIRMATION.",
   },
   "0x4e59b44847b379578588920ca78fbf26c0b4956c": {
     label: "Foundry Deterministic Deployment Proxy",
@@ -194,7 +194,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     status: "implemented",
     riskRelevance: "Deterministic deployment proxy used by Foundry tooling; can deploy arbitrary contracts.",
     recommendedSafeHandsBehavior:
-      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded; treat the action as REQUIRE_CONFIRMATION.",
   },
   "0x914d7fec6aac8cd542e72bca78b30650d45643d7": {
     label: "Safe Singleton Factory",
@@ -205,7 +205,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     status: "implemented",
     riskRelevance: "Deterministic factory used to deploy Safe singletons; can deploy arbitrary contracts.",
     recommendedSafeHandsBehavior:
-      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded — treat the action as REQUIRE_CONFIRMATION.",
+      "Recognize as canonical deployer infrastructure; deployment payloads are not decoded; treat the action as REQUIRE_CONFIRMATION.",
   },
   "0xa1dabef33b3b82c7814b6d82a79e50f4ac44102b": {
     label: "Safe MultiSendCallOnly (v1.3.0)",
@@ -227,7 +227,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     status: "implemented",
     riskRelevance: "ERC-4337 helper that deploys smart accounts on first UserOperation.",
     recommendedSafeHandsBehavior:
-      "Recognize as canonical account-abstraction infrastructure; account initcode is not decoded — treat the action as REQUIRE_CONFIRMATION.",
+      "Recognize as canonical account-abstraction infrastructure; account initcode is not decoded; treat the action as REQUIRE_CONFIRMATION.",
   },
   "0x7fc98430eaedbb6070b35b39d798725049088348": {
     label: "ERC-4337 SenderCreator v0.6",
@@ -238,7 +238,7 @@ const CANONICAL_CONTRACT_METADATA: Record<string, Omit<CanonicalContract, "netwo
     status: "implemented",
     riskRelevance: "ERC-4337 helper that deploys smart accounts on first UserOperation.",
     recommendedSafeHandsBehavior:
-      "Recognize as canonical account-abstraction infrastructure; account initcode is not decoded — treat the action as REQUIRE_CONFIRMATION.",
+      "Recognize as canonical account-abstraction infrastructure; account initcode is not decoded; treat the action as REQUIRE_CONFIRMATION.",
   },
 };
 
@@ -360,25 +360,25 @@ export async function analyzeContract(
 
   if (recognizedOnNetwork && evidence) {
     reasons.push(`Address matches the canonical ${evidence.name} address on ${network.label} (recognized by address; deployment/verification on the active network is NOT confirmed).`);
-    if (codePresent === false) warnings.push("No code found at this canonical address on the active network — it may not be deployed here.");
+    if (codePresent === false) warnings.push("No code found at this canonical address on the active network; it may not be deployed here.");
     internalDecision = "ALLOW";
     riskLevel = "LOW";
   } else if (knownEntry) {
     // Known canonical address, but not recognized on the ACTIVE network — do not auto-allow.
-    reasons.push(`Address matches the canonical ${knownEntry.label} address, but that contract is not recognized on ${network.label} — treat as an unknown contract and confirm.`);
+    reasons.push(`Address matches the canonical ${knownEntry.label} address, but that contract is not recognized on ${network.label}; treat as an unknown contract and confirm.`);
     if (knownEntry.note) warnings.push(knownEntry.note);
     internalDecision = "REQUIRE_CONFIRMATION";
     riskLevel = "MEDIUM";
   } else if (codePresent === true) {
-    reasons.push(`Contract at ${checksum} is not a recognized canonical contract — unknown contract requires confirmation.`);
+    reasons.push(`Contract at ${checksum} is not a recognized canonical contract; unknown contract requires confirmation.`);
     internalDecision = "REQUIRE_CONFIRMATION";
     riskLevel = "MEDIUM";
   } else if (codePresent === false) {
-    reasons.push(`No code at ${checksum} (EOA) — not a contract.`);
+    reasons.push(`No code at ${checksum} (EOA), not a contract.`);
     internalDecision = "ALLOW";
     riskLevel = "LOW";
   } else {
-    reasons.push(`Code presence for ${checksum} not verified (no read-only client) — treat unknown contracts with confirmation.`);
+    reasons.push(`Code presence for ${checksum} not verified (no read-only client); treat unknown contracts with confirmation.`);
     warnings.push("Provide a read-only RPC client to confirm code presence.");
     internalDecision = "REQUIRE_CONFIRMATION";
     riskLevel = "UNKNOWN";

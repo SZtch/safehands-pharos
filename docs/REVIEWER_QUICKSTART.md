@@ -2,7 +2,7 @@
 
 SafeHands is the pre-execution transaction firewall for AI agent finance on Pharos, mainnet-first (Pacific, chain `1672`). It is read-only by default and only executes writes/payments after explicit environment flags, signer availability, policy checks, and authorization where required.
 
-**No-install path:** the fully-hosted, zero-custody agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2); once published, any Steward Agent on the marketplace can discover and call it (no server, no keys). To try the safety engine on your own machine without cloning, run `npx -y github:SZtch/safehands-pharos --demo`. To exercise the HTTP API directly, self-host the read-only backend locally (`npm run build && node dist/api/server.js` → `http://localhost:4022`) and use the curl examples in [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md). For the fastest "firewall in action" moment — the engine blocking a drainer-style unlimited approve from raw calldata, offline — see the 60-second section in that script.
+**No-install path:** the fully-hosted, zero-custody agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2); once published, any Steward Agent on the marketplace can discover and call it (no server, no keys). To try the safety engine on your own machine without cloning, run `npx -y github:SZtch/safehands-pharos --demo`. To exercise the HTTP API directly, self-host the read-only backend locally (`npm run build && node dist/api/server.js` → `http://localhost:4022`) and use the curl examples in [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md). For the fastest "firewall in action" moment (the engine blocking a drainer-style unlimited approve from raw calldata, offline), see the 60-second section in that script.
 
 ## 1. Install and build
 
@@ -24,7 +24,7 @@ npm pack --dry-run
 Expected:
 
 - `npm run build` compiles TypeScript.
-- `npm test` runs the hermetic deterministic suite — policy engine, write gate, x402 gate, token-security fail-closed behavior, execution hardening, SDK exports, wallet crypto, and risk inclusion; no network, never broadcasts. Live read-only RPC checks run separately via `npm run test:live`.
+- `npm test` runs the hermetic deterministic suite: policy engine, write gate, x402 gate, token-security fail-closed behavior, execution hardening, SDK exports, wallet crypto, and risk inclusion; no network, never broadcasts. Live read-only RPC checks run separately via `npm run test:live`.
 - `npm run demo` runs 12 non-destructive demo scenarios.
 - `npm pack --dry-run` includes `dist`, contracts, core docs, `SKILL.md`, and the default policy.
 
@@ -41,7 +41,7 @@ Expected:
 
 ### Gated execution behavior
 
-Execution tools are disabled by default. To enable them intentionally, the operator must configure the relevant flags, signer mode, funding, policy limits, and authorization. Write/execution tools are **experimental and unaudited** — they ship disabled and are opt-in, self-hosted, single-tenant only.
+Execution tools are disabled by default. To enable them intentionally, the operator must configure the relevant flags, signer mode, funding, policy limits, and authorization. Write/execution tools are **experimental and unaudited**: they ship disabled and are opt-in, self-hosted, single-tenant only.
 
 Typical gates:
 

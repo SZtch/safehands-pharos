@@ -1,4 +1,4 @@
-# SafeHands — Prepare-Only Transaction Mode (P9)
+# SafeHands: Prepare-Only Transaction Mode (P9)
 
 `POST /prepare/tx` builds an **UNSIGNED transaction request object** after a real SafeHands
 check. SafeHands holds **no keys**: it **never signs, never broadcasts, never creates/manages a
@@ -10,7 +10,7 @@ endpoints use x402 (not this).
 
 ## Flow
 1. Validate the caller's intended call (`to` valid + non-zero, `data` hex, `value` ≥ 0).
-2. Run the real **escalate-only** SafeHands check (policy presets apply — a `BLOCK` is never weakened).
+2. Run the real **escalate-only** SafeHands check (policy presets apply; a `BLOCK` is never weakened).
 3. **If the verdict is `BLOCK`** → prepare nothing (`preparedTransaction: null`, `decision: BLOCK`,
    `requiresUserSignature: false`).
 4. **Otherwise** → return the unsigned tx + `requiresUserSignature: true` and `decision: PREPARE_ONLY`.
@@ -55,7 +55,7 @@ access** (scope `prepare:tx`, in the default read bundle; gated only in require-
 
 ## Activity
 A prepare request records a **sanitized** activity item (coarse target: 4-byte selector +
-shortened address) — never the full calldata and never the `preparedTransaction` object.
+shortened address); never the full calldata and never the `preparedTransaction` object.
 
 ## Guarantees
 - **No signing/broadcast/keys/wallets/publishing** (boundary-tested: no signer/write primitives

@@ -1,11 +1,11 @@
-# Architecture Decision Record — SafeHands Reference Backend (Optional Self-Host)
+# Architecture Decision Record: SafeHands Reference Backend (Optional Self-Host)
 
 **Status:** Accepted · **Scope:** Pharos Pacific Mainnet (chainId 1672) · **Profile:** Single-Instance Self-Host Profile
 
 > **Framing:** The SafeHands *hosted agent* is the **Anvita Flow skill**
-> ([flow.anvita.xyz/home](https://flow.anvita.xyz/home)) — once published, that is what any Steward
+> ([flow.anvita.xyz/home](https://flow.anvita.xyz/home)); once published, that is what any Steward
 > Agent will discover and call, and it depends on **none of our own backend or cloud**.
-> The full TypeScript backend in `src/` is an **optional, self-hostable reference** —
+> The full TypeScript backend in `src/` is an **optional, self-hostable reference**;
 > not the production service. This ADR records how that reference backend is
 > structured when you choose to self-host it.
 
@@ -17,7 +17,7 @@ When self-hosted, SafeHands runs as a **Single-Instance Architecture**: one
 consolidated process that hosts the SafeHands API, the verified-broadcast pipeline,
 the on-chain attestation lifecycle, and the background retry/audit loop **inside one
 process**, backed by a persistent volume and optional Redis. It runs on **any
-container host that supports a persistent volume** — Docker, a VPS, Fly, or
+container host that supports a persistent volume**: Docker, a VPS, Fly, or
 similar. This is a **cost-efficient, correctness-first topology** suitable for a
 reviewer-ready read-only deployment on Pharos Pacific.
 
@@ -32,8 +32,8 @@ investment.
 
 SafeHands is a mainnet-first pre-execution transaction firewall, verified-broadcast relay,
 and privacy-preserving on-chain proof system for AI agents on Pharos Pacific. Its
-runtime state — prepared transactions, the attestation lifecycle queue, x402
-replay protection, and the audit trail — is held in an **atomic file-backed
+runtime state (prepared transactions, the attestation lifecycle queue, x402
+replay protection, and the audit trail) is held in an **atomic file-backed
 persistent store** (`persistentJsonStore`), with x402 replay protection optionally
 backed by Redis.
 
@@ -44,25 +44,25 @@ separate processes over shared storage).
 
 ---
 
-## 3. Rationale — why Single-Instance is the correct default
+## 3. Rationale: why Single-Instance is the correct default
 
 Single-instance is a **deliberate architectural decision to guarantee state
-consistency and a verifiable, uninterrupted lifecycle** — not a reduction of scope.
+consistency and a verifiable, uninterrupted lifecycle**, not a reduction of scope.
 With the current file-backed persistent state model, running one process is what
 keeps the following **coherent and safe**:
 
 | State domain | Why single-instance protects it |
 |---|---|
-| **Prepared transactions** | A prepared record and its `/broadcast/signed` redemption are served from one authoritative store — no cross-process divergence, no split prepared/used state. |
+| **Prepared transactions** | A prepared record and its `/broadcast/signed` redemption are served from one authoritative store: no cross-process divergence, no split prepared/used state. |
 | **Attestation lifecycle** | Enqueue → publish → receipt-confirm → retry is owned end-to-end by one process, so every verified broadcast is attested exactly once with a consistent view of the queue. |
-| **Retry / background loop** | The attestation retry loop runs **in-process**, reading the same authoritative queue the API writes — guaranteeing progress with zero inter-process coordination. |
+| **Retry / background loop** | The attestation retry loop runs **in-process**, reading the same authoritative queue the API writes, guaranteeing progress with zero inter-process coordination. |
 | **x402 replay protection** | Enforced through Redis (durable, restart-safe), with a consistent single-writer view. |
 | **Audit trail** | A single, append-consistent record of decisions and lifecycle events, not fragmented across processes. |
 
 **Distributing these across separate processes today would fragment a file-backed
 state domain** (a mounted volume is per-instance), which is precisely the integrity
 property this architecture is designed to preserve. Single-instance is therefore the
-**correct** default for the current persistence model — chosen for correctness first,
+**correct** default for the current persistence model, chosen for correctness first,
 and cost-efficiency second.
 
 ---
@@ -80,10 +80,10 @@ and cost-efficiency second.
  ┌───────────────────────────────────────────────────────────┐
  │  SafeHands Backend  (single self-hosted instance)           │
  │  ─────────────────────────────────────────────────────────│
- │  • SafeHands API  — preflight, risk, prepare, broadcast     │
+ │  • SafeHands API  - preflight, risk, prepare, broadcast     │
  │  • Verified-broadcast pipeline (user-signed; zero-custody) │
  │  • On-chain attestation lifecycle (receipt-gated)          │
- │  • In-process background loop — retry / attestation / audit│
+ │  • In-process background loop - retry / attestation / audit│
  └───────────────────────────────────────────────────────────┘
         │                         │
         ▼                         ▼
@@ -93,7 +93,7 @@ and cost-efficiency second.
  · audit · queue
 ```
 
-- **One start command:** `node dist/api/server.js` — the SafeHands API **and** the
+- **One start command:** `node dist/api/server.js`: the SafeHands API **and** the
   background attestation/retry loop run in the same process (the loop starts on
   module load). The server binds `0.0.0.0:$PORT`. No separate worker process is
   required for correct operation.
@@ -103,7 +103,7 @@ and cost-efficiency second.
   persistent volume) this state does not survive a restart.
 - **Restart-safe replay:** x402 replay protection uses Redis
   (`SAFEHANDS_X402_REPLAY_REDIS_REQUIRED=true` when enabled).
-- **Deliberate cardinality:** run **one instance** (no horizontal replicas) — a
+- **Deliberate cardinality:** run **one instance** (no horizontal replicas); a
   required invariant of this profile, preserving the single authoritative state
   domain.
 
@@ -126,7 +126,7 @@ configured per deployment through the x402 payment layer.
 
 ---
 
-## 6. Single-Instance Self-Host Profile — deployment
+## 6. Single-Instance Self-Host Profile: deployment
 
 **Required environment (single instance, verified-broadcast + attestation active):**
 ```
@@ -150,7 +150,7 @@ SAFEHANDS_ATTESTER_PRIVATE_KEY=0x…               # segregated operational key 
 SAFEHANDS_REGISTRY_ADDRESS=0x…
 SAFEHANDS_ATTESTATION_ADDRESS=0x…
 
-# x402 paid access — restart-safe replay via Redis
+# x402 paid access: restart-safe replay via Redis
 UPSTASH_REDIS_REST_URL=…                          # any Redis REST endpoint (e.g. Upstash)
 UPSTASH_REDIS_REST_TOKEN=…
 SAFEHANDS_X402_REPLAY_REDIS_REQUIRED=true
@@ -169,7 +169,7 @@ SAFEHANDS_RECIPIENT_DENYLIST=
 1. Deploy the on-chain layer (Node ≥22.13) → record `SAFEHANDS_REGISTRY_ADDRESS` + `SAFEHANDS_ATTESTATION_ADDRESS`.
 2. Build the image from the repo `Dockerfile`; start `node dist/api/server.js` on a single instance.
 3. **Attach a persistent volume mounted at `/data`; set `SAFEHANDS_STATE_DIR=/data`.**
-4. Apply the environment above. Run **one instance** (no horizontal replicas — profile invariant).
+4. Apply the environment above. Run **one instance** (no horizontal replicas; profile invariant).
 5. Provision Redis (e.g. Upstash); set the REST URL + token.
 6. Deploy → confirm `GET /health` = 200; run the curl smoke set from
    [`../SAFEHANDS_REVIEWER_DEMO_SCRIPT.md`](../SAFEHANDS_REVIEWER_DEMO_SCRIPT.md)
@@ -186,17 +186,17 @@ backend guide.
 When throughput, high-availability, or independent-scaling requirements warrant it,
 SafeHands scales to a **distributed multi-service topology**:
 
-- **safehands-api** (public) — SafeHands access for users / agents / Anvita Flow.
-- **safehands-x402** (public) — payment / resource gateway.
-- **safehands-worker** (private) — attestation, retry, batch, and audit lifecycle.
+- **safehands-api** (public): SafeHands access for users / agents / Anvita Flow.
+- **safehands-x402** (public): payment / resource gateway.
+- **safehands-worker** (private): attestation, retry, batch, and audit lifecycle.
 
 **Enabling investment (the one prerequisite):** replace the file-backed adapter with
-**shared storage** — Postgres and/or Redis — behind the existing `persistentJsonStore`
+**shared storage** (Postgres and/or Redis) behind the existing `persistentJsonStore`
 seam, so prepared transactions, the attestation queue, quota, and the audit trail
 become a shared, concurrency-safe state domain across processes. Once that adapter
 lands, the services split cleanly and scale horizontally.
 
-This is a **forward scaling path, engineered-in by design** — the single-instance
+This is a **forward scaling path, engineered-in by design**: the single-instance
 profile and the distributed profile share the same code seam. It is a capacity
 upgrade, not a correction.
 
@@ -224,14 +224,14 @@ A production posture guard (`src/lib/productionGuards.ts`, active when
 `NODE_ENV=production`) protects this profile:
 - **Fail-fast** if managed execution (`WALLET_MODE=managed-mainnet` +
   `WRITE_TOOLS_ENABLED=true`) is configured on a public host without the explicit
-  `SAFEHANDS_ALLOW_MANAGED_ON_PUBLIC=true` override — enforcing the zero-custody
+  `SAFEHANDS_ALLOW_MANAGED_ON_PUBLIC=true` override, enforcing the zero-custody
   public posture at startup.
 - **Warn** on an ephemeral state dir, on missing Redis when x402 replay is
   required, and on wildcard CORS in production.
 
 Wallet separation (owner offline / gas-only attester / gas-only facilitator) and the
 full self-hosted backend security profile are specified in
-[`../../SECURITY.md`](../../SECURITY.md) → "Self-Hosted Backend — Security Profile".
+[`../../SECURITY.md`](../../SECURITY.md) → "Self-Hosted Backend: Security Profile".
 
 ## 9. Consequences
 

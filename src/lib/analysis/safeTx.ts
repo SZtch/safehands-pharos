@@ -72,7 +72,7 @@ function decodeMultiSendBatch(transactions: `0x${string}`): RawInnerCall[] {
 
 export async function analyzeSafeTx(data: string): Promise<AnalyzerResult<SafeTxAnalysisDetails>> {
   const reasons: string[] = [];
-  const warnings: string[] = ["Safe/MultiSend decoding is Experimental — verify the full batch independently before signing."];
+  const warnings: string[] = ["Safe/MultiSend decoding is Experimental; verify the full batch independently before signing."];
   const hex = (data?.startsWith("0x") ? data : `0x${data ?? ""}`).toLowerCase();
   const selector = hex.length >= 10 ? hex.slice(0, 10) : null;
 
@@ -135,7 +135,7 @@ export async function analyzeSafeTx(data: string): Promise<AnalyzerResult<SafeTx
     innerCalls.push({ index: c.index, operation: c.operation, to: c.to, value: c.value, dataLength: c.dataLength, selector: sel, decision, summary, canonicalContractEvidence: canonicalContractEvidence(c.to) });
   }
 
-  if (hasDelegateCall) warnings.push("Batch contains a delegatecall (operation=1) — elevated risk.");
+  if (hasDelegateCall) warnings.push("Batch contains a delegatecall (operation=1); elevated risk.");
   reasons.push(`Decoded MultiSend batch with ${innerCalls.length} inner call(s); aggregate decision follows the highest-risk inner call.`);
 
   const riskLevel = aggregate === "BLOCK" ? "CRITICAL" : aggregate === "REQUIRE_CONFIRMATION" ? "MEDIUM" : "LOW";

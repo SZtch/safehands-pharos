@@ -1,8 +1,8 @@
-# SafeHands — Observability & Public Activity API (Phase 7)
+# SafeHands: Observability & Public Activity API (Phase 7)
 
 SafeHands runs as a **read-only**, mainnet-first safety layer for Pharos Pacific. Phase 7 adds
 the production observability and **public activity surface** that lets a future SafeHands
-site show a landing page, "how to use", a live activity feed, and public metrics —
+site show a landing page, "how to use", a live activity feed, and public metrics;
 **without** ever storing payloads, secrets, or enabling any write/sign/execution path.
 
 Hosted mode stays read-only: `readOnly: true`, `executionAvailable: false`, all four safety
@@ -15,7 +15,7 @@ gates off, `mainnetLive: true`. No database, no external API, no new runtime dep
 Every time an agent or app asks SafeHands to judge an action (a SafeHands check, an analyzer
 call, or an agent/A2A check), SafeHands produces a verdict
 (`ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY`). **Activity** is a sanitized,
-coarse record of *that verdict* — enough to power a public "what SafeHands has been deciding"
+coarse record of *that verdict*, enough to power a public "what SafeHands has been deciding"
 feed and aggregate metrics, and nothing more.
 
 Activity is recorded **only** for decision/analysis endpoints:
@@ -33,14 +33,14 @@ structured request log).
 
 Storage is an **in-memory ring buffer** (default 500 items, env-configurable, clamped
 10–5000) plus O(1) cumulative counters. There is **no database**. The buffer is
-**per-process / per-instance** — on multi-replica deployments each instance keeps its own
+**per-process / per-instance**: on multi-replica deployments each instance keeps its own
 window, so the public feed is illustrative rather than globally exhaustive.
 
 ---
 
 ## 2. What is stored (sanitized activity item)
 
-Each item is built by a strict field **whitelist** — the raw request body and response are
+Each item is built by a strict field **whitelist**: the raw request body and response are
 never spread in. Shape:
 
 ```jsonc
@@ -56,7 +56,7 @@ never spread in. Shape:
   "intentType": "erc20_approval",       // agent intent if available; else null
   "decision": "BLOCK",                  // public 4-decision, or null
   "riskLevel": "CRITICAL",              // or null
-  "reasonSummary": "Unlimited approval to an unknown spender (0x0000…0abc) — blocked.",
+  "reasonSummary": "Unlimited approval to an unknown spender (0x0000…0abc); blocked.",
   "evidenceTypes": ["ecosystemEvidence", "rpcEvidence", "gasEvidence"],
   "readOnly": true,
   "executionAvailable": false,
@@ -114,7 +114,7 @@ Aggregate counts over the ring window + counters.
 ```
 
 ### `GET /metrics/public`
-Safe aggregate metrics only — no env, no payloads, no secrets, no memory dumps.
+Safe aggregate metrics only: no env, no payloads, no secrets, no memory dumps.
 ```jsonc
 { "data": {
   "service": "SafeHands API", "version": "2.4.0", "generatedAt": "…",
@@ -154,12 +154,12 @@ URLs, raw signed transactions. Toggle with `SAFEHANDS_REQUEST_LOG_ENABLED=false`
 
 Activity items also carry sanitized caller identity: `accessTier` (anonymous|api-key|agent|a2a),
 `keyId` (hash prefix only), `agentId`, `a2aPeerId` (untrusted, charset+length-validated, dropped
-if malformed) — alongside the existing endpoint-class `callerType`. `GET /activity/summary` adds
+if malformed), alongside the existing endpoint-class `callerType`. `GET /activity/summary` adds
 `totals.byAccessTier` (aggregate counts only); `GET /metrics/public` adds `scopedApiKeysAvailable`.
 **Never stored/exposed:** raw API keys, `Authorization`/other headers, client IP, raw payloads.
 
 P8B (quota) adds to `/metrics/public`: `quotaControlsAvailable:true`, the safe `quota` config
-(`windowSeconds` + per-tier limits — **no identifiers**), and `rateLimitedByTier` (aggregate 429
+(`windowSeconds` + per-tier limits, **no identifiers**), and `rateLimitedByTier` (aggregate 429
 counts). Responses carry `X-RateLimit-*` headers. See [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md).
 
 ## 6. Optional API key foundation (identity / access-control)
@@ -184,7 +184,7 @@ Behavior:
 - Rate limiting (the unchanged Phase 6 limiter) buckets authenticated clients by `keyId`
   (their own quota) and anonymous clients by IP (as before).
 
-## 7. Future direction — x402-paid endpoints (NOT in Phase 7)
+## 7. Future direction: x402-paid endpoints (NOT in Phase 7)
 
 Paid/premium endpoints are intentionally **not** implemented in Phase 7:
 `premiumEndpointsAvailable: false`, `x402PaidEndpointsAvailable: false`. When introduced,

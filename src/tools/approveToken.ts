@@ -23,7 +23,7 @@ import { validatePositiveAmount } from "../lib/validation.js";
 export const approveTokenSchema = z.object({
   token: z.enum(["USDC", "USDT"]).describe("ERC-20 token to approve"),
   amount: z.string().describe("Human-readable amount to approve, or 'max' for unlimited"),
-  spender: z.string().describe("EXPLICIT spender contract address to approve (0x…). There is no default spender — SafeHands never picks one for you. Verification is derived from the ecosystem registry; unverified spenders require confirm=true."),
+  spender: z.string().describe("EXPLICIT spender contract address to approve (0x…). There is no default spender; SafeHands never picks one for you. Verification is derived from the ecosystem registry; unverified spenders require confirm=true."),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
   confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION / REQUIRE_TOKEN_REVIEW. Hard BLOCK / honeypot / unlimited / over-limit are never overridable."),
 }).strict();
@@ -93,7 +93,7 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
   // extreme-tax → hard block; flagged/unavailable → REQUIRE_TOKEN_REVIEW.
   const sec = await evaluateTokenSecurityGate(resolved.tokenAddress);
   if (sec.verdict === "block") {
-    return fail("TOKEN_SECURITY_BLOCKED", `Approval blocked — ${sec.detail ?? "token failed security review"} ${sec.flags.join("; ")}`.trim(), false, "approve_token");
+    return fail("TOKEN_SECURITY_BLOCKED", `Approval blocked: ${sec.detail ?? "token failed security review"} ${sec.flags.join("; ")}`.trim(), false, "approve_token");
   }
 
   const policy = evaluateActionPolicy({

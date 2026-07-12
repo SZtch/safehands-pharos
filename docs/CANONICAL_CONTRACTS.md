@@ -2,10 +2,10 @@
 
 SafeHands is the pre-execution transaction firewall for AI agents on Pharos. A critical part of its Policy Engine is distinguishing between random unverified contracts and official, audited ecosystem infrastructure.
 
-This document serves as the ground truth for the official Pharos canonical contracts recognized natively by the SafeHands Preflight Engine (§1) and the canonical token registry (§3). Registry-**VERIFIED** ecosystem protocol contracts (e.g. Morpho Blue, verified from first-party evidence) live in the canonical ecosystem registry, `src/data/ecosystemRegistry.data.ts` — that registry is the single source of address-level trust.
+This document serves as the ground truth for the official Pharos canonical contracts recognized natively by the SafeHands Preflight Engine (§1) and the canonical token registry (§3). Registry-**VERIFIED** ecosystem protocol contracts (e.g. Morpho Blue, verified from first-party evidence) live in the canonical ecosystem registry, `src/data/ecosystemRegistry.data.ts`; that registry is the single source of address-level trust.
 
 > [!TIP]
-> Recognition here is **counterparty recognition, never payload leniency**: a canonical contract is a known counterparty, but a risky payload stays risky — an unlimited approval to Permit2 still requires confirmation, and a decoded drainer pattern still blocks regardless of the target being listed on this page.
+> Recognition here is **counterparty recognition, never payload leniency**: a canonical contract is a known counterparty, but a risky payload stays risky: an unlimited approval to Permit2 still requires confirmation, and a decoded drainer pattern still blocks regardless of the target being listed on this page.
 
 ## 1. Account Abstraction & Infrastructure (Canonical Contracts)
 
@@ -43,18 +43,18 @@ This document serves as the ground truth for the official Pharos canonical contr
 
 ---
 
-## 2. DODO / FaroSwap routing addresses — restriction-only containment, NOT trust
+## 2. DODO / FaroSwap routing addresses: restriction-only containment, NOT trust
 
 The self-hosted swap path fetches quotes from the DODO route API (which serves
 FaroSwap liquidity on Pharos). Before any gated execution, `execute_swap` checks the
 quote's router (`to`) and approval target against **operator-configurable
-allowlists** — `DODO_ROUTER_ALLOWLIST` / `DODO_SPENDER_ALLOWLIST` (defaults in
+allowlists**: `DODO_ROUTER_ALLOWLIST` / `DODO_SPENDER_ALLOWLIST` (defaults in
 `src/lib/constants.ts`). A quote pointing anywhere outside the allowlist **fails
 closed**.
 
 **These allowlists are containment, not verification** (the enforcement code says
 exactly that): being on the list means "the only addresses a swap is *permitted* to
-touch", never "this address is trusted/safe". They grant no risk relaxation anywhere —
+touch", never "this address is trusted/safe". They grant no risk relaxation anywhere;
 `spenderVerified` is derived from the canonical ecosystem registry only, and FaroSwap
 remains **UNVERIFIED** there until its own documentation publishes citable Pharos
 mainnet addresses. The shipped defaults are testnet-provenance; mainnet operators

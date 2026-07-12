@@ -39,7 +39,7 @@ const GETPROOF_DOCS = "https://docs.pharos.xyz/api-and-sdk/eth-getproof-storage-
 const ALLOW_BEHAVIOR = "Allowed in hosted read-only mode.";
 const EXPERIMENTAL_BEHAVIOR =
   "Allowed as a read-only call, attempted with graceful fallback; deeper verification (e.g. SPV) is NOT implemented.";
-const BLOCK_BEHAVIOR = "BLOCKED in hosted read-only mode — never called.";
+const BLOCK_BEHAVIOR = "BLOCKED in hosted read-only mode; never called.";
 const UNSUPPORTED_BEHAVIOR = "Unsupported on Pharos / never called automatically.";
 
 function readOnly(method: string, riskRelevance: string, officialDocsUrl: string = JSON_RPC_DOCS): RpcMethodEntry {
@@ -89,16 +89,16 @@ const ENTRIES: RpcMethodEntry[] = [
   experimental("trace_filter", "Filtered traces (block range ≤500); heavy/optional, best-effort only."),
 
   // ── Write — BLOCKED in hosted read-only mode ──────────────────────────
-  writeBlocked("eth_sendRawTransaction", "Submits a signed transaction — the only documented state-changing method; NEVER used in hosted read-only mode."),
+  writeBlocked("eth_sendRawTransaction", "Submits a signed transaction: the only documented state-changing method; NEVER used in hosted read-only mode."),
   writeBlocked("eth_sendTransaction", "Node-signed send; blocked (the node manages no accounts and SafeHands never sends)."),
-  writeBlocked("eth_signTransaction", "Signs a transaction; blocked — SafeHands never signs."),
+  writeBlocked("eth_signTransaction", "Signs a transaction; blocked: SafeHands never signs."),
   writeBlocked("eth_sign", "Signs arbitrary data; blocked (also undocumented on Pharos)."),
-  writeBlocked("personal_sign", "Wallet message signing; blocked — SafeHands holds no keys."),
+  writeBlocked("personal_sign", "Wallet message signing; blocked: SafeHands holds no keys."),
   writeBlocked("eth_signTypedData", "EIP-712 typed-data signing; blocked."),
   writeBlocked("eth_signTypedData_v4", "EIP-712 typed-data signing; blocked."),
   writeBlocked("personal_unlockAccount", "Unlocks a node-managed account; blocked."),
-  writeBlocked("personal_newAccount", "Account creation; blocked — SafeHands never creates/holds keys."),
-  writeBlocked("personal_importRawKey", "Private-key import; blocked — SafeHands never imports keys."),
+  writeBlocked("personal_newAccount", "Account creation; blocked: SafeHands never creates/holds keys."),
+  writeBlocked("personal_importRawKey", "Private-key import; blocked: SafeHands never imports keys."),
   writeBlocked("wallet_addEthereumChain", "Wallet management; blocked."),
   writeBlocked("wallet_switchEthereumChain", "Wallet management; blocked."),
   writeBlocked("wallet_watchAsset", "Wallet management; blocked."),

@@ -68,8 +68,8 @@ function analyzePacificToken(raw: string, registryScope: NetworkName, evidence: 
       // not identify a contract — confirm the resolved address before acting.
       internalDecision = "REQUIRE_CONFIRMATION";
       riskLevel = "MEDIUM";
-      reasons.push(`Symbol "${raw}" resolves to the canonical Pharos Pacific Mainnet token ${symbol} at ${normalizedAddress}, but a symbol alone is not an on-chain guarantee — confirm the resolved address before acting on it.`);
-      warnings.push(`Symbol "${raw}" was resolved to the official Pacific Mainnet registry address ${normalizedAddress} — a symbol alone is not an on-chain guarantee.`);
+      reasons.push(`Symbol "${raw}" resolves to the canonical Pharos Pacific Mainnet token ${symbol} at ${normalizedAddress}, but a symbol alone is not an on-chain guarantee; confirm the resolved address before acting on it.`);
+      warnings.push(`Symbol "${raw}" was resolved to the official Pacific Mainnet registry address ${normalizedAddress}; a symbol alone is not an on-chain guarantee.`);
     }
   } else if (isAddress(raw)) {
     normalizedAddress = getAddress(raw);
@@ -79,7 +79,7 @@ function analyzePacificToken(raw: string, registryScope: NetworkName, evidence: 
     resolvedFrom = "address";
     internalDecision = "REQUIRE_CONFIRMATION";
     riskLevel = "MEDIUM";
-    reasons.push("Token is not in the Pacific Mainnet registry — unknown/custom token requires review.");
+    reasons.push("Token is not in the Pacific Mainnet registry; unknown/custom token requires review.");
   } else {
     normalizedAddress = null;
     symbol = null;
@@ -113,7 +113,7 @@ function analyzeAtlanticToken(raw: string, registryScope: NetworkName, evidence:
     cls.status === "INVALID_ADDRESS" ? "invalid" : isAddress(raw) ? "address" : "symbol";
 
   if (resolvedFrom === "symbol" && cls.normalizedAddress) {
-    warnings.push(`Symbol "${raw}" was resolved to the project's testnet registry address ${cls.normalizedAddress} — a symbol alone is not an on-chain guarantee.`);
+    warnings.push(`Symbol "${raw}" was resolved to the project's testnet registry address ${cls.normalizedAddress}; a symbol alone is not an on-chain guarantee.`);
   }
 
   let internalDecision: "ALLOW" | "BLOCK" | "REQUIRE_CONFIRMATION";
@@ -131,7 +131,7 @@ function analyzeAtlanticToken(raw: string, registryScope: NetworkName, evidence:
         // Fail-closed (truth-model rule 1): a known NAME alone never produces ALLOW.
         internalDecision = "REQUIRE_CONFIRMATION";
         riskLevel = "MEDIUM";
-        reasons.push(`Symbol "${raw}" resolves to the registry token ${cls.symbol ?? "?"} at ${cls.normalizedAddress ?? "?"}, but a symbol alone is not an on-chain guarantee — confirm the resolved address before acting on it.`);
+        reasons.push(`Symbol "${raw}" resolves to the registry token ${cls.symbol ?? "?"} at ${cls.normalizedAddress ?? "?"}, but a symbol alone is not an on-chain guarantee; confirm the resolved address before acting on it.`);
       } else {
         internalDecision = "ALLOW";
         riskLevel = "LOW";
@@ -141,14 +141,14 @@ function analyzeAtlanticToken(raw: string, registryScope: NetworkName, evidence:
     case "ALTERNATE_SOURCE_TOKEN":
       internalDecision = "REQUIRE_CONFIRMATION";
       riskLevel = "MEDIUM";
-      reasons.push("Token is an alternate-source token (not the primary registry entry) — confirm before use.");
+      reasons.push("Token is an alternate-source token (not the primary registry entry); confirm before use.");
       break;
     case "CUSTOM_NON_REGISTRY":
     case "UNKNOWN":
     default:
       internalDecision = "REQUIRE_CONFIRMATION";
       riskLevel = "MEDIUM";
-      reasons.push("Token is not in the SafeHands registry — unknown/custom token requires review.");
+      reasons.push("Token is not in the SafeHands registry; unknown/custom token requires review.");
       break;
   }
 

@@ -2,7 +2,7 @@
 
 Other agents may call the **SafeHands Agent** before acting. SafeHands
 returns one of four public decisions; the **calling agent is solely responsible**
-for honoring the obligation. SafeHands only advises — it never executes, signs,
+for honoring the obligation. SafeHands only advises: it never executes, signs,
 sends, approves, swaps, or publishes, and it holds no keys.
 
 ## The obligation contract
@@ -44,24 +44,24 @@ switch (verdict.caller.obligation) {
 
 ## Request shape (`AgentRequest`)
 
-All fields optional — the classifier decides the intent: `text`, `to`, `data`,
+All fields optional; the classifier decides the intent: `text`, `to`, `data`,
 `value`, `txHash`, `address`, `token`, `url`, `paymentAmountUsdc`,
 `paymentTokenAddress`, `payTo`, `agentId`, `network`, `chainId`, `inputType`.
 
 ## Policy ownership
 
 The agent owner/admin may supply a stricter policy (`createGuardianAgent({ owner:
-"agent", policy: { … } })`). Policy may only **raise** severity — it can never
+"agent", policy: { … } })`). Policy may only **raise** severity; it can never
 relax a `BLOCK` or weaken an analyzer verdict. Default is the conservative public
 `backend` policy.
 
 ## Guarantees
 
-- **Read-only by construction** — `executionAvailable` is `false` by default;
+- **Read-only by construction**: `executionAvailable` is `false` by default;
   `readOnly` is always `true`. SafeHands has no code path to execute.
-- **Fail-safe** — invalid or un-analyzable input returns `REQUIRE_CONFIRMATION`,
+- **Fail-safe**: invalid or un-analyzable input returns `REQUIRE_CONFIRMATION`,
   never a silent `ALLOW`.
-- **No secrets** — responses never contain private keys, premium RPC URLs, or
+- **No secrets**: responses never contain private keys, premium RPC URLs, or
   facilitator secrets.
 
 ## Out of scope (Roadmap)

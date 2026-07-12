@@ -7,7 +7,7 @@
     "FaroSwap pass-key or internal frontend endpoints",
     "GraphQL hosts that do not resolve over public DNS (e.g. backend.faroswap.xyz/graphql at the time of writing)",
     "Scraping websites or block explorers",
-    "Treating any DEX/pool/route quote as a canonical price — canonical pricing is Chainlink Push feeds only (see supported-assets.json)"
+    "Treating any DEX/pool/route quote as a canonical price: canonical pricing is Chainlink Push feeds only (see supported-assets.json)"
   ],
   "providers": {
     "goldsky": {
@@ -26,13 +26,13 @@
       "endpoint": null,
       "providerStatus": "not_configured",
       "kind": "json-api",
-      "note": "Set to a verified public, keyless pool-info URL to enable get_pool_info. Pool/route data is context only — never a canonical price."
+      "note": "Set to a verified public, keyless pool-info URL to enable get_pool_info. Pool/route data is context only, never a canonical price."
     },
     "vaultStatus": {
       "endpoint": null,
       "providerStatus": "not_configured",
       "kind": "json-api",
-      "note": "Set to a verified public, keyless vault-status URL to enrich vault_deposit / yield_deposit intents with TVL/cap/paused data. Without it, those fields are reported as unavailable — never invented."
+      "note": "Set to a verified public, keyless vault-status URL to enrich vault_deposit / yield_deposit intents with TVL/cap/paused data. Without it, those fields are reported as unavailable, never invented."
     }
   },
   "protocols": {
@@ -87,7 +87,7 @@
         "0xd5e02889c13230458506cc842347c4e62f8cdf3a": "Morpho AdaptiveCurveIRM",
         "0xb8118256d8aa950ec0b26a0b8be7c6c1a858f6a3": "Morpho ChainlinkOracleV2Factory"
       },
-      "note": "Verified 2026-07-11 from Morpho's own addresses page + on-chain checks. Verification relaxes recognition only — an unlimited approval to Morpho Blue still requires confirmation, and MetaMorpho vault addresses are NOT bundled (markets/vaults are permissionless; verify each vault separately)."
+      "note": "Verified 2026-07-11 from Morpho's own addresses page + on-chain checks. Verification relaxes recognition only: an unlimited approval to Morpho Blue still requires confirmation, and MetaMorpho vault addresses are NOT bundled (markets/vaults are permissionless; verify each vault separately)."
     },
     "termmax": {
       "verificationStatus": "unverified",

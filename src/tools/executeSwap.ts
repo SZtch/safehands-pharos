@@ -41,14 +41,14 @@ export function evaluateSwapQuoteGuards(
   if (!Number.isFinite(impact) || impact > ceilingPct) {
     return {
       code: "PRICE_IMPACT_TOO_HIGH",
-      message: `Swap blocked — quoted price impact ${Number.isFinite(impact) ? impact.toFixed(2) : "unknown"}% exceeds the ${ceilingPct}% ceiling (max of slippageTolerance and MAX_SLIPPAGE_PCT ${MAX_SLIPPAGE_PCT}%). The unfavorable price is in the quote itself, so slippage protection cannot mitigate it; this is a hard stop and is never confirmable. Reduce the trade size or use a deeper route.`,
+      message: `Swap blocked: quoted price impact ${Number.isFinite(impact) ? impact.toFixed(2) : "unknown"}% exceeds the ${ceilingPct}% ceiling (max of slippageTolerance and MAX_SLIPPAGE_PCT ${MAX_SLIPPAGE_PCT}%). The unfavorable price is in the quote itself, so slippage protection cannot mitigate it; this is a hard stop and is never confirmable. Reduce the trade size or use a deeper route.`,
     };
   }
   const amountOut = Number.parseFloat(quote.amountOut);
   if (!Number.isFinite(amountOut) || amountOut <= 0) {
     return {
       code: "INVALID_QUOTE_AMOUNT_OUT",
-      message: `Swap blocked — DODO quote returned a non-positive amountOut (${quote.amountOut}). Broadcasting would spend tokenIn for nothing; this is a hard stop and is never confirmable.`,
+      message: `Swap blocked: DODO quote returned a non-positive amountOut (${quote.amountOut}). Broadcasting would spend tokenIn for nothing; this is a hard stop and is never confirmable.`,
     };
   }
   return null;
@@ -75,7 +75,7 @@ export async function simulateSwapCalldata(
 
 export const executeSwapTool = {
   name: "execute_swap",
-  description: "Swap tokens via FaroSwap/DODO. Runs a risk assessment first and feeds it as evidence to the SafeHands policy engine — the sole ALLOW/BLOCK/REQUIRE_CONFIRMATION decider (a risk score above the block threshold fails its risk_score check and blocks, never confirmable). Gated by WRITE_TOOLS_ENABLED.",
+  description: "Swap tokens via FaroSwap/DODO. Runs a risk assessment first and feeds it as evidence to the SafeHands policy engine, the sole ALLOW/BLOCK/REQUIRE_CONFIRMATION decider (a risk score above the block threshold fails its risk_score check and blocks, never confirmable). Gated by WRITE_TOOLS_ENABLED.",
   inputSchema: executeSwapSchema,
 };
 
@@ -112,7 +112,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     }
     const sec = await evaluateTokenSecurityGate(outAddr);
     if (sec.verdict === "block") {
-      return fail("TOKEN_SECURITY_BLOCKED", `Swap blocked — ${sec.detail ?? "token failed security review"} ${sec.flags.join("; ")}`.trim(), false, "execute_swap");
+      return fail("TOKEN_SECURITY_BLOCKED", `Swap blocked: ${sec.detail ?? "token failed security review"} ${sec.flags.join("; ")}`.trim(), false, "execute_swap");
     }
     tokenSecurityStatus = sec.policyStatus;
   }
@@ -177,7 +177,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     });
 
     if (!quote.routeAvailable) {
-      return fail("NO_ROUTE_AVAILABLE", "No swap route available — insufficient liquidity", true, "dodo_api");
+      return fail("NO_ROUTE_AVAILABLE", "No swap route available: insufficient liquidity", true, "dodo_api");
     }
 
     const quoteGuard = evaluateSwapQuoteGuards(quote, input.slippageTolerance);
@@ -260,7 +260,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     if (simulationError !== null) {
       return fail(
         "SWAP_SIMULATION_REVERTED",
-        `Pre-broadcast simulation of the swap calldata reverted — broadcasting would only burn gas. ${simulationError}`,
+        `Pre-broadcast simulation of the swap calldata reverted; broadcasting would only burn gas. ${simulationError}`,
         true,
         "execute_swap"
       );

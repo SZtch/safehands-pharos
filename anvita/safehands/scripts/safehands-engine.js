@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * safehands-engine.js — SafeHands fully-hosted risk engine (zero dependencies)
+ * safehands-engine.js: SafeHands fully-hosted risk engine (zero dependencies)
  *
  * Reads Pharos Pacific Mainnet (chainId 1672) DIRECTLY via public JSON-RPC.
  * No backend. No private keys. Read-only eth_call / eth_get* only.
@@ -22,13 +22,13 @@
  *
  * `analyze` intents that carry tx calldata additionally get an OFFLINE decode of
  * approval / transfer / admin selectors (unlimited-approval detection, operator
- * denylist, dangerous-admin recognition) — pure string inspection, escalate-only
+ * denylist, dangerous-admin recognition): pure string inspection, escalate-only
  * risk floors, no extra RPC.
  *
  * Env overrides: PHAROS_RPC_URL, GOPLUS_API_BASE, SAFEHANDS_REGISTRY_ADDRESS,
  * SAFEHANDS_ATTESTATION_ADDRESS, SAFEHANDS_RECIPIENT_DENYLIST (comma-separated
  * 0x addresses the operator wants transfers/payments to hard-block on; EMPTY by
- * default — SafeHands never ships a fabricated scam list).
+ * default; SafeHands never ships a fabricated scam list).
  *
  * Everything is READ-ONLY: eth_call / eth_get* / eth_gasPrice / eth_estimateGas only.
  * This engine never signs, broadcasts, approves, swaps, bridges, deposits, stakes,
@@ -59,10 +59,10 @@ const NET = Array.isArray(NETMAP)
   ? (NETMAP.find((n) => n && n.chainId === 1672) || {})
   : (Object.values(NETMAP).find((n) => n && n.chainId === 1672) || {});
 const RPC_URL = process.env.PHAROS_RPC_URL || NET.rpcUrl || "https://rpc.pharos.xyz";
-const CHAIN_ID = 1672; // mainnet lock — never analyze/report for other chains
+const CHAIN_ID = 1672; // mainnet lock; never analyze/report for other chains
 const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
-// Engine version — MUST equal the repo package.json version. Enforced by
+// Engine version: MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
 const ENGINE_VERSION = "2.4.0";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
@@ -75,7 +75,7 @@ const ATTEST_ADDR = process.env.SAFEHANDS_ATTESTATION_ADDRESS
 
 // ── precomputed keccak-256 selectors (verified against standard vectors) ─
 // Single object by design: scripts/sync-anvita-assets.ts regex-parses this
-// block up to the FIRST closing brace — keep every selector in here and never
+// block up to the FIRST closing brace; keep every selector in here and never
 // add a second selector object.
 const SEL = {
   name: "0x06fdde03", symbol: "0x95d89b41", decimals: "0x313ce567", totalSupply: "0x18160ddd",
@@ -133,13 +133,13 @@ function fail(code, message, extra = {}) {
   return { success: false, error: { code, message }, chainId: CHAIN_ID, timestamp: new Date().toISOString(), ...extra };
 }
 // Key-material guard. Some read-only inputs are legitimately 64-hex (a tx hash,
-// calldata words, storage keys) — those exact fields may be exempted from the
+// calldata words, storage keys); those exact fields may be exempted from the
 // 64-hex heuristic via ignore64HexKeys, but the secret-keyword check ALWAYS runs
 // on the full input. Nothing here ever stores or forwards the value beyond the
 // single read-only RPC lookup it was provided for.
 function rejectKeyLike(obj, ignore64HexKeys = []) {
   const full = JSON.stringify(obj || {});
-  if (/private[_-]?key|mnemonic|seed[_-]?phrase|secret[_-]?key/i.test(full)) return "input contains key-like material — this engine never handles secrets";
+  if (/private[_-]?key|mnemonic|seed[_-]?phrase|secret[_-]?key/i.test(full)) return "input contains key-like material; this engine never handles secrets";
   let scrubbed = obj;
   if (ignore64HexKeys.length && obj && typeof obj === "object") {
     scrubbed = { ...obj };
@@ -219,7 +219,7 @@ function decInt256(word64) { // 64 hex chars → signed BigInt (two's complement
   if (v >= 2n ** 255n) v -= 2n ** 256n;
   return v;
 }
-// Revert/provider messages are surfaced to the user — strip non-printables and cap.
+// Revert/provider messages are surfaced to the user; strip non-printables and cap.
 function sanitizeReason(msg) { return String(msg || "").replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300); }
 const TXHASH_RE = /^0x[0-9a-fA-F]{64}$/;
 const HEXDATA_RE = /^0x([0-9a-fA-F]{2})*$/;
@@ -259,7 +259,7 @@ function report(score, factors, subject, extra = {}) {
     nextAction: recommendation === "allow" ? "Proceed with normal caution."
       : recommendation === "warn" ? "Ask the user to confirm explicitly before proceeding."
       : "Do not proceed. Advise the user against this action.",
-    analysisDepth: "hosted-heuristic (on-chain reads + offline calldata decode — not the full SafeHands analyzer suite)",
+    analysisDepth: "hosted-heuristic (on-chain reads + offline calldata decode; not the full SafeHands analyzer suite)",
     subject, network: "pacific-mainnet", chainId: CHAIN_ID, timestamp: new Date().toISOString(), ...extra,
   };
 }
@@ -286,7 +286,7 @@ async function erc20Probe(addr) {
 // ── GoPlus threat intelligence (public API, keyless, graceful fallback) ──
 // Transient failures (rate-limit/5xx/timeout) retry with linear backoff, mirroring the
 // self-hosted analyzer's fetchGoplus: a momentary GoPlus hiccup must not push a clean
-// subject onto the missing-threat-intel floor. Exhausted retries still return null —
+// subject onto the missing-threat-intel floor. Exhausted retries still return null;
 // the caller's fail-closed floor remains the last line of defense.
 const GOPLUS_RETRYABLE = new Set([408, 425, 429, 500, 502, 503, 504]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -323,7 +323,7 @@ async function goplusToken(addr) {
   const identity = (optStr(d.token_name) || optStr(d.token_symbol))
     ? { tokenName: optStr(d.token_name), tokenSymbol: optStr(d.token_symbol) } : null;
   const factors = []; let add = 0;
-  if (flag(d.is_honeypot)) { factors.push("GoPlus: HONEYPOT — token cannot be sold"); add += 80; }
+  if (flag(d.is_honeypot)) { factors.push("GoPlus: HONEYPOT; token cannot be sold"); add += 80; }
   if (flag(d.cannot_sell_all)) { factors.push("GoPlus: holders cannot sell all tokens"); add += 30; }
   if (flag(d.cannot_buy)) { factors.push("GoPlus: token cannot be bought"); add += 25; }
   const st = parseFloat(d.sell_tax), bt = parseFloat(d.buy_tax);
@@ -336,7 +336,7 @@ async function goplusToken(addr) {
   if (flag(d.is_mintable)) { factors.push("GoPlus: owner can mint new supply"); add += 15; }
   if (flag(d.transfer_pausable)) { factors.push("GoPlus: transfers can be paused"); add += 15; }
   if (flag(d.is_blacklisted)) { factors.push("GoPlus: owner can blacklist holders"); add += 15; }
-  if (flag(d.is_proxy)) { factors.push("GoPlus: upgradeable proxy — logic can change"); add += 10; }
+  if (flag(d.is_proxy)) { factors.push("GoPlus: upgradeable proxy; logic can change"); add += 10; }
   if (d.is_open_source !== undefined && !flag(d.is_open_source)) { factors.push("GoPlus: source code not verified"); add += 20; }
   return { reachable: true, data: d, factors, add: Math.min(add, 90), identity };
 }
@@ -374,7 +374,7 @@ async function analyzeWallet(addr, { expect = "wallet" } = {}) {
   const gp = await goplusAddress(addr);
   if (gp.factors.length) { factors.push(...gp.factors); score += gp.add; }
   if (!gp.reachable) {
-    factors.push("GoPlus address intelligence unreachable — scam/phishing status UNVERIFIED; treat as unsafe-until-confirmed");
+    factors.push("GoPlus address intelligence unreachable: scam/phishing status UNVERIFIED; treat as unsafe-until-confirmed");
     score = Math.max(score, THREAT_INTEL_UNAVAILABLE_FLOOR);
   }
   return report(score, factors, { type: "wallet", address: addr }, {
@@ -386,7 +386,7 @@ async function analyzeWallet(addr, { expect = "wallet" } = {}) {
 async function analyzeContract(addr) {
   const p = await probeAddress(addr);
   if (!p.isContract) {
-    return report(95, [`No contract code at ${addr} — either not deployed on Pharos mainnet or self-destructed`],
+    return report(95, [`No contract code at ${addr}; either not deployed on Pharos mainnet or self-destructed`],
       { type: "contract", address: addr }, { onChain: { isContract: false } });
   }
   const factors = []; let score = 15;
@@ -404,32 +404,32 @@ async function analyzeContract(addr) {
     const official = CANON_TOKENS[sym];
     if (official) {
       if (addr.toLowerCase() === official) { score = Math.min(score, 8); factors.push(`Canonical ${sym} from the official Pharos Token Registry`); canonicalVerified = true; }
-      else { factors.push(`IMPERSONATION: claims symbol "${sym}" but is NOT the official Pharos ${sym} (official: ${official} — verify: ${EXPLORER}/address/${official})`); score += 75; }
+      else { factors.push(`IMPERSONATION: claims symbol "${sym}" but is NOT the official Pharos ${sym} (official: ${official}; verify: ${EXPLORER}/address/${official})`); score += 75; }
     }
   }
   if (looksToken) {
     if (t.name === null || t.symbol === null) { factors.push("Token metadata incomplete (non-standard ERC-20 surface)"); score += 20; }
-    if (t.decimals === null) { factors.push("decimals() unreadable — integrations may misprice amounts"); score += 10; }
+    if (t.decimals === null) { factors.push("decimals() unreadable; integrations may misprice amounts"); score += 10; }
     if (t.totalSupply === "0") { factors.push("Token totalSupply is zero"); score += 15; }
   } else {
-    factors.push("Not a standard token interface — unverified custom contract; hosted engine cannot audit its logic");
+    factors.push("Not a standard token interface: unverified custom contract; hosted engine cannot audit its logic");
     score += 25;
   }
-  if (p.codeSize < 100) { factors.push(`Suspiciously small bytecode (${p.codeSize} bytes) — possible proxy shell or stub`); score += 15; }
+  if (p.codeSize < 100) { factors.push(`Suspiciously small bytecode (${p.codeSize} bytes); possible proxy shell or stub`); score += 15; }
   const gp = await goplusToken(addr);
   const gpUnindexedToken = gp.reachable && !gp.data && !gp.schemaDrift && looksToken; // GoPlus answered but has never vetted THIS token
   if (gp.data && gp.factors.length) { factors.push(...gp.factors); score += gp.add; }
-  else if (gpUnindexedToken) { factors.push("Token not yet indexed by GoPlus — very new or obscure; extra caution advised"); score += 10; }
+  else if (gpUnindexedToken) { factors.push("Token not yet indexed by GoPlus: very new or obscure; extra caution advised"); score += 10; }
   // A drifted schema (result present but unreadable) or a reachable-but-unindexed token is
-  // NOT a real verdict — treat both like an outage: floor the score and disclose, so a token
+  // NOT a real verdict; treat both like an outage: floor the score and disclose, so a token
   // GoPlus has never actually vetted (the classic fresh-rug window) can never read "allow".
   const gpVerified = gp.reachable && !gp.schemaDrift && !gpUnindexedToken;
   if (!gpVerified && !canonicalVerified) {
     factors.push(gp.schemaDrift
-      ? "GoPlus returned an unrecognized token-security schema — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed"
+      ? "GoPlus returned an unrecognized token-security schema: honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed"
       : gpUnindexedToken
-        ? "Not yet indexed by GoPlus — honeypot status UNVERIFIED; treat as unsafe-until-confirmed"
-        : "GoPlus threat intelligence unreachable — honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed");
+        ? "Not yet indexed by GoPlus: honeypot status UNVERIFIED; treat as unsafe-until-confirmed"
+        : "GoPlus threat intelligence unreachable: honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed");
     score = Math.max(score, THREAT_INTEL_UNAVAILABLE_FLOOR);
   }
   return report(score, factors, { type: "contract", address: addr }, {
@@ -437,7 +437,7 @@ async function analyzeContract(addr) {
     ...(gp.identity ? { goplusTokenIdentity: gp.identity } : {}), // display-only, never scored
     intel: gpVerified ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unverified)",
     limits: gpVerified ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
-      : "GoPlus verdict unavailable for this call — heuristics only; honeypot status unknown.",
+      : "GoPlus verdict unavailable for this call: heuristics only; honeypot status unknown.",
   });
 }
 
@@ -445,7 +445,7 @@ async function analyzeContract(addr) {
 // These are ROUTING templates, not data sources: each evidence block runs a real
 // read-only check only when its inputs are present; anything absent is reported
 // in missingInputs. Provider data that is not configured is reported as
-// unavailable — never invented (no fake TVL/APY/cap/paused values).
+// unavailable, never invented (no fake TVL/APY/cap/paused values).
 const FUND_MOVING_ACTIONS = ["transfer", "swap", "bridge", "yield_deposit", "vault_deposit", "staking", "tokenized_asset"];
 const URL_ACTIONS = ["fiat_ramp", "reward_campaign", "x402_payment"];
 const DEPOSIT_CLASS = new Set(["bridge", "yield_deposit", "vault_deposit", "staking"]);
@@ -459,7 +459,7 @@ const INTENT_TARGET_KEY = {
 };
 
 // Static URL risk analysis. The hosted engine NEVER fetches arbitrary
-// user-provided URLs — this inspects the string only. IP-range coverage mirrors
+// user-provided URLs; this inspects the string only. IP-range coverage mirrors
 // the TS engine's isSuspiciousUrl/isBlockedIp at string level (no DNS lookups).
 function ipv4InCidr(ip, cidrBase, prefix) {
   const parse = (s) => s.split(".").map(Number);
@@ -481,21 +481,21 @@ function urlRisk(rawUrl) {
   const factors = []; let add = 0; let parsed;
   try { parsed = new URL(String(rawUrl)); } catch { return { valid: false, fetched: false, factors: ["URL is malformed"], add: 40 }; }
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    factors.push(`URL scheme '${parsed.protocol}' is not a web link (javascript:/data:/file:-class) — never a legitimate payment/campaign target`); add += 60;
-  } else if (parsed.protocol !== "https:") { factors.push("URL is not HTTPS — payment/campaign links must be https"); add += 45; }
-  if (parsed.username || parsed.password) { factors.push("URL embeds credentials — classic phishing pattern"); add += 50; }
+    factors.push(`URL scheme '${parsed.protocol}' is not a web link (javascript:/data:/file:-class); never a legitimate payment/campaign target`); add += 60;
+  } else if (parsed.protocol !== "https:") { factors.push("URL is not HTTPS; payment/campaign links must be https"); add += 45; }
+  if (parsed.username || parsed.password) { factors.push("URL embeds credentials; classic phishing pattern"); add += 50; }
   const host = parsed.hostname;
   const bare = host.replace(/^\[|\]$/g, "").toLowerCase(); // WHATWG keeps [] around IPv6 literals
   const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(bare);
   if (isIpv4 || bare.includes(":")) { factors.push("Host is a raw IP literal, not a domain"); add += 35; }
   if (/^(localhost|127\.|0\.0\.0\.0$|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(bare)) {
-    factors.push("Host is local/private — not a public service"); add += 45;
+    factors.push("Host is local/private, not a public service"); add += 45;
   } else if (isIpv4 && RESERVED_IPV4.some(([base, prefix]) => ipv4InCidr(bare, base, prefix))) {
-    factors.push("Host is a reserved/special-use IPv4 address (link-local/CGNAT/test-net/multicast) — not a public service"); add += 45;
+    factors.push("Host is a reserved/special-use IPv4 address (link-local/CGNAT/test-net/multicast), not a public service"); add += 45;
   } else if (bare.includes(":") && (bare === "::1" || bare.startsWith("fc") || bare.startsWith("fd") || bare.startsWith("fe80:"))) {
-    factors.push("Host is a local/private IPv6 address — not a public service"); add += 45;
+    factors.push("Host is a local/private IPv6 address, not a public service"); add += 45;
   }
-  if (host.split(".").some((l) => l.startsWith("xn--"))) { factors.push("Punycode hostname — possible homograph impersonation of a known brand"); add += 35; }
+  if (host.split(".").some((l) => l.startsWith("xn--"))) { factors.push("Punycode hostname; possible homograph impersonation of a known brand"); add += 35; }
   if (parsed.port && parsed.port !== "443") { factors.push(`Non-standard port ${parsed.port}`); add += 15; }
   if (String(rawUrl).length > 2048) { factors.push("Unusually long URL"); add += 10; }
   return { valid: true, host, fetched: false, factors, add: Math.min(add, 90) };
@@ -505,7 +505,7 @@ function urlRisk(rawUrl) {
 // Hand-ported from the TS analyzers (analysis/calldata.ts, approval.ts,
 // safeTx.ts, recipientSafety.ts). Pure string inspection: no RPC, no fetch,
 // no keys. ESCALATE-ONLY: callers apply the returned floor via
-// score = Math.max(score, floor) — a decode can hold or raise a verdict, never
+// score = Math.max(score, floor): a decode can hold or raise a verdict, never
 // relax one; undecodable input is held, never treated as safe. The selector
 // dictionary is NON-EXHAUSTIVE: absence of a warning is not proof of safety.
 const DANGEROUS_ADMIN = {
@@ -516,7 +516,7 @@ const DANGEROUS_ADMIN = {
   [SEL.changeAdmin]: ["changeAdmin", "changes the proxy admin"],
 };
 // Operator-configurable recipient denylist (comma-separated 0x addresses).
-// EMPTY by default — SafeHands ships NO fabricated scam list; operators point
+// EMPTY by default: SafeHands ships NO fabricated scam list; operators point
 // this at their own known-bad set. Parsed per call so tests can pin the env.
 function recipientDenylist() {
   const raw = process.env.SAFEHANDS_RECIPIENT_DENYLIST || "";
@@ -541,16 +541,16 @@ const wordAt = (body, i) => body.slice(i * 64, (i + 1) * 64);
 function wordToAddress(w) { return /^0{24}[0-9a-f]{40}$/.test(w) ? "0x" + w.slice(24) : null; }
 // Shared approve-style floor matrix (approve/permit/permit2/increaseAllowance).
 function applyApprovalFloor(c, methodLabel) {
-  if (!c.spender) { c.floor = Math.max(c.floor, 90); c.factors.push(`${methodLabel} spender word is not a clean address — malformed or deceptive calldata`); return; }
-  if (c.isRevoke) { c.notes.push(`${methodLabel} revokes/zeroes the allowance for ${c.spender} — no new exposure`); return; }
-  if (c.unlimited && !c.counterpartyKnown) { c.floor = Math.max(c.floor, 90); c.factors.push(`UNLIMITED ${methodLabel} to an UNKNOWN spender (${c.spender}) — the spender could move the entire current and future token balance`); return; }
-  if (c.unlimited) { c.floor = Math.max(c.floor, 65); c.factors.push(`UNLIMITED ${methodLabel} to a known spender (${c.counterpartyLabel}) — high risk, confirm intent`); return; }
-  if (!c.counterpartyKnown) { c.floor = Math.max(c.floor, 45); c.factors.push(`${methodLabel} (amount ${c.amountRaw}) to an unknown spender (${c.spender}) — confirm before approving`); return; }
+  if (!c.spender) { c.floor = Math.max(c.floor, 90); c.factors.push(`${methodLabel} spender word is not a clean address: malformed or deceptive calldata`); return; }
+  if (c.isRevoke) { c.notes.push(`${methodLabel} revokes/zeroes the allowance for ${c.spender}; no new exposure`); return; }
+  if (c.unlimited && !c.counterpartyKnown) { c.floor = Math.max(c.floor, 90); c.factors.push(`UNLIMITED ${methodLabel} to an UNKNOWN spender (${c.spender}); the spender could move the entire current and future token balance`); return; }
+  if (c.unlimited) { c.floor = Math.max(c.floor, 65); c.factors.push(`UNLIMITED ${methodLabel} to a known spender (${c.counterpartyLabel}); high risk, confirm intent`); return; }
+  if (!c.counterpartyKnown) { c.floor = Math.max(c.floor, 45); c.factors.push(`${methodLabel} (amount ${c.amountRaw}) to an unknown spender (${c.spender}); confirm before approving`); return; }
   c.notes.push(`Limited ${methodLabel} to a known spender (${c.counterpartyLabel})`);
 }
 const MULTISEND_MAX_INNER = 64;
 // multiSend(bytes transactions): head = offset word + length word, then the
-// packed batch — per call: operation(1) | to(20) | value(32) | dataLen(32) | data.
+// packed batch; per call: operation(1) | to(20) | value(32) | dataLen(32) | data.
 function decodeMultiSendInner(body) {
   const offset = Number(BigInt("0x" + (wordAt(body, 0) || "0"))) * 2;
   const len = Number(BigInt("0x" + (body.slice(offset, offset + 64) || "0"))) * 2;
@@ -586,7 +586,7 @@ function analyzeTxCalldata(data, to, depth = 0) {
   const words = body.length / 64;
   const malformed = (method) => {
     c.method = method; c.floor = Math.max(c.floor, 45);
-    c.factors.push(`Calldata matches ${method} but the payload is malformed — held for review, never treated as safe`);
+    c.factors.push(`Calldata matches ${method} but the payload is malformed; held for review, never treated as safe`);
     return c;
   };
   const classify = (addr) => { const k = classifyCounterparty(addr); c.counterpartyKnown = k.known; c.counterpartyLabel = k.label; };
@@ -609,7 +609,7 @@ function analyzeTxCalldata(data, to, depth = 0) {
     c.amountRaw = value.toString(); c.unlimited = value >= UNLIMITED_FLOOR; c.isRevoke = value === 0n;
     if (c.spender) classify(c.spender);
     applyApprovalFloor(c, "permit");
-    c.notes.push("ERC-2612 permit is a gasless, signature-based approval — the allowance is granted off-chain and can later authorize transfers");
+    c.notes.push("ERC-2612 permit is a gasless, signature-based approval: the allowance is granted off-chain and can later authorize transfers");
   } else if (sel === SEL.permit2Approve) {
     if (words !== 4) return malformed("Permit2 approve");
     c.method = "permit2_approve"; c.category = "approval"; c.decoded = true;
@@ -619,19 +619,19 @@ function analyzeTxCalldata(data, to, depth = 0) {
     c.amountRaw = amount.toString(); c.unlimited = amount >= PERMIT2_MAX; c.isRevoke = amount === 0n;
     if (c.spender) classify(c.spender);
     applyApprovalFloor(c, "Permit2 approval");
-    c.notes.push("Permit2 approval — authorizes the spender to move the token via Permit2 signatures; deep PermitSingle/PermitBatch decode is out of scope");
+    c.notes.push("Permit2 approval: authorizes the spender to move the token via Permit2 signatures; deep PermitSingle/PermitBatch decode is out of scope");
   } else if (sel === SEL.setApprovalForAll) {
     if (words !== 2) return malformed("setApprovalForAll");
     const approvedWord = BigInt("0x" + (wordAt(body, 1) || "0"));
     if (approvedWord > 1n) return malformed("setApprovalForAll");
     c.method = "setApprovalForAll"; c.category = "approval"; c.decoded = true;
     c.operator = wordToAddress(wordAt(body, 0)); c.approved = approvedWord === 1n;
-    if (!c.operator) { c.floor = Math.max(c.floor, 90); c.factors.push("setApprovalForAll operator word is not a clean address — malformed or deceptive calldata"); }
+    if (!c.operator) { c.floor = Math.max(c.floor, 90); c.factors.push("setApprovalForAll operator word is not a clean address: malformed or deceptive calldata"); }
     else {
       classify(c.operator);
-      if (!c.approved) c.notes.push(`Revoking blanket operator approval for ${c.operator} — no new exposure`);
-      else if (!c.counterpartyKnown) { c.floor = Math.max(c.floor, 90); c.factors.push(`Blanket collection approval (setApprovalForAll) to an UNKNOWN operator (${c.operator}) — authorizes transfer of EVERY token in the collection, a common NFT-drainer vector`); }
-      else { c.floor = Math.max(c.floor, 65); c.factors.push(`Blanket collection approval to a known operator (${c.counterpartyLabel}) — high risk, confirm intent`); }
+      if (!c.approved) c.notes.push(`Revoking blanket operator approval for ${c.operator}; no new exposure`);
+      else if (!c.counterpartyKnown) { c.floor = Math.max(c.floor, 90); c.factors.push(`Blanket collection approval (setApprovalForAll) to an UNKNOWN operator (${c.operator}); authorizes transfer of EVERY token in the collection, a common NFT-drainer vector`); }
+      else { c.floor = Math.max(c.floor, 65); c.factors.push(`Blanket collection approval to a known operator (${c.counterpartyLabel}); high risk, confirm intent`); }
     }
   } else if (sel === SEL.transfer || sel === SEL.transferFrom) {
     const isFrom = sel === SEL.transferFrom;
@@ -641,16 +641,16 @@ function analyzeTxCalldata(data, to, depth = 0) {
     if (isFrom) c.from = wordToAddress(wordAt(body, 0));
     c.recipient = wordToAddress(wordAt(body, isFrom ? 1 : 0));
     c.amountRaw = BigInt("0x" + (wordAt(body, isFrom ? 2 : 1) || "0")).toString();
-    if (!c.recipient) { c.floor = Math.max(c.floor, 90); c.factors.push(`${method} recipient word is not a clean address — malformed or deceptive calldata`); }
-    else if (isDenylistedRecipient(c.recipient)) { c.recipientDenylisted = true; c.floor = Math.max(c.floor, 95); c.factors.push(`${method} recipient ${c.recipient} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST) — blocked`); }
-    else { c.floor = Math.max(c.floor, 35); c.factors.push(`${method} moves tokens to ${c.recipient} — recipient is not verified; confirm before signing`); }
+    if (!c.recipient) { c.floor = Math.max(c.floor, 90); c.factors.push(`${method} recipient word is not a clean address: malformed or deceptive calldata`); }
+    else if (isDenylistedRecipient(c.recipient)) { c.recipientDenylisted = true; c.floor = Math.max(c.floor, 95); c.factors.push(`${method} recipient ${c.recipient} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST); blocked`); }
+    else { c.floor = Math.max(c.floor, 35); c.factors.push(`${method} moves tokens to ${c.recipient}; recipient is not verified; confirm before signing`); }
   } else if (sel === SEL.decreaseAllowance) {
     if (words !== 2) return malformed("decreaseAllowance");
     c.method = "decreaseAllowance"; c.category = "approval"; c.decoded = true;
     c.spender = wordToAddress(wordAt(body, 0));
     c.amountRaw = BigInt("0x" + (wordAt(body, 1) || "0")).toString();
-    if (c.spender) { classify(c.spender); c.notes.push(`decreaseAllowance lowers the existing allowance for ${c.spender} — no new exposure`); }
-    else { c.floor = Math.max(c.floor, 45); c.factors.push("decreaseAllowance spender word is not a clean address — malformed calldata, held for review"); }
+    if (c.spender) { classify(c.spender); c.notes.push(`decreaseAllowance lowers the existing allowance for ${c.spender}; no new exposure`); }
+    else { c.floor = Math.max(c.floor, 45); c.factors.push("decreaseAllowance spender word is not a clean address: malformed calldata, held for review"); }
   } else if (DANGEROUS_ADMIN[sel]) {
     const [method, label] = DANGEROUS_ADMIN[sel];
     const expectedWords = { transferOwnership: 1, renounceOwnership: 0, upgradeTo: 1, changeAdmin: 1 };
@@ -660,18 +660,18 @@ function analyzeTxCalldata(data, to, depth = 0) {
     const target = words >= 1 ? wordToAddress(wordAt(body, 0)) : null;
     if (target) { c.spender = target; classify(target); }
     c.floor = Math.max(c.floor, 61);
-    c.factors.push(`Dangerous/admin call: this transaction ${label}${target ? ` (target ${target})` : ""} — confirm this is intended`);
-    c.notes.push("Recognized as a privileged/admin function; the dangerous-selector list is NOT exhaustive — absence of a warning is not proof of safety");
+    c.factors.push(`Dangerous/admin call: this transaction ${label}${target ? ` (target ${target})` : ""}; confirm this is intended`);
+    c.notes.push("Recognized as a privileged/admin function; the dangerous-selector list is NOT exhaustive; absence of a warning is not proof of safety");
   } else if (sel === SEL.multiSend) {
     c.method = "multiSend"; c.category = "batch"; c.decoded = true;
-    if (depth > 0) { c.floor = Math.max(c.floor, 45); c.factors.push("Nested MultiSend inside a batch — not decoded, held for review"); return c; }
+    if (depth > 0) { c.floor = Math.max(c.floor, 45); c.factors.push("Nested MultiSend inside a batch; not decoded, held for review"); return c; }
     let inner;
     try { inner = decodeMultiSendInner(body); } catch { inner = null; }
-    if (!inner) { c.floor = Math.max(c.floor, 45); c.factors.push("MultiSend batch bytes could not be parsed — held for review"); return c; }
-    if (inner.overflow) { c.floor = Math.max(c.floor, 45); c.factors.push(`MultiSend batch exceeds ${MULTISEND_MAX_INNER} inner calls — oversized batch held for review`); }
+    if (!inner) { c.floor = Math.max(c.floor, 45); c.factors.push("MultiSend batch bytes could not be parsed; held for review"); return c; }
+    if (inner.overflow) { c.floor = Math.max(c.floor, 45); c.factors.push(`MultiSend batch exceeds ${MULTISEND_MAX_INNER} inner calls; oversized batch held for review`); }
     c.notes.push(`MultiSend batch with ${inner.calls.length} decoded inner call(s); the aggregate follows the highest-risk inner call`);
     for (const call of inner.calls) {
-      if (call.operation === 1) { c.floor = Math.max(c.floor, 45); c.factors.push(`MultiSend inner #${call.index} uses delegatecall — elevated risk`); }
+      if (call.operation === 1) { c.floor = Math.max(c.floor, 45); c.factors.push(`MultiSend inner #${call.index} uses delegatecall; elevated risk`); }
       if (call.data.length >= 10) {
         const ic = analyzeTxCalldata(call.data, call.to, depth + 1);
         c.floor = Math.max(c.floor, ic.floor);
@@ -681,24 +681,24 @@ function analyzeTxCalldata(data, to, depth = 0) {
         c.dangerous = c.dangerous || ic.dangerous;
       } else if (call.data.length > 2) {
         c.floor = Math.max(c.floor, 45);
-        c.factors.push(`MultiSend inner #${call.index} carries a truncated calldata payload — held for review`);
+        c.factors.push(`MultiSend inner #${call.index} carries a truncated calldata payload; held for review`);
       } else if (BigInt(call.value) > 0n) {
         c.floor = Math.max(c.floor, 35);
-        c.factors.push(`MultiSend inner #${call.index} moves native value to ${call.to} — recipient is not verified; confirm before signing`);
+        c.factors.push(`MultiSend inner #${call.index} moves native value to ${call.to}; recipient is not verified; confirm before signing`);
       }
     }
   } else if (sel === SEL.execTransaction) {
     c.method = "execTransaction"; c.category = "batch"; c.decoded = true;
     c.floor = Math.max(c.floor, 45);
-    c.factors.push("Safe execTransaction recognized — nested call decode is not performed; verify the wrapped call independently before signing");
+    c.factors.push("Safe execTransaction recognized; nested call decode is not performed; verify the wrapped call independently before signing");
   } else {
     c.floor = Math.max(c.floor, 31);
-    c.factors.push(`Calldata selector ${c.selector} is not a recognized method — held for review, confirm before signing`);
+    c.factors.push(`Calldata selector ${c.selector} is not a recognized method; held for review, confirm before signing`);
   }
   return c;
 }
 // Label-only summary for estimate_gas / simulate_transaction output (additive
-// field; no scoring there — verdicts stay with analyze).
+// field; no scoring there; verdicts stay with analyze).
 function calldataSummary(data, to) {
   if (typeof data !== "string" || !HEXDATA_RE.test(data) || data.length < 10) return null;
   const c = analyzeTxCalldata(data, typeof to === "string" && ADDRESS_RE.test(to) ? to.toLowerCase() : null);
@@ -746,10 +746,10 @@ async function analyzeRealFiIntent(input, action) {
     evidenceUsed.push("token analysis (on-chain surface + registry + GoPlus threat intel)");
     if (parts.token.riskScore > 30) { factors.push(`Token risk (${parts.token.riskLevel}): ${parts.token.riskFactors[0] || ""}`); score += Math.min(40, parts.token.riskScore / 2); }
   } else if (!isUrlIntent) {
-    missingInputs.push("token (0x address) — token legitimacy was not verified");
+    missingInputs.push("token (0x address); token legitimacy was not verified");
   }
 
-  // target contract (router / vault / staking / market) — fail closed when unknown
+  // target contract (router / vault / staking / market); fail closed when unknown
   const target = String(input.targetContract || input.bridgeContract || input.router || input.vault
     || input.stakingContract || input.market || input.contract || "");
   if (ADDRESS_RE.test(target)) {
@@ -757,21 +757,21 @@ async function analyzeRealFiIntent(input, action) {
     evidenceUsed.push(`${targetLabel} contract analysis (code, canonical registry, GoPlus)`);
     const canonicalTarget = (parts.target.riskFactors || []).some((f) => /^Canonical /.test(f));
     if (parts.target.onChain && parts.target.onChain.isContract === false) {
-      factors.push(`Target ${targetLabel} has NO contract code on Pharos mainnet — nothing legitimate to interact with`);
+      factors.push(`Target ${targetLabel} has NO contract code on Pharos mainnet; nothing legitimate to interact with`);
       score = Math.max(score, 95);
     } else if (!canonicalTarget) {
-      factors.push(`Target ${targetLabel} is not in the official Pharos canonical registry and its source is unverified — fail-closed: verify it independently before any ${action.replace(/_/g, " ")}`);
+      factors.push(`Target ${targetLabel} is not in the official Pharos canonical registry and its source is unverified; fail-closed: verify it independently before any ${action.replace(/_/g, " ")}`);
       score = Math.max(score, isDeposit ? 45 : THREAT_INTEL_UNAVAILABLE_FLOOR);
       if (parts.target.riskScore > 30) score += Math.min(30, parts.target.riskScore / 3);
     }
     const rep = await reputationOfTarget(target);
     if (rep) {
-      parts.reputation = { ...rep, interpretation: rep.verifiedActionCount > 0 ? `${rep.verifiedActionCount} SafeHands-verified action(s) on record.` : "No verified actions on record — neutral, not an adverse signal." };
+      parts.reputation = { ...rep, interpretation: rep.verifiedActionCount > 0 ? `${rep.verifiedActionCount} SafeHands-verified action(s) on record.` : "No verified actions on record; neutral, not an adverse signal." };
       evidenceUsed.push("SafeHands attestation reputation (reputationOf)");
     }
   } else if (!isUrlIntent) {
     missingInputs.push(`${INTENT_TARGET_KEY[action] || "targetContract"} (0x address of the ${targetLabel} contract)`);
-    factors.push(`No ${targetLabel} contract address provided — the contract this intent would call is unverified`);
+    factors.push(`No ${targetLabel} contract address provided; the contract this intent would call is unverified`);
     score = Math.max(score, isDeposit ? 45 : 35);
   }
 
@@ -788,8 +788,8 @@ async function analyzeRealFiIntent(input, action) {
         const state = allowance === 0n ? "none" : allowance >= 2n ** 255n ? "unlimited" : "scoped";
         parts.allowance = { owner, spender, allowanceRaw: allowance.toString(), approvalRisk: state };
         evidenceUsed.push("current ERC-20 allowance read (allowance(owner,spender))");
-        if (state === "unlimited") { factors.push("Owner already granted an UNLIMITED approval to this spender — existing exposure is the entire token balance"); score += 20; }
-      } catch { parts.allowance = { owner, spender, error: "allowance read failed — token may not expose ERC-20 allowance()" }; }
+        if (state === "unlimited") { factors.push("Owner already granted an UNLIMITED approval to this spender; existing exposure is the entire token balance"); score += 20; }
+      } catch { parts.allowance = { owner, spender, error: "allowance read failed; token may not expose ERC-20 allowance()" }; }
     } else {
       missingInputs.push("owner + spender + token for the allowance-exposure check");
     }
@@ -797,7 +797,7 @@ async function analyzeRealFiIntent(input, action) {
 
   // simulation + gas estimate (only when real calldata is provided; both read-only)
   if (input.to != null || input.data != null) {
-    // offline calldata decode — escalate-only floor, no extra RPC
+    // offline calldata decode: escalate-only floor, no extra RPC
     if (typeof input.data === "string" && HEXDATA_RE.test(input.data) && input.data.length >= 10) {
       const cd = analyzeTxCalldata(input.data, ADDRESS_RE.test(String(input.to || "")) ? String(input.to).toLowerCase() : null);
       parts.calldata = cd;
@@ -817,7 +817,7 @@ async function analyzeRealFiIntent(input, action) {
         const msg = String((e && e.message) || e);
         if (!/^RPC /.test(msg)) throw e;
         parts.simulation = { reverted: true, reason: sanitizeReason(msg) };
-        factors.push("Simulation REVERTS against current chain state — the transaction would fail or is blocked");
+        factors.push("Simulation REVERTS against current chain state; the transaction would fail or is blocked");
         score += 35;
         evidenceUsed.push("eth_call simulation against current chain state");
       }
@@ -838,7 +838,7 @@ async function analyzeRealFiIntent(input, action) {
   // native-amount sanity vs acting wallet
   if (input.amount != null && wallet && !ADDRESS_RE.test(token)) {
     const wei = prosToWei(input.amount);
-    if (wei == null) factors.push("'amount' is not a well-formed decimal string — ignored");
+    if (wei == null) factors.push("'amount' is not a well-formed decimal string; ignored");
     else if (wei > wallet.balance) { factors.push("Amount exceeds the acting wallet's PROS balance"); score += 25; }
   }
 
@@ -847,11 +847,11 @@ async function analyzeRealFiIntent(input, action) {
     const url = String(input.url || input.link || "");
     if (!url) {
       missingInputs.push("url (the payment/campaign link)");
-      factors.push("No URL provided — link safety was not verified");
+      factors.push("No URL provided; link safety was not verified");
       score = Math.max(score, 35);
     } else {
       parts.url = urlRisk(url);
-      evidenceUsed.push("static URL risk analysis (string inspection only — the hosted engine never fetches arbitrary URLs)");
+      evidenceUsed.push("static URL risk analysis (string inspection only; the hosted engine never fetches arbitrary URLs)");
       if (parts.url.factors.length) { factors.push(...parts.url.factors); score += parts.url.add; }
     }
     const payTo = String(input.payTo || input.recipient || "");
@@ -859,7 +859,7 @@ async function analyzeRealFiIntent(input, action) {
       parts.payTo = await analyzeWallet(payTo, { expect: "any" });
       evidenceUsed.push("payTo address analysis (on-chain + GoPlus)");
       if (parts.payTo.riskScore > 30) { factors.push(`payTo risk (${parts.payTo.riskLevel}): ${parts.payTo.riskFactors[0] || ""}`); score += Math.min(35, parts.payTo.riskScore / 2); }
-      if (isDenylistedRecipient(payTo)) { factors.push(`payTo ${payTo} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST) — blocked`); score = Math.max(score, 95); }
+      if (isDenylistedRecipient(payTo)) { factors.push(`payTo ${payTo} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST); blocked`); score = Math.max(score, 95); }
     } else {
       missingInputs.push("payTo (0x recipient) for recipient analysis");
     }
@@ -882,7 +882,7 @@ async function analyzeRealFiIntent(input, action) {
       vaultProviderData = {
         providerStatus: "not_configured",
         tvl: null, depositCap: null, paused: null, withdrawalsOpen: null, apy: null,
-        note: "No vault-status provider configured — these fields are unavailable, not zero, and are never invented.",
+        note: "No vault-status provider configured; these fields are unavailable, not zero, and are never invented.",
       };
     }
   }
@@ -890,11 +890,11 @@ async function analyzeRealFiIntent(input, action) {
   const intentNotes = [];
   if (action === "bridge") intentNotes.push("SafeHands never bridges. This is a pre-signature check of token, router, approvals, and calldata only.");
   if (action === "staking") intentNotes.push("SafeHands never stakes. This is a pre-signature check of the staking contract, token, approvals, and calldata only.");
-  if (action === "vault_deposit" || action === "yield_deposit") intentNotes.push("This score rates deposit-interaction risk (contract, token, approvals, simulation) — NOT yield quality or APY.");
-  if (action === "tokenized_asset") intentNotes.push("On-chain surface, registry, and GoPlus checks only — offering documents and real-world asset backing are NOT verifiable from the hosted engine.");
-  if (action === "fiat_ramp") intentNotes.push("SafeHands does not process or approve fiat on/off-ramp payments and cannot attest the operator's legitimacy — this is link and address risk only.");
-  if (action === "reward_campaign") intentNotes.push("SafeHands cannot confirm a campaign or reward is legitimate — absence of adverse signals is not an endorsement.");
-  if (action === "x402_payment") intentNotes.push("The x402 fetch/payment is NOT executed — static URL, recipient, token, and amount checks only.");
+  if (action === "vault_deposit" || action === "yield_deposit") intentNotes.push("This score rates deposit-interaction risk (contract, token, approvals, simulation), NOT yield quality or APY.");
+  if (action === "tokenized_asset") intentNotes.push("On-chain surface, registry, and GoPlus checks only; offering documents and real-world asset backing are NOT verifiable from the hosted engine.");
+  if (action === "fiat_ramp") intentNotes.push("SafeHands does not process or approve fiat on/off-ramp payments and cannot attest the operator's legitimacy; this is link and address risk only.");
+  if (action === "reward_campaign") intentNotes.push("SafeHands cannot confirm a campaign or reward is legitimate; absence of adverse signals is not an endorsement.");
+  if (action === "x402_payment") intentNotes.push("The x402 fetch/payment is NOT executed; static URL, recipient, token, and amount checks only.");
 
   const rep = report(score, factors, { type: "intent", action, walletAddress: ADDRESS_RE.test(String(input.walletAddress || "")) ? input.walletAddress : null });
   rep.components = parts;
@@ -923,7 +923,7 @@ async function analyzeIntent(input) {
     const rec = await analyzeWallet(input.toAddress, { expect: "any" });
     parts.recipient = rec;
     if (rec.riskScore > 30) { factors.push(`Recipient risk: ${rec.riskFactors.join("; ") || rec.riskLevel}`); score += Math.min(35, rec.riskScore / 2); }
-    if (isDenylistedRecipient(input.toAddress)) { factors.push(`Recipient ${input.toAddress} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST) — blocked`); score = Math.max(score, 95); }
+    if (isDenylistedRecipient(input.toAddress)) { factors.push(`Recipient ${input.toAddress} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST); blocked`); score = Math.max(score, 95); }
     const wei = input.amount != null ? prosToWei(input.amount) : null;
     if (input.amount != null && wei === null) return fail("VALIDATION_ERROR", "'amount' must be a positive decimal string, e.g. \"1.5\".");
     if (wei !== null) {
@@ -950,7 +950,7 @@ async function analyzeIntent(input) {
 async function cmdAnalyze(raw) {
   let input; try { input = JSON.parse(raw); } catch { return fail("VALIDATION_ERROR", "analyze expects a JSON argument."); }
   // 'data' (calldata) legitimately contains 64-hex words; it is exempt from the
-  // 64-hex heuristic only — the secret-keyword check still covers the full input.
+  // 64-hex heuristic only; the secret-keyword check still covers the full input.
   const keyErr = rejectKeyLike(input, ["data", "txHash", "storageKeys"]); if (keyErr) return fail("KEY_MATERIAL_REJECTED", keyErr);
   if (input.chainId != null && Number(input.chainId) !== CHAIN_ID)
     return fail("CHAIN_NOT_SUPPORTED", `Only Pharos pacific-mainnet (chainId ${CHAIN_ID}) is supported.`);
@@ -1007,11 +1007,11 @@ async function cmdQuery(subject) {
       };
       out.reputation.interpretation = out.reputation.verifiedActionCount > 0
         ? `Agent has ${out.reputation.verifiedActionCount} verified on-chain action(s).`
-        : "No verified actions recorded — neutral, not necessarily unsafe.";
+        : "No verified actions recorded; neutral, not necessarily unsafe.";
     } catch { out.reputation = { configured: true, contractAddress: ATTEST_ADDR, error: "reputation read failed" }; }
   }
   if (!out.registry.configured && !out.reputation.configured) {
-    out.note = "SafeHands contract addresses are not configured in assets/contracts.json — on-chain record/reputation queries unavailable; analysis features are unaffected.";
+    out.note = "SafeHands contract addresses are not configured in assets/contracts.json; on-chain record/reputation queries unavailable; analysis features are unaffected.";
   }
   return out;
 }
@@ -1087,7 +1087,7 @@ async function cmdTokenPrice(raw) {
   const updatedAt = Number(decUint(tsHex));
   const feedDecimals = decHex ? Number(decUint(decHex)) : FEED_DECIMALS_DEFAULT;
   if (answer <= 0n) {
-    return fail("PROVIDER_UNAVAILABLE", "Feed answered a non-positive value — treating the feed as unavailable.", {
+    return fail("PROVIDER_UNAVAILABLE", "Feed answered a non-positive value; treating the feed as unavailable.", {
       ...base, provider: "chainlink-push", feedDecimals, answerRaw: answer.toString(),
       safeFallback: "Do not guess a price; report the feed as unavailable.",
     });
@@ -1098,7 +1098,7 @@ async function cmdTokenPrice(raw) {
   const detail = { feedDecimals, answerRaw: answer.toString(), updatedAt, feedAgeSeconds, heartbeatSeconds };
   if (feedAgeSeconds > heartbeatSeconds) {
     // Stale = heartbeat violation. The last answer is included as EVIDENCE, clearly
-    // labeled — it must never be presented as a current price.
+    // labeled; it must never be presented as a current price.
     return fail("FEED_STALE", `Feed heartbeat violated: last update ${feedAgeSeconds}s ago (heartbeat ${heartbeatSeconds}s). Not serving this as a current price.`, {
       ...base, ...detail, provider: "chainlink-push", stale: true, sourceStatus: "stale",
       lastKnownAnswer: price,
@@ -1123,10 +1123,10 @@ async function cmdCheckAllowance(raw) {
   const allowance = decUint(alHex);
   const approvalRisk = allowance === 0n ? "none" : allowance >= UNLIMITED_FLOOR ? "unlimited" : "scoped";
   const approvalRiskHint = approvalRisk === "unlimited"
-    ? "UNLIMITED approval — the spender can move the owner's entire current and future balance of this token. High risk; revoke or scope it unless the spender is fully trusted."
+    ? "UNLIMITED approval: the spender can move the owner's entire current and future balance of this token. High risk; revoke or scope it unless the spender is fully trusted."
     : approvalRisk === "scoped"
-      ? "Finite approval — exposure is capped at the approved amount. Verify the spender before increasing it."
-      : "No approval — the spender cannot move this token for this owner.";
+      ? "Finite approval: exposure is capped at the approved amount. Verify the spender before increasing it."
+      : "No approval: the spender cannot move this token for this owner.";
   return {
     success: true, command: "check_allowance",
     token: j.token, owner: j.owner, spender: j.spender,
@@ -1134,7 +1134,7 @@ async function cmdCheckAllowance(raw) {
     allowanceRaw: allowance.toString(),
     allowanceFormatted: t.decimals != null ? formatUnits(allowance, t.decimals) : null,
     approvalRisk, approvalRiskHint,
-    readOnly: "reads allowance(owner,spender) only — this command never grants, changes, or revokes an approval",
+    readOnly: "reads allowance(owner,spender) only; this command never grants, changes, or revokes an approval",
     chainId: CHAIN_ID, timestamp: new Date().toISOString(),
   };
 }
@@ -1180,7 +1180,7 @@ async function cmdEstimateGas(raw) {
       success: true, command: "estimate_gas",
       estimatedGas: Number(decUint(hex)), estimatedGasHex: hex,
       ...(cd ? { calldata: cd } : {}),
-      broadcast: false, note: "eth_estimateGas is a node-side dry run — nothing was signed or broadcast",
+      broadcast: false, note: "eth_estimateGas is a node-side dry run; nothing was signed or broadcast",
       chainId: CHAIN_ID, timestamp: new Date().toISOString(),
     };
   } catch (e) {
@@ -1206,7 +1206,7 @@ async function cmdSimulateTransaction(raw) {
     return {
       success: true, command: "simulate_transaction", reverted: false, returnData: ret,
       ...(cd ? { calldata: cd } : {}),
-      broadcast: false, note: "eth_call simulation only — nothing was signed or broadcast",
+      broadcast: false, note: "eth_call simulation only; nothing was signed or broadcast",
       chainId: CHAIN_ID, timestamp: new Date().toISOString(),
     };
   } catch (e) {
@@ -1252,7 +1252,7 @@ async function cmdSpvProof(raw) {
 
 // ── gated public-provider commands (assets/supported-protocols.json) ─────
 // An endpoint is honored ONLY if it is https and keyless. When unset, the
-// command reports *_NOT_CONFIGURED — it never invents provider data.
+// command reports *_NOT_CONFIGURED; it never invents provider data.
 function providerEndpoint(name) {
   const p = PROVIDERS[name] || {};
   const ep = typeof p.endpoint === "string" && /^https:\/\//.test(p.endpoint) ? p.endpoint : null;
@@ -1261,13 +1261,13 @@ function providerEndpoint(name) {
 function providerNotConfigured(command, provider, code) {
   return fail(code, `No ${provider} endpoint is configured in assets/supported-protocols.json.`, {
     command, provider, providerStatus: "not_configured",
-    reason: "endpoint is null — only verified public keyless endpoints may be configured",
+    reason: "endpoint is null; only verified public keyless endpoints may be configured",
     safeFallback: "Report this data as unavailable. Do not scrape, guess, or invent results.",
   });
 }
 const SECRETISH_FIELDS = ["headers", "authorization", "apiKey", "api_key", "token", "cookie", "passKey", "pass_key", "bearer"];
 function rejectSecretFields(j) {
-  for (const f of SECRETISH_FIELDS) if (j[f] != null) return `'${f}' is not accepted — provider calls are keyless and header-free by policy`;
+  for (const f of SECRETISH_FIELDS) if (j[f] != null) return `'${f}' is not accepted; provider calls are keyless and header-free by policy`;
   return null;
 }
 async function providerPost(endpoint, payload) {
@@ -1334,7 +1334,7 @@ async function cmdPoolInfo(raw) {
     const data = await providerPost(endpoint, { poolAddress: j.poolAddress ?? null, tokenA: j.tokenA ?? null, tokenB: j.tokenB ?? null });
     return {
       success: true, command: "get_pool_info", provider: "pool-info provider", endpoint, data,
-      note: "Pool/route data is liquidity context only — NEVER a canonical price. Use get_token_price (Chainlink Push) for pricing.",
+      note: "Pool/route data is liquidity context only, NEVER a canonical price. Use get_token_price (Chainlink Push) for pricing.",
       chainId: CHAIN_ID, timestamp: new Date().toISOString(),
     };
   } catch (e) {

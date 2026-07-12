@@ -71,7 +71,7 @@ export const TOKEN_REGISTRY = {
     isMainnet: false,
     isCanonical: true,
     isTestToken: true,
-    purpose: "Pharos Skill Engine USDC — the USDC listed in the official pharos-skill-engine-0.1.0 assets/tokens.json for pacific-mainnet",
+    purpose: "Pharos Skill Engine USDC: the USDC listed in the official pharos-skill-engine-0.1.0 assets/tokens.json for pacific-mainnet",
     docsSource: "pharos-skill-engine-0.1.0/assets/tokens.json",
     verificationStatus: "DOCS_VERIFIED_FROM_PHAROS_SKILL_ENGINE",
   },

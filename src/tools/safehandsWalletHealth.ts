@@ -65,7 +65,7 @@ export async function handleSafeHandsWalletHealth(
         canExecuteWrites: false,
       },
       requiredActions: [
-        "Create a managed mainnet wallet (set WALLET_MODE=managed-mainnet — auto-creates on next startup) or provide WALLET_MODE=env with a testnet PRIVATE_KEY.",
+        "Create a managed mainnet wallet (set WALLET_MODE=managed-mainnet; auto-creates on next startup) or provide WALLET_MODE=env with a testnet PRIVATE_KEY.",
         "Fund your wallet with PROS on Pharos Pacific Mainnet",
       ],
       source: "safehands_wallet_health",

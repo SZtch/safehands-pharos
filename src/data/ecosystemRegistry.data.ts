@@ -51,7 +51,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     providers: [],
     safetyUse: "allow_eligible",
     notes:
-      "Recognition is by canonical address only — deployment/verification on the active network is NOT asserted, and canonical recognition never makes a risky action safe (e.g. unlimited approvals to Permit2 still require confirmation).",
+      "Recognition is by canonical address only; deployment/verification on the active network is NOT asserted, and canonical recognition never makes a risky action safe (e.g. unlimited approvals to Permit2 still require confirmation).",
   },
 
   // ── Pharos Atlantic Testnet canonical infrastructure (existing registry) ─
@@ -137,7 +137,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     providers: [],
     safetyUse: "allow_eligible",
     notes:
-      "Canonical Pacific Mainnet USDC. Other networks use different USDC addresses (see constants.ts) — a symbol alone never identifies a token.",
+      "Canonical Pacific Mainnet USDC. Other networks use different USDC addresses (see constants.ts); a symbol alone never identifies a token.",
   },
   {
     id: "token:pacific-mainnet:link",
@@ -195,7 +195,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
       { address: "0x43CeBa953FF0165840f35342F6a6Bc1B923bc5FF", label: "XRP/USD", role: "price_feed", deterministic: false, verificationStatus: "VERIFIED", symbol: "XRP", pair: "XRP/USD" },
     ],
     providers: [
-      { kind: "price_feed", endpoint: null, configVia: null, status: "implemented", note: "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price — including stablecoins." },
+      { kind: "price_feed", endpoint: null, configVia: null, status: "implemented", note: "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price, including stablecoins." },
     ],
     safetyUse: "recognition_only",
     notes:
@@ -240,7 +240,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
       { kind: "subgraph", endpoint: null, configVia: "GOLDSKY_SUBGRAPH_URL", status: "not_configured", note: "Set to a public Goldsky subgraph GraphQL URL (https, keyless) to enable query_goldsky_subgraph." },
     ],
     safetyUse: "recognition_only",
-    notes: "Indexing/data enrichment only — never an execution path and never a substitute for on-chain reads.",
+    notes: "Indexing/data enrichment only: never an execution path and never a substitute for on-chain reads.",
   },
   {
     id: "provider:pacific-mainnet:execution-history",
@@ -269,7 +269,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     evidenceSources: [],
     contracts: [],
     providers: [
-      { kind: "json_api", endpoint: null, configVia: null, status: "not_configured", note: "Set to a verified public, keyless pool-info URL to enable get_pool_info. Pool/route data is context only — never a canonical price." },
+      { kind: "json_api", endpoint: null, configVia: null, status: "not_configured", note: "Set to a verified public, keyless pool-info URL to enable get_pool_info. Pool/route data is context only, never a canonical price." },
     ],
     safetyUse: "recognition_only",
     notes: "",
@@ -285,7 +285,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     evidenceSources: [],
     contracts: [],
     providers: [
-      { kind: "json_api", endpoint: null, configVia: null, status: "not_configured", note: "Set to a verified public, keyless vault-status URL to enrich vault_deposit / yield_deposit intents with TVL/cap/paused data. Without it, those fields are reported as unavailable — never invented." },
+      { kind: "json_api", endpoint: null, configVia: null, status: "not_configured", note: "Set to a verified public, keyless vault-status URL to enrich vault_deposit / yield_deposit intents with TVL/cap/paused data. Without it, those fields are reported as unavailable, never invented." },
     ],
     safetyUse: "recognition_only",
     notes: "",
@@ -322,7 +322,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
       { kind: "security_intel", endpoint: "https://api.gopluslabs.io", configVia: "GOPLUS_API_BASE", status: "implemented", note: "Keyless threat intel. Negative signals escalate; a clean result never relaxes risk on its own. Unavailable/unindexed/schema-drift → fail closed (token treated as unreviewed)." },
     ],
     safetyUse: "recognition_only",
-    notes: "GoPlus support for Pharos (chain 1672) is a third-party claim (TO_VERIFY) — its output is risk intel, never identity or legitimacy.",
+    notes: "GoPlus support for Pharos (chain 1672) is a third-party claim (TO_VERIFY); its output is risk intel, never identity or legitimacy.",
   },
   {
     id: "explorer:pharosscan",
@@ -338,7 +338,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
       { kind: "explorer_api", endpoint: null, configVia: null, status: "not_implemented", note: "Explorer is used for display links only; no verification API is called and explorer pages are never scraped." },
     ],
     safetyUse: "recognition_only",
-    notes: "Every SafeHands analysis links to the explorer so users can verify evidence themselves — the link is presentation, not proof.",
+    notes: "Every SafeHands analysis links to the explorer so users can verify evidence themselves; the link is presentation, not proof.",
   },
 
   // ── Known-but-unverified ecosystem protocols (fail closed) ──────────────
@@ -516,7 +516,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     ecosystemStatus: "VERIFIED",
     verificationStatus: "VERIFIED",
     evidenceSources: [
-      { type: "official_docs", ref: "https://docs.morpho.org/get-started/resources/addresses/ (Pharos section — Morpho's own docs, not an ecosystem listing)", verifiedAt: "2026-07-11" },
+      { type: "official_docs", ref: "https://docs.morpho.org/get-started/resources/addresses/ (Pharos section; Morpho's own docs, not an ecosystem listing)", verifiedAt: "2026-07-11" },
       { type: "onchain", ref: "eth_getCode non-empty for all three addresses on chainId 1672 (https://rpc.pharos.xyz); core additionally answers DOMAIN_SEPARATOR() and owner() eth_calls", verifiedAt: "2026-07-11" },
     ],
     contracts: [
@@ -526,7 +526,7 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     ],
     providers: [],
     safetyUse: "allow_eligible",
-    notes: "Verified 2026-07-11 from Morpho's own addresses page + on-chain checks. Verification relaxes recognition only — an unlimited approval to Morpho Blue still requires confirmation, and MetaMorpho vault addresses are NOT bundled (markets/vaults are permissionless; verify each vault separately).",
+    notes: "Verified 2026-07-11 from Morpho's own addresses page + on-chain checks. Verification relaxes recognition only: an unlimited approval to Morpho Blue still requires confirmation, and MetaMorpho vault addresses are NOT bundled (markets/vaults are permissionless; verify each vault separately).",
   },
   {
     id: "protocol:pacific-mainnet:termmax",

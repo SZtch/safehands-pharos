@@ -10,7 +10,7 @@
 
 ## 1. Process & boundary
 
-- Entrypoint: `node dist/api/server.js` (`npm start`). Compiled — no `tsx` at runtime.
+- Entrypoint: `node dist/api/server.js` (`npm start`). Compiled; no `tsx` at runtime.
 - Read-only **by construction**: the API imports no signer, wallet, facilitator, or
   write tooling. The only chain access is a read-only viem public client routed through
   the read-only RPC method gate (`PharosReadOnlyRpc`).
@@ -33,7 +33,7 @@ From `getCapabilityFlags()` (`src/lib/config.ts`), surfaced on `/infra/status` +
 - **`false`:** `userSignedBroadcastAvailable`, `signingAvailable`,
   `managedWalletAvailable`, `autoExecutionAvailable`, `onchainPublishingAvailable`,
   `custodyAvailable`, and the paid-surface flags `premiumEndpointsAvailable`,
-  `x402PaidEndpointsAvailable` (paid endpoints are a future, x402-gated phase — not Phase 7).
+  `x402PaidEndpointsAvailable` (paid endpoints are a future, x402-gated phase, not Phase 7).
 
 ## 3. Request safety
 
@@ -45,7 +45,7 @@ consistent **404** · security headers (`nosniff`, `no-referrer`, no `x-powered-
 Config helpers live in `src/api/httpHardening.ts` (pure, offline-testable).
 
 **Access control (P8A):** optional **scoped API keys** (`SAFEHANDS_API_KEYS`, format
-`rawKey` or `rawKey#scopeA|scopeB`; bare keys get the default read bundle) — identity /
+`rawKey` or `rawKey#scopeA|scopeB`; bare keys get the default read bundle); identity /
 access-control only, **never payment**. Public read API stays **open by default**; scopes are
 enforced only in require-key mode (`SAFEHANDS_REQUIRE_API_KEY=true`): invalid key ⇒ 401, valid
 key missing the endpoint scope ⇒ 403. Raw keys are never stored/logged (keyId only). See
@@ -53,12 +53,12 @@ key missing the endpoint scope ⇒ 403. Raw keys are never stored/logged (keyId 
 
 **Policy profiles (P8C):** named SafeHands presets (`standard`/`strict`/`agent`/`x402-preflight`,
 `SAFEHANDS_POLICY_PRESET`) govern the **agent path**, layered on the existing escalate-only
-`applyPolicy` — **no preset/request can weaken a decision**. Request presets are tighten-only;
+`applyPolicy`: **no preset/request can weaken a decision**. Request presets are tighten-only;
 responses carry `policyPreset`/`policyVersion`. See [`POLICY_PROFILES.md`](./POLICY_PROFILES.md).
 
 **Prepare-only mode (P9):** `POST /prepare/tx` returns an **UNSIGNED** transaction after a
 SafeHands check (`requiresUserSignature: true`, `decision: PREPARE_ONLY`; a BLOCK prepares
-nothing). SafeHands signs/broadcasts nothing — `signingAvailable`/`broadcastAvailable` stay
+nothing). SafeHands signs/broadcasts nothing; `signingAvailable`/`broadcastAvailable` stay
 false; the caller signs externally. See [`PREPARE_TRANSACTION.md`](./PREPARE_TRANSACTION.md).
 
 **Wallet-ready handoff (P10A):** `POST /wallet/prepare` reads wallet context
@@ -93,7 +93,7 @@ on-chain read when configured (falls back to offline-deterministic evidence othe
 | `GET /metrics/public` | Safe aggregate metrics (Phase 7) | ✅ | ❌ | ❌ |
 
 Decision/analysis endpoints (`/guardian/check`, `/analyze/*`, `/agent/*`) are recorded as
-**sanitized** activity items (coarse target only — no payloads/secrets). Every response also
+**sanitized** activity items (coarse target only, no payloads/secrets). Every response also
 carries an `X-Request-Id` header. See
 [`OBSERVABILITY_AND_ACTIVITY.md`](./OBSERVABILITY_AND_ACTIVITY.md).
 
@@ -140,7 +140,7 @@ Full copy-paste set: [`SAFEHANDS_REVIEWER_DEMO_SCRIPT.md`](./SAFEHANDS_REVIEWER_
 
 ## 5. Deployment (optional self-host)
 
-The hosted SafeHands Agent is being published to **Anvita Flow** (<https://flow.anvita.xyz/home>) (Agent Carnival Phase 2) — this
+The hosted SafeHands Agent is being published to **Anvita Flow** (<https://flow.anvita.xyz/home>) (Agent Carnival Phase 2); this
 `src/` backend is an **optional, self-hostable reference**, not the production service. To run
 it yourself: `npm start` runs the compiled read-only API on `0.0.0.0:$PORT`, no keys required,
 so it drops onto any container host (Docker / VPS / Fly) or an ephemeral host with no persistent

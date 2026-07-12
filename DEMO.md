@@ -22,8 +22,8 @@ The demo is non-destructive. It does not load a private key, does not create a w
 8. SSRF protection blocks localhost/private-IP fetches by default.
 9. `send_payment` fails closed because write tools are disabled by default.
 10. `explain_risk` returns a human-readable reason for the blocked approval.
-11. **Tokenized-asset (RWA) transfer compliance** — an approval on an unregistered asset token with an unverified spender returns `REQUIRE_CONFIRMATION` (risk `MEDIUM`): SafeHands demands human review instead of letting an agent move an unvetted tokenized asset.
-12. **Real-Fi settlement cap** — an x402/USDC settlement of 5 USDC over the active policy cap (0.1 USDC, `balanced`) returns `BLOCK` (risk `HIGH`): deterministic spend limits on real-world payment rails that no model can override.
+11. **Tokenized-asset (RWA) transfer compliance**: an approval on an unregistered asset token with an unverified spender returns `REQUIRE_CONFIRMATION` (risk `MEDIUM`): SafeHands demands human review instead of letting an agent move an unvetted tokenized asset.
+12. **Real-Fi settlement cap**: an x402/USDC settlement of 5 USDC over the active policy cap (0.1 USDC, `balanced`) returns `BLOCK` (risk `HIGH`): deterministic spend limits on real-world payment rails that no model can override.
 
 ## Expected default network
 

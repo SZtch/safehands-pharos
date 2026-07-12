@@ -14,7 +14,7 @@ agent**. Given a user/agent action it returns exactly one public decision:
 | `ALLOW` | No blocking risk found. The caller may proceed (and executes externally). |
 | `BLOCK` | The action is unsafe. The caller must stop. |
 | `REQUIRE_CONFIRMATION` | Needs explicit user/admin confirmation before execution. |
-| `PREPARE_ONLY` | Safe, but execution is disabled here — prepare/hand off only. |
+| `PREPARE_ONLY` | Safe, but execution is disabled here; prepare/hand off only. |
 
 SafeHands is **not** a wallet, token, NFT, DEX, bridge, custody product,
 private-key manager, or auto-execution bot. It holds no keys and never signs,
@@ -22,16 +22,16 @@ sends, approves, swaps, creates/loads wallets, or publishes. It only *advises*.
 
 ## How it is built (layered on Phases 1–3)
 
-The agent is a thin **orchestration layer** — it adds classification, policy, and
+The agent is a thin **orchestration layer**: it adds classification, policy, and
 formatting, but **does not duplicate decision logic**:
 
-- **Phase 1 — decision contract & boundaries** (`src/lib/guardian/decision.ts`,
+- **Phase 1: decision contract & boundaries** (`src/lib/guardian/decision.ts`,
   `src/lib/networks.ts`, `src/lib/config.ts`): the four public decisions, the
   mainnet-first network registry, and the four safety gates (all `false` by
   default).
-- **Phase 2 — read-only analyzers** (`src/lib/analysis/`): EVM call, tx-hash,
+- **Phase 2: read-only analyzers** (`src/lib/analysis/`): EVM call, tx-hash,
   contract intel, approval, Safe/MultiSend, x402, gas, token.
-- **Phase 3 — read-only HTTP handlers** (`src/api/routes.ts`): the agent routes
+- **Phase 3: read-only HTTP handlers** (`src/api/routes.ts`): the agent routes
   intents through these pure handlers (which wrap the Phase 2 analyzers).
 - **Phase 1 tools as evidence** (offline-safe): `classifyTokenRegistryStatus`
   enriches token/contract evidence. RPC-dependent tools (preflight, wallet-health,
@@ -64,7 +64,7 @@ input fails safe to `REQUIRE_CONFIRMATION` (never a silent `ALLOW`).
 `maxX402PaymentUsdc`, `maxDailyAgentSpendUsdc`, `trustedRecipients`,
 `trustedSpenders`, `blockUnlimitedApproval`, `requireConfirmationForUnknownContract`.
 Ownership: `backend` (public default) · `user` · `dapp` · `agent`. Policy may only
-**raise** severity or annotate — it can never relax a `BLOCK`.
+**raise** severity or annotate; it can never relax a `BLOCK`.
 
 ### Decision output
 
@@ -76,7 +76,7 @@ Every response includes: `decision`, `riskLevel`, `summary`, `reasons`,
 ### PREPARE_ONLY
 
 For an *execution-intent* action whose analyzer verdict is `ALLOW`, the agent
-returns `PREPARE_ONLY` when `isExecutionAvailable() === false` (the default —
+returns `PREPARE_ONLY` when `isExecutionAvailable() === false` (the default;
 mainnet `executionAllowed=false` and all gates off). Read-only intents keep the
 analyzer verdict.
 
@@ -86,7 +86,7 @@ analyzer verdict.
 - Execution / signing / sending / publishing: **disabled by default**.
 - Managed wallets: **disabled by default**. No private keys. No custody.
 - Read-only **by construction**: `src/agent/` imports only analyzers, Phase 3
-  handlers, and config — never a signer, managed-wallet, write-tool, or publish
+  handlers, and config; never a signer, managed-wallet, write-tool, or publish
   module.
 
 ## Demo commands

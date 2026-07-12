@@ -107,13 +107,13 @@ export async function analyzeEvmCall(
     callClass = "empty";
     internalDecision = "REQUIRE_CONFIRMATION";
     riskLevel = "MEDIUM";
-    reasons.push("No calldata and no value — empty / no-op transaction.");
+    reasons.push("No calldata and no value: empty / no-op transaction.");
   } else if (isNativeValueTransfer) {
     callClass = "native_transfer";
     if (targetType === "contract") {
       internalDecision = "REQUIRE_CONFIRMATION";
       riskLevel = "MEDIUM";
-      reasons.push("Native value sent to a contract with no calldata — may trigger a fallback/receive function.");
+      reasons.push("Native value sent to a contract with no calldata; may trigger a fallback/receive function.");
     } else if (targetType === "EOA") {
       internalDecision = "ALLOW";
       riskLevel = "LOW";
@@ -124,7 +124,7 @@ export async function analyzeEvmCall(
       // cannot rule out a hostile contract recipient. Ask for confirmation instead.
       internalDecision = "REQUIRE_CONFIRMATION";
       riskLevel = "MEDIUM";
-      reasons.push("Native value transfer with unverifiable recipient code — confirm the recipient before sending.");
+      reasons.push("Native value transfer with unverifiable recipient code; confirm the recipient before sending.");
       warnings.push("Recipient code could not be verified (no read-only client).");
     }
   } else if (calldata) {
@@ -132,15 +132,15 @@ export async function analyzeEvmCall(
       callClass = "calldata_to_eoa";
       internalDecision = "REQUIRE_CONFIRMATION";
       riskLevel = "MEDIUM";
-      warnings.push("Calldata sent to an address with no code (EOA) — the call will not execute contract logic.");
+      warnings.push("Calldata sent to an address with no code (EOA); the call will not execute contract logic.");
     } else {
       callClass = "contract_call";
       internalDecision = "REQUIRE_CONFIRMATION";
       riskLevel = "MEDIUM";
       reasons.push(
         targetType === "contract"
-          ? `Contract call to ${to} (selector ${selector ?? "n/a"}) — unknown contract call requires confirmation.`
-          : `Contract call (selector ${selector ?? "n/a"}) — target code not verified; requires confirmation.`,
+          ? `Contract call to ${to} (selector ${selector ?? "n/a"}); unknown contract call requires confirmation.`
+          : `Contract call (selector ${selector ?? "n/a"}); target code not verified; requires confirmation.`,
       );
       if (targetType === "unknown") warnings.push("Target code could not be verified (no read-only client).");
     }

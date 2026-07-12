@@ -1,4 +1,4 @@
-// ─── Agent Arena — User Agent (raw contract call) ──────────────────────
+// ─── Agent Arena: User Agent (raw contract call) ──────────────────────
 // A user asks an agent: "is this raw contract call safe?" The agent forwards it
 // to SafeHands, which classifies the call and returns a SafeHands decision.
 // Offline/demo: no RPC, no keys, nothing is executed.
@@ -21,7 +21,7 @@ function expect(name: string, actual: string, allowed: string[]) {
 async function main() {
   const agent = createGuardianAgent();
 
-  // D — a raw call to an unknown contract with an unrecognized selector.
+  // D: a raw call to an unknown contract with an unrecognized selector.
   const rawCall = await agent.checkForAgent("user-agent", {
     to: "0x1111111111111111111111111111111111111111",
     data: "0xdeadbeef",

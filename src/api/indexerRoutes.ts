@@ -48,8 +48,8 @@ export async function handleAgentReputation(address: string) {
     },
     interpretation:
       reputation.verifiedCount > 0
-        ? `${reputation.verifiedCount} SafeHands-verified on-chain action(s) — positive track record.`
-        : "No SafeHands-verified actions yet — NEUTRAL. Absence of record is not negative; this ledger only records verified-safe actions.",
+        ? `${reputation.verifiedCount} SafeHands-verified on-chain action(s); positive track record.`
+        : "No SafeHands-verified actions yet: NEUTRAL. Absence of record is not negative; this ledger only records verified-safe actions.",
     network: getActiveNetworkName(),
     ...readOnlyMeta(),
   };

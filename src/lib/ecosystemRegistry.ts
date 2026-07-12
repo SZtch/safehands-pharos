@@ -180,7 +180,7 @@ export function validateEcosystemRegistry(items: readonly EcosystemItem[] = ECOS
         // allowed to be implemented without a URL, but must say so via configVia/note.
         const onChainOrEnv = p.kind === "price_feed" || p.configVia !== null;
         if (!onChainOrEnv) {
-          errors.push(`${at}: provider kind=${p.kind} has no endpoint but claims status "${p.status}" — must be not_configured/not_implemented, or document configVia.`);
+          errors.push(`${at}: provider kind=${p.kind} has no endpoint but claims status "${p.status}"; must be not_configured/not_implemented, or document configVia.`);
         }
       }
       if (p.endpoint !== null && !p.endpoint.startsWith("https://")) {
@@ -198,7 +198,7 @@ export function validateEcosystemRegistry(items: readonly EcosystemItem[] = ECOS
     }
 
     if (item.ecosystemStatus === "KNOWN_ECOSYSTEM" && item.safetyUse === "allow_eligible") {
-      errors.push(`${at}: KNOWN_ECOSYSTEM (name recognition) can never be allow_eligible — knowing a name is not holding proof.`);
+      errors.push(`${at}: KNOWN_ECOSYSTEM (name recognition) can never be allow_eligible: knowing a name is not holding proof.`);
     }
   }
 
@@ -280,7 +280,7 @@ export function addressTrustEvidence(address: string, chainId: number): AddressT
     return {
       ...NO_TRUST,
       ...base,
-      note: `Address matches registry entry "${hit.contract.label}" registered for chainId ${hit.item.chainId}, not the active chain ${chainId} — recognition does not carry across chains.`,
+      note: `Address matches registry entry "${hit.contract.label}" registered for chainId ${hit.item.chainId}, not the active chain ${chainId}; recognition does not carry across chains.`,
     };
   }
   return {

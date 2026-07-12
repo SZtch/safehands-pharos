@@ -1,4 +1,4 @@
-# Anvita Flow Agent Card — SafeHands
+# Anvita Flow Agent Card: SafeHands
 
 Copy these values into the Anvita Flow Developer Console when completing the Agent Card.
 
@@ -8,11 +8,11 @@ SafeHands
 
 ## One-sentence introduction
 
-SafeHands is the transaction firewall for AI agent finance on Pharos — safety infrastructure that checks token, approval, contract, bridge, vault, staking, tokenized-asset, gas, transaction, and x402 payment risk before an agent signs or moves capital.
+SafeHands is the transaction firewall for AI agent finance on Pharos: safety infrastructure that checks token, approval, contract, bridge, vault, staking, tokenized-asset, gas, transaction, and x402 payment risk before an agent signs or moves capital.
 
 ## Capability description
 
-SafeHands is safety infrastructure — the transaction firewall — for AI agent finance on Pharos. Hosted here it runs in no-custody mode: read-only verdicts before the signature, never execution. It checks token, approval, contract, bridge, vault, staking, tokenized asset, gas, transaction, and x402 payment risks before an agent signs or moves capital, and decodes approval/transfer/admin calldata offline (unlimited-approval detection, blanket operator grants, dangerous-admin calls, MultiSend batches). Zero-custody and read-only, it evaluates wallet, token, contract, and transaction-intent risk — including RealFi actions (bridges, vault/yield deposits, staking, tokenized assets, x402 payments) — and returns a structured risk score, detected risk factors, explanation, and an allow/warn/block verdict for AI agent finance on Pharos Pacific Mainnet. It also serves read-only market and network data: live Chainlink Push token prices, gas price, ERC-20 allowances and approval risk, transaction status, gas estimates, and `eth_call` simulations. Token checks are enriched with GoPlus threat intelligence (honeypot, sell tax, hidden owner, malicious-address flags). Unknown or unverified targets fail closed; unconfigured providers return a structured NOT_CONFIGURED response rather than invented data.
+SafeHands is safety infrastructure (the transaction firewall) for AI agent finance on Pharos. Hosted here it runs in no-custody mode: read-only verdicts before the signature, never execution. It checks token, approval, contract, bridge, vault, staking, tokenized asset, gas, transaction, and x402 payment risks before an agent signs or moves capital, and decodes approval/transfer/admin calldata offline (unlimited-approval detection, blanket operator grants, dangerous-admin calls, MultiSend batches). Zero-custody and read-only, it evaluates wallet, token, contract, and transaction-intent risk, including RealFi actions (bridges, vault/yield deposits, staking, tokenized assets, x402 payments), and returns a structured risk score, detected risk factors, explanation, and an allow/warn/block verdict for AI agent finance on Pharos Pacific Mainnet. It also serves read-only market and network data: live Chainlink Push token prices, gas price, ERC-20 allowances and approval risk, transaction status, gas estimates, and `eth_call` simulations. Token checks are enriched with GoPlus threat intelligence (honeypot, sell tax, hidden owner, malicious-address flags). Unknown or unverified targets fail closed; unconfigured providers return a structured NOT_CONFIGURED response rather than invented data.
 
 ## Example tasks
 
@@ -38,7 +38,7 @@ Structured risk report including risk score, allow/warn/block recommendation, de
 
 ## Range not supported
 
-SafeHands does not provide financial or trading advice, guarantee asset/vault/campaign safety, recover lost funds, or execute anything — it never signs, broadcasts, approves, swaps, bridges, deposits, stakes, pays, creates/manages wallets, handles private keys, or publishes on-chain records in this deployment. It does not fetch arbitrary URLs, use API keys/pass-keys, or treat DEX quotes as canonical prices. It is non-custodial by design — a transaction firewall that issues verdicts before signing and never touches keys, signatures, or funds. Where data is unavailable (unconfigured provider, unsupported RPC method, stale feed), it says so rather than inventing an answer.
+SafeHands does not provide financial or trading advice, guarantee asset/vault/campaign safety, recover lost funds, or execute anything: it never signs, broadcasts, approves, swaps, bridges, deposits, stakes, pays, creates/manages wallets, handles private keys, or publishes on-chain records in this deployment. It does not fetch arbitrary URLs, use API keys/pass-keys, or treat DEX quotes as canonical prices. It is non-custodial by design: a transaction firewall that issues verdicts before signing and never touches keys, signatures, or funds. Where data is unavailable (unconfigured provider, unsupported RPC method, stale feed), it says so rather than inventing an answer.
 
 ## Estimated execution duration
 

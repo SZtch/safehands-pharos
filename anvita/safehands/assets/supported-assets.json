@@ -6,7 +6,7 @@
   "provider": "chainlink-push",
   "feedDecimalsDefault": 18,
   "heartbeatSeconds": 3600,
-  "note": "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price — including stablecoins.",
+  "note": "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price, including stablecoins.",
   "feeds": {
     "PROS": {
       "pair": "PROS/USD",

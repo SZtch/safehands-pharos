@@ -192,7 +192,7 @@ if (isDemoMode) {
 
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
   process.stdout.write(`
-🛡️  SafeHands-Pharos — Transaction Safety Firewall for AI Agents
+🛡️  SafeHands-Pharos: Transaction Safety Firewall for AI Agents
    v${PKG_VERSION} | Pharos Pacific Mainnet | Chain ID 1672
 
 USAGE
@@ -247,7 +247,7 @@ SAFEHANDS TOOLS (33)
   Managed wallet:     create_agent_wallet, get_agent_wallet,
                       get_agent_wallet_balance
 
-PHAROS PACIFIC MAINNET (default — read/check/analyze)
+PHAROS PACIFIC MAINNET (default: read/check/analyze)
   Network: Pharos Pacific Mainnet
   Chain ID: 1672
   Native token: PROS
@@ -313,15 +313,15 @@ if (walletMode === "managed-mainnet" && process.env.MANAGED_WALLET_ENABLED === "
         isMainnet: true,
         createdAt: new Date().toISOString(),
       });
-      console.error(`🛡️  SafeHands — auto-created managed agent wallet: ${account.address}`);
-      console.error(`   Fund it with PROS for gas. Use a DEDICATED low-value wallet — managed execution stays OFF until you opt in.`);
+      console.error(`🛡️  SafeHands - auto-created managed agent wallet: ${account.address}`);
+      console.error(`   Fund it with PROS for gas. Use a DEDICATED low-value wallet; managed execution stays OFF until you opt in.`);
       console.error("");
     } catch {
-      console.error("⚠️  SafeHands — failed to auto-create wallet. Use create_agent_wallet manually.");
+      console.error("⚠️  SafeHands: failed to auto-create wallet. Use create_agent_wallet manually.");
       console.error("");
     }
   } else {
-    console.error(`🛡️  SafeHands — agent wallet ready: ${existing.address}`);
+    console.error(`🛡️  SafeHands - agent wallet ready: ${existing.address}`);
     console.error("");
   }
 }
@@ -331,11 +331,11 @@ if (walletMode === "managed-mainnet" && process.env.MANAGED_WALLET_ENABLED === "
 const hasExplicitSignerMode = walletMode === "managed-mainnet" || walletMode === "env";
 
 if (process.env.WRITE_TOOLS_ENABLED !== "true") {
-  console.error("⚠️  SafeHands — write tools are disabled. Read-only tools remain available.");
+  console.error("⚠️  SafeHands: write tools are disabled. Read-only tools remain available.");
   console.error("   To enable writes, set WRITE_TOOLS_ENABLED=true in your .env or MCP config.");
   console.error("");
 } else if (!hasExplicitSignerMode) {
-  console.error("⚠️  SafeHands — write tools enabled but no signer mode detected.");
+  console.error("⚠️  SafeHands: write tools enabled but no signer mode detected.");
   console.error("   Set WALLET_MODE=managed-mainnet or WALLET_MODE=env.");
   console.error("");
 }

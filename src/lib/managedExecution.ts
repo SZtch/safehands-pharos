@@ -62,7 +62,7 @@ export async function requireManagedExecutionReady(
   if (!activeNetwork.executionAllowed) {
     return fail(
       "EXECUTION_DISABLED_ON_NETWORK",
-      `${activeNetwork.label} is read-only in SafeHands — execution/write/payment is disabled on this network. ` +
+      `${activeNetwork.label} is read-only in SafeHands: execution/write/payment is disabled on this network. ` +
         `Set SAFEHANDS_NETWORK=pacific-mainnet for advanced self-hosted mainnet execution.`,
       false,
       toolName,

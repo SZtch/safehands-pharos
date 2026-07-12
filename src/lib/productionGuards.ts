@@ -49,7 +49,7 @@ export function evaluateProductionPosture(env: NodeJS.ProcessEnv = process.env):
       level: "fatal",
       code: "LOCAL_FACILITATOR_KEY_IN_PRODUCTION",
       message:
-        "Refusing to start: X402_FACILITATOR_PRIVATE_KEY is set in production — the local x402 facilitator signs settlements with a hot key on the host (custody). The zero-custody profile serves paid endpoints through the Guardian API /paid/* gate with an external facilitator (X402_PAY_TO + X402_FACILITATOR_URL) and no local key. For an intentional dev/self-hosted single-tenant deployment, set SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true.",
+        "Refusing to start: X402_FACILITATOR_PRIVATE_KEY is set in production: the local x402 facilitator signs settlements with a hot key on the host (custody). The zero-custody profile serves paid endpoints through the Guardian API /paid/* gate with an external facilitator (X402_PAY_TO + X402_FACILITATOR_URL) and no local key. For an intentional dev/self-hosted single-tenant deployment, set SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true.",
     });
   }
 
@@ -62,7 +62,7 @@ export function evaluateProductionPosture(env: NodeJS.ProcessEnv = process.env):
       level: "warn",
       code: "EPHEMERAL_STATE_DIR",
       message:
-        `SAFEHANDS_STATE_DIR resolves to "${dir}" — on an ephemeral host (e.g. Railway without a Volume) prepared transactions, the attestation queue, and the audit trail are LOST on restart. Mount a persistent Volume and set SAFEHANDS_STATE_DIR to its path (e.g. /data).`,
+        `SAFEHANDS_STATE_DIR resolves to "${dir}"; on an ephemeral host (e.g. Railway without a Volume) prepared transactions, the attestation queue, and the audit trail are LOST on restart. Mount a persistent Volume and set SAFEHANDS_STATE_DIR to its path (e.g. /data).`,
     });
   }
 
@@ -111,7 +111,7 @@ export function assertProductionPosture(): void {
   const fatal = issues.filter((i) => i.level === "fatal");
   if (fatal.length > 0) {
     throw new Error(
-      `SafeHands refused to start: ${fatal.length} fatal production-posture issue(s) — see logs above. This protects the zero-custody Mainnet Production Profile.`,
+      `SafeHands refused to start: ${fatal.length} fatal production-posture issue(s); see logs above. This protects the zero-custody Mainnet Production Profile.`,
     );
   }
 }

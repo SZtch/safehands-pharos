@@ -88,7 +88,7 @@ export async function enrich(req: AgentRequest): Promise<Enrichment> {
       };
       out.enriched = true;
       if (rep.verifiedCount > 0) {
-        notes.push(`Target has ${rep.verifiedCount} SafeHands-verified on-chain action(s) — positive track record.`);
+        notes.push(`Target has ${rep.verifiedCount} SafeHands-verified on-chain action(s); positive track record.`);
       }
       if (reg.error) notes.push(reg.error);
     } catch {

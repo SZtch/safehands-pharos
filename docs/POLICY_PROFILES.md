@@ -1,8 +1,8 @@
-# SafeHands — Policy Profiles & Hardening (P8C)
+# SafeHands: Policy Profiles & Hardening (P8C)
 
 Policy presets let an operator (or a caller, tighten-only) select a named SafeHands policy for
 the **agent runtime**. They are layered on the **existing escalate-only `applyPolicy`**
-(`src/agent/agentPolicyResolver.ts`), which can only *raise* severity — so **no preset or
+(`src/agent/agentPolicyResolver.ts`), which can only *raise* severity, so **no preset or
 request can ever weaken the analyzer's decision (a BLOCK stays a BLOCK by construction)**. Pure,
 read-only; no signing/wallet/write/x402-paid behavior. Future paid endpoints use x402, not policy.
 
@@ -24,7 +24,7 @@ Each preset is a `GuardianPolicy` config (`src/lib/policy/policyPresets.ts`). Ev
 ## 2. Where presets apply
 Presets govern the **agent path** (`POST /agent/check`, `POST /agent/a2a/check`) where
 `applyPolicy(GuardianPolicy)` runs. The deterministic read-only analyzers (`/guardian/check`,
-`/analyze/*`) are **policy-independent** — a preset never changes an analyzer verdict; it can
+`/analyze/*`) are **policy-independent**: a preset never changes an analyzer verdict; it can
 only add agent-side escalation. Agent endpoints default to the **`agent`** preset.
 
 ## 3. Resolution (tighten-only)
@@ -32,14 +32,14 @@ only add agent-side escalation. Agent endpoints default to the **`agent`** prese
 1. **server default** = `SAFEHANDS_POLICY_PRESET` (env) → endpoint default (`agent`) → `standard`.
 2. A **request** `policyPreset` is honored only if it is a valid preset that is **equal-or-stricter**
    than the server default (`assertNotWeaker`). A request asking for a *weaker* preset is **clamped**
-   to the server default — a caller can never loosen policy.
+   to the server default; a caller can never loosen policy.
 
 ## 4. Request policy overrides (sanitized, tighten-only)
 A request may also pass a partial `policy`. `sanitizeRequestPolicy(serverPolicy, overrides)`:
 - numeric limits may only be **lowered** (`min`);
 - safety booleans (`blockUnlimitedApproval`, `requireConfirmationForUnknownContract`) may only be
   set **toward safer** (`true`);
-- request-supplied `trustedRecipients`/`trustedSpenders` are **ignored** (server-config only) — so
+- request-supplied `trustedRecipients`/`trustedSpenders` are **ignored** (server-config only), so
   a public caller can never add an approval/transfer bypass.
 
 ## 5. Surfaced fields

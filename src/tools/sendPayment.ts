@@ -92,7 +92,7 @@ export async function handleSendPayment(raw: SendPaymentInput) {
 
   const usagePct = Number((amountWei * 100n) / balance);
   if (usagePct > MAX_BALANCE_USAGE_PCT) {
-    warnings.push(`Using ${usagePct}% of wallet balance — high exposure`);
+    warnings.push(`Using ${usagePct}% of wallet balance; high exposure`);
   }
 
   const risk = await assessRisk({

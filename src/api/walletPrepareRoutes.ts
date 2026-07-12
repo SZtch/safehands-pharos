@@ -126,7 +126,7 @@ export async function handleWalletPrepare(
         : "SIGN_IN_EXTERNAL_WALLET";
 
   const nextStep = blocked
-    ? "Do not proceed — the action is unsafe. Surface the block reason; no wallet request is produced."
+    ? "Do not proceed: the action is unsafe. Surface the block reason; no wallet request is produced."
     : !hasWallet
       ? "Connect a wallet (or provide userAddress/from), then call again to receive a wallet-ready request."
       : confirmationRequired

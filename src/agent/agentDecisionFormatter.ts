@@ -54,10 +54,10 @@ const EXECUTION_INTENTS: ReadonlySet<AgentIntent> = new Set<AgentIntent>([
 ]);
 
 const RECOMMENDED: Record<GuardianDecision, string> = {
-  ALLOW: "Proceed — no blocking risk found. SafeHands does not execute; the caller executes externally.",
-  BLOCK: "Do not execute — the action is unsafe and must be aborted.",
+  ALLOW: "Proceed: no blocking risk found. SafeHands does not execute; the caller executes externally.",
+  BLOCK: "Do not execute: the action is unsafe and must be aborted.",
   REQUIRE_CONFIRMATION: "Obtain explicit user/admin confirmation before any execution.",
-  PREPARE_ONLY: "Prepare or hand off only — execution is disabled here; do not execute.",
+  PREPARE_ONLY: "Prepare or hand off only: execution is disabled here; do not execute.",
 };
 
 const NEXT_STEP: Record<GuardianDecision, string> = {
@@ -99,7 +99,7 @@ export function formatDecision(args: FormatArgs): AgentDecision {
   // PREPARE_ONLY: a safe execution-intent the caller cannot execute here.
   if (decision === "ALLOW" && !executionAvailable && EXECUTION_INTENTS.has(intent)) {
     decision = "PREPARE_ONLY";
-    reasons.push("Action is safe but execution is disabled by default — prepare-only (no execution here).");
+    reasons.push("Action is safe but execution is disabled by default: prepare-only (no execution here).");
   }
 
   // Optional supporting evidence: token-registry status for token-bearing intents,

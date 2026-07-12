@@ -1,18 +1,18 @@
 # SafeHands Reviewer Demo Script
 
-Current as of v2.4.0 — Pharos Pacific Mainnet (chain `1672`), Anvita Flow hosted agent, live contracts.
+Current as of v2.4.0: Pharos Pacific Mainnet (chain `1672`), Anvita Flow hosted agent, live contracts.
 
 ## 1. Project one-liner
 
-SafeHands is the transaction firewall for AI agent finance on Pharos Pacific Mainnet: a deterministic policy engine that evaluates every agent action — payments, approvals, swaps, x402 calls, tokenized-asset moves — *before* the signature and returns `ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY` with a plain-English reason. The hosted deployment is **read-only and zero-custody** — it holds no keys, signs nothing, and broadcasts nothing on its own.
+SafeHands is the transaction firewall for AI agent finance on Pharos Pacific Mainnet: a deterministic policy engine that evaluates every agent action (payments, approvals, swaps, x402 calls, tokenized-asset moves) *before* the signature and returns `ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY` with a plain-English reason. The hosted deployment is **read-only and zero-custody**: it holds no keys, signs nothing, and broadcasts nothing on its own.
 
-For the Real-Fi & RWA angle — how the attestation ledger, risk registry, token verification, and USDC settlement rails serve tokenized real-world assets — see [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md).
+For the Real-Fi & RWA angle (how the attestation ledger, risk registry, token verification, and USDC settlement rails serve tokenized real-world assets), see [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md).
 
 ## 2. Fastest paths for a reviewer
 
-### No-install path — Anvita Flow hosted agent
+### No-install path: Anvita Flow hosted agent
 
-The fully-hosted, zero-custody agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2). Once published, any Steward Agent on the marketplace can discover and call it — no server, no keys, no custody. To try the engine on your own machine without cloning:
+The fully-hosted, zero-custody agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2). Once published, any Steward Agent on the marketplace can discover and call it: no server, no keys, no custody. To try the engine on your own machine without cloning:
 
 ```bash
 npx -y github:SZtch/safehands-pharos --demo
@@ -32,7 +32,7 @@ curl -s http://localhost:4022/health
 # Public network config (chain 1672)
 curl -s http://localhost:4022/public-config
 
-# A real preflight decision — unlimited approval → BLOCK
+# A real preflight decision: unlimited approval → BLOCK
 curl -s -X POST http://localhost:4022/tools/safehands_preflight_check \
   -H "content-type: application/json" \
   -d '{"actionType":"approve_token","chainId":1672,"approvalToken":"USDC","spender":"0x000000000000000000000000000000000000dEaD","approvalAmount":"max"}'
@@ -42,7 +42,7 @@ curl -s -X POST http://localhost:4022/tools/get_agent_reputation \
   -H "content-type: application/json" \
   -d '{"address":"0x6730d3a2A217108AB53CCFe60ffdAd05D3C124e5"}'
 
-# x402 paid endpoint — returns a real HTTP 402 challenge (mainnet USDC, eip155:1672)
+# x402 paid endpoint: returns a real HTTP 402 challenge (mainnet USDC, eip155:1672)
 curl -s -i http://localhost:4022/paid/risk-report
 ```
 
@@ -59,7 +59,7 @@ AI agents making on-chain transactions need guardrails. Without safety checks, a
 - Pay x402 invoices to SSRF targets
 - Move a tokenized asset to an unvetted counterparty with no audit trail
 
-SafeHands sits between the agent and the blockchain. Every action goes through preflight, risk scoring, policy checks, and authorization gates before execution is allowed — and, on the opt-in relayed-broadcast path (off by default), the broadcasts it relays are attested on-chain.
+SafeHands sits between the agent and the blockchain. Every action goes through preflight, risk scoring, policy checks, and authorization gates before execution is allowed; and, on the opt-in relayed-broadcast path (off by default), the broadcasts it relays are attested on-chain.
 
 ## 4. Execution modes
 
@@ -70,7 +70,7 @@ SafeHands sits between the agent and the blockchain. Every action goes through p
 | Managed execution | local encrypted wallet | self-hosted only | Full agent autonomy, opt-in; refused on public hosts by a boot guard |
 | Env wallet (advanced) | `PRIVATE_KEY` in env | local dev | Local mainnet development |
 
-## 5. Live contracts — Pharos Pacific Mainnet
+## 5. Live contracts: Pharos Pacific Mainnet
 
 ```
 Network:      Pharos Pacific Mainnet
@@ -81,8 +81,8 @@ Owner:        0x6730d3a2a217108ab53ccfe60ffdad05d3c124e5
 Explorer:     https://www.pharosscan.xyz
 ```
 
-- **SafeHandsRegistry** — authorized operators, Merkle risk roots, `verifyRiskRecord` on-chain view.
-- **SafeHandsAttestation** — immutable, privacy-preserving verified-safe records plus `reputationOf()` per-address reputation. Only hashed context is published (`preparedTransactionHash`, `policyHash`, `metadataHash`, `txHash`) — never raw calldata, amounts, recipients, or keys.
+- **SafeHandsRegistry**: authorized operators, Merkle risk roots, `verifyRiskRecord` on-chain view.
+- **SafeHandsAttestation**: immutable, privacy-preserving verified-safe records plus `reputationOf()` per-address reputation. Only hashed context is published (`preparedTransactionHash`, `policyHash`, `metadataHash`, `txHash`); never raw calldata, amounts, recipients, or keys.
 
 Both are verifiable on the explorer; the reputation oracle has live attestations recorded by a dedicated attester key (`0xe9F1d28C7136BbB1a57DA9852F216b8Cb39Eb888`) that never signs user transactions.
 
@@ -95,12 +95,12 @@ npm ci && npm run build
 npm run demo          # or: npx -y github:SZtch/safehands-pharos --demo
 ```
 
-### The firewall reading raw calldata (v2.4.0 — 60-second wow)
+### The firewall reading raw calldata (v2.4.0: 60-second wow)
 
-The hosted engine decodes approval/transfer/admin calldata **offline** — no simulation service, no third-party API. Feed it a drainer-style transaction and watch it block from the raw bytes:
+The hosted engine decodes approval/transfer/admin calldata **offline**: no simulation service, no third-party API. Feed it a drainer-style transaction and watch it block from the raw bytes:
 
 ```bash
-# Unlimited approve to an unknown spender, hidden inside a "vault deposit" — BLOCK
+# Unlimited approve to an unknown spender, hidden inside a "vault deposit": BLOCK
 node anvita/safehands/scripts/safehands-engine.js analyze '{
   "subjectType":"intent","action":"vault_deposit",
   "walletAddress":"0x1111111111111111111111111111111111111111",
@@ -108,19 +108,19 @@ node anvita/safehands/scripts/safehands-engine.js analyze '{
   "to":"0xc879C018Db60520f4355C26eD1a6D572CDAC1815",
   "data":"0x095ea7b3000000000000000000000000000000000000000000000000000000000000deadffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}'
 # -> recommendation: block, riskScore >= 90
-# -> "UNLIMITED approve to an UNKNOWN spender (0x…dead) — the spender could move the entire … balance"
+# -> "UNLIMITED approve to an UNKNOWN spender (0x…dead); the spender could move the entire … balance"
 ```
 
-Contrast with a **registry-verified** protocol — trust comes only from first-party evidence (the project's own docs + on-chain checks, cited in the registry):
+Contrast with a **registry-verified** protocol: trust comes only from first-party evidence (the project's own docs + on-chain checks, cited in the registry):
 
 ```bash
-# Morpho Blue on Pharos — verified 2026-07-11 from Morpho's own addresses page
+# Morpho Blue on Pharos, verified 2026-07-11 from Morpho's own addresses page
 node anvita/safehands/scripts/safehands-engine.js analyze '{"subjectType":"contract","address":"0x18573fA18fd17dDfD790B4a5B5b2977aad3b4Efb"}'
 # -> recommendation: allow, riskScore 5
 # -> "Canonical registry contract: Morpho Blue (verified via official-docs citation + on-chain check)"
 ```
 
-Ecosystem names the registry recognizes but whose addresses are **not** yet published in their own docs (FaroSwap, Stargate, …) stay fail-closed: an unlimited approval to them blocks. That is policy, not a bug — recognition is never proof.
+Ecosystem names the registry recognizes but whose addresses are **not** yet published in their own docs (FaroSwap, Stargate, …) stay fail-closed: an unlimited approval to them blocks. That is policy, not a bug: recognition is never proof.
 
 ### Test suites
 
@@ -167,7 +167,7 @@ Amount: unlimited / max
 ```
 Action: approve_token (finite amount, token not in the active registry)
 -> Decision: REQUIRE_CONFIRMATION
--> tokenRegistry.status: unknown — human confirmation required
+-> tokenRegistry.status: unknown; human confirmation required
 ```
 
 ### x402 SSRF / invalid amount → BLOCK
@@ -219,7 +219,7 @@ All 33 are exposed identically across MCP, HTTP, and CLI.
 ## 9. Limitations (honest)
 
 - Hosted mode (Anvita Flow) and the self-hosted read-only backend are zero-custody; execution, signing, managed wallets, and on-chain publishing are gated and disabled by default. A boot guard refuses managed/write execution on a public host.
-- Managed-wallet encryption is AES-256-GCM, not KMS/Vault-grade — not intended for custody of large amounts, and not audited for production custody.
+- Managed-wallet encryption is AES-256-GCM, not KMS/Vault-grade; not intended for custody of large amounts, and not audited for production custody.
 - GoPlus token security does not cover Pharos Atlantic Testnet (`688689`).
 - DODO reverse routes can occasionally lack liquidity for exotic pairs.
 - L1 risk-root committer automation and the DA-serving endpoint are roadmap; the on-chain read/verify path (`verify_risk_inclusion`) is live.

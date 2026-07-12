@@ -16,7 +16,7 @@ export const assessRiskSchema = z.object({
   amount: z.string(),
   toAddress: z.string().optional(),
   walletAddress: z.string(),
-  agentId: z.string().optional().describe("Optional agent identifier (informational only — assess_risk does not execute or publish)"),
+  agentId: z.string().optional().describe("Optional agent identifier (informational only; assess_risk does not execute or publish)"),
   privateKey: z.string().optional().describe("Deprecated and ignored. assess_risk never signs or publishes. Use publish_risk_score for on-chain attestation."),
 }).strict();
 
@@ -28,7 +28,7 @@ export const assessRiskTool = {
   name: "assess_risk",
   description:
     "Evaluate risk of a planned on-chain action (swap or transfer). Returns 0-100 risk score with 5-dimension breakdown. " +
-    "Scoring and analysis only — does not publish on-chain. Use publish_risk_score to attest a result to SafeHandsRegistry.",
+    "Scoring and analysis only; does not publish on-chain. Use publish_risk_score to attest a result to SafeHandsRegistry.",
   inputSchema: assessRiskSchema,
 };
 

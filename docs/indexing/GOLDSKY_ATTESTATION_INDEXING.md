@@ -24,9 +24,9 @@ SafeHands broadcasts a verified transaction
 
 `GET /attestation/:txHash` combines three sources:
 
-1. **Local state** — pending/retry lifecycle from the SafeHands worker.
-2. **Goldsky** — indexed on-chain `SafeHandsAttested` event for fast lookup.
-3. **Contract fallback** — direct RPC read from `SafeHandsAttestation` if Goldsky has not synced yet.
+1. **Local state**: pending/retry lifecycle from the SafeHands worker.
+2. **Goldsky**: indexed on-chain `SafeHandsAttested` event for fast lookup.
+3. **Contract fallback**: direct RPC read from `SafeHandsAttestation` if Goldsky has not synced yet.
 
 This means Goldsky can be delayed or down without breaking the proof model. The contract remains authoritative.
 

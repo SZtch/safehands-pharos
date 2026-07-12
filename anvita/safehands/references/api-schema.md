@@ -1,4 +1,4 @@
-# SafeHands Engine — I/O Schema (fully hosted)
+# SafeHands Engine: I/O Schema (fully hosted)
 
 Single entrypoint: `node scripts/safehands-engine.js <command> ['<arg>']`. All outputs are one JSON object on stdout.
 
@@ -18,12 +18,12 @@ In (one of):
 { "subjectType": "intent", "action": "transfer", "toAddress": "0x…", "amount": "1.5", "walletAddress": "0x…" }
 { "subjectType": "intent", "action": "swap", "tokenIn": "0x…", "tokenOut": "0x…", "walletAddress": "0x…" }
 ```
-RealFi intent actions (`bridge`, `yield_deposit`, `vault_deposit`, `staking`, `tokenized_asset`, `fiat_ramp`, `reward_campaign`, `x402_payment`) share the intent shape and add per-action fields (target contract key, `url`, `payTo`, optional tx object). Their output adds `evidenceUsed[]`, `missingInputs[]`, `intentNotes[]`, and — for vault/yield — `vaultRiskScore` + `vaultProviderData`. Full spec: `references/realfi-intents.md`.
+RealFi intent actions (`bridge`, `yield_deposit`, `vault_deposit`, `staking`, `tokenized_asset`, `fiat_ramp`, `reward_campaign`, `x402_payment`) share the intent shape and add per-action fields (target contract key, `url`, `payTo`, optional tx object). Their output adds `evidenceUsed[]`, `missingInputs[]`, `intentNotes[]`, and, for vault/yield, `vaultRiskScore` + `vaultProviderData`. Full spec: `references/realfi-intents.md`.
 Out (success):
 ```json
 { "success": true, "riskScore": 45, "recommendation": "warn", "riskLevel": "medium",
   "riskFactors": ["…"], "explanation": "…", "nextAction": "…",
-  "analysisDepth": "hosted-heuristic (on-chain reads + offline calldata decode — not the full SafeHands analyzer suite)",
+  "analysisDepth": "hosted-heuristic (on-chain reads + offline calldata decode; not the full SafeHands analyzer suite)",
   "subject": { "type": "wallet", "address": "0x…" },
   "onChain": { "balanceWei": "0", "txCount": 0, "isContract": false },
   "intel": "on-chain + GoPlus threat intelligence | on-chain only (GoPlus unreachable)",
@@ -41,7 +41,7 @@ Bands: allow ≤ 30 < warn < 70 ≤ block. Levels: low ≤30, medium ≤60, high
   "approved": null, "counterpartyKnown": false, "counterpartyLabel": null,
   "recipientDenylisted": false, "dangerous": false, "factors": ["…"], "floor": 0, "notes": ["…"] }
 ```
-Recognized selectors: approve, permit (ERC-2612), Permit2 approve, setApprovalForAll, transfer, transferFrom, increase/decreaseAllowance, transferOwnership, renounceOwnership, upgradeTo(AndCall), changeAdmin, MultiSend, Safe execTransaction. The recipient denylist is operator-supplied via `SAFEHANDS_RECIPIENT_DENYLIST` (empty by default — never a shipped list).
+Recognized selectors: approve, permit (ERC-2612), Permit2 approve, setApprovalForAll, transfer, transferFrom, increase/decreaseAllowance, transferOwnership, renounceOwnership, upgradeTo(AndCall), changeAdmin, MultiSend, Safe execTransaction. The recipient denylist is operator-supplied via `SAFEHANDS_RECIPIENT_DENYLIST` (empty by default, never a shipped list).
 
 ## query '<0xaddress>'
 Out (success):
@@ -56,7 +56,7 @@ Out (success):
                   "interpretation": "…" },
   "network": "pacific-mainnet", "chainId": 1672, "timestamp": "…" }
 ```
-If `assets/contracts.json` addresses are empty, `registry.configured`/`reputation.configured` are false and a top-level `note` explains — analysis features are unaffected.
+If `assets/contracts.json` addresses are empty, `registry.configured`/`reputation.configured` are false and a top-level `note` explains; analysis features are unaffected.
 
 ## Market & network read commands
 ```text

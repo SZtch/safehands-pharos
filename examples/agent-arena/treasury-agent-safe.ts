@@ -1,6 +1,6 @@
-// ─── Agent Arena — Treasury Agent (Safe / MultiSend) ───────────────────
+// ─── Agent Arena: Treasury Agent (Safe / MultiSend) ───────────────────
 // A Treasury Agent asks SafeHands to vet a Safe/MultiSend transaction before a
-// multisig signs. Deep Safe/MultiSend decode is EXPERIMENTAL — SafeHands returns
+// multisig signs. Deep Safe/MultiSend decode is EXPERIMENTAL; SafeHands returns
 // a clear, conservative verdict and marks the decode experimental.
 // Offline/demo: no RPC, no keys, nothing is signed or executed.
 // Run: npx tsx examples/agent-arena/treasury-agent-safe.ts
@@ -26,7 +26,7 @@ function expect(name: string, actual: string, allowed: string[]) {
 async function main() {
   const agent = createGuardianAgent();
 
-  // A Safe execTransaction wrapper — recognized as a Safe tx; deep decode is
+  // A Safe execTransaction wrapper: recognized as a Safe tx; deep decode is
   // experimental, so SafeHands returns a conservative verdict + experimental flag.
   const safeExec = await agent.checkForAgent("treasury-agent", { to: "0x0000000000000000000000000000000000005afe", data: SAFE_EXEC_SELECTOR + "00".repeat(4) });
   console.log(`intent=${safeExec.intent} decision=${safeExec.decision} experimental=${safeExec.experimental}`);

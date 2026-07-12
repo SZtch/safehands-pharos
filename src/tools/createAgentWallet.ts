@@ -116,7 +116,7 @@ export async function handleCreateAgentWallet(
     isMainnet: IS_MAINNET,
     createdAt: new Date().toISOString(),
     warning:
-      "Managed mainnet wallet. Use a DEDICATED low-value operator wallet, never a primary wallet. Private key is AES-256-GCM encrypted locally — not KMS/HSM-grade.",
+      "Managed mainnet wallet. Use a DEDICATED low-value operator wallet, never a primary wallet. Private key is AES-256-GCM encrypted locally, not KMS/HSM-grade.",
     instructions: `Fund this wallet with PROS for gas. Managed execution stays disabled until you opt in with WRITE_TOOLS_ENABLED=true and MANAGED_WALLET_ENABLED=true.`,
     riskRegistryVersion: "safehands-registry",
     riskRegistryAddress: SAFEHANDS_REGISTRY_ADDRESS,

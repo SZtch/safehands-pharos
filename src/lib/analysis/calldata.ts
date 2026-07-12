@@ -158,7 +158,7 @@ function classifyKnown(addr: string): { known: boolean; label: string | null; ca
     return { known: true, label: registry.contractLabel ?? registry.itemName, canonical: null };
   }
   if (registry?.recognized) {
-    return { known: false, label: `${registry.contractLabel} (${registry.verificationStatus} — recognition only)`, canonical: null };
+    return { known: false, label: `${registry.contractLabel} (${registry.verificationStatus}, recognition only)`, canonical: null };
   }
   return { known: false, label: null, canonical: null };
 }
@@ -166,10 +166,10 @@ function classifyKnown(addr: string): { known: boolean; label: string | null; ca
 /** Shared approve-style risk matrix (approve/permit/permit2/increaseAllowance). */
 function approvalRisk(spender: string, isRevoke: boolean, unlimited: boolean, known: boolean, label: string | null): { decision: InternalDecision; risk: RiskLevel; reason: string } {
   if (!isAddress(spender)) return { decision: "BLOCK", risk: "CRITICAL", reason: "Spender address is invalid." };
-  if (isRevoke) return { decision: "ALLOW", risk: "LOW", reason: `Zero/revoke — clearing the allowance for ${spender}${label ? ` (${label})` : ""}.` };
-  if (unlimited && !known) return { decision: "BLOCK", risk: "CRITICAL", reason: `Unlimited approval to an unknown spender (${spender}) — blocked.` };
-  if (unlimited && known) return { decision: "REQUIRE_CONFIRMATION", risk: "HIGH", reason: `Unlimited approval to a known spender (${label}) — high risk, confirm intent.` };
-  if (!known) return { decision: "REQUIRE_CONFIRMATION", risk: "MEDIUM", reason: `Approval to an unknown spender (${spender}) — confirm before approving.` };
+  if (isRevoke) return { decision: "ALLOW", risk: "LOW", reason: `Zero/revoke: clearing the allowance for ${spender}${label ? ` (${label})` : ""}.` };
+  if (unlimited && !known) return { decision: "BLOCK", risk: "CRITICAL", reason: `Unlimited approval to an unknown spender (${spender}); blocked.` };
+  if (unlimited && known) return { decision: "REQUIRE_CONFIRMATION", risk: "HIGH", reason: `Unlimited approval to a known spender (${label}); high risk, confirm intent.` };
+  if (!known) return { decision: "REQUIRE_CONFIRMATION", risk: "MEDIUM", reason: `Approval to an unknown spender (${spender}); confirm before approving.` };
   return { decision: "ALLOW", risk: "LOW", reason: `Limited approval to a known spender (${label}).` };
 }
 
@@ -223,7 +223,7 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
   if (!selector || !DECODABLE_CALLDATA_SELECTORS.has(selector)) {
     return result({
       decision: "REQUIRE_CONFIRMATION", risk: "UNKNOWN",
-      reasons: [`Calldata selector ${selector ?? "n/a"} is not a recognized decodable method — confirm before signing.`],
+      reasons: [`Calldata selector ${selector ?? "n/a"} is not a recognized decodable method; confirm before signing.`],
       warnings: [], status: "unavailable", details: { ...EMPTY_DETAILS, selector },
     });
   }
@@ -235,7 +235,7 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
   } catch {
     return result({
       decision: "REQUIRE_CONFIRMATION", risk: "MEDIUM",
-      reasons: ["Calldata matched a known selector but could not be decoded — malformed payload."],
+      reasons: ["Calldata matched a known selector but could not be decoded: malformed payload."],
       warnings: ["Malformed calldata for the recognized selector."],
       status: "partial", details: { ...EMPTY_DETAILS, selector },
     });
@@ -253,7 +253,7 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       const r = approvalRisk(spender, isRevoke, unlimited, known, label);
       return result({
         decision: r.decision, risk: r.risk, reasons: [r.reason],
-        warnings: ["ERC-2612 permit is a gasless, signature-based approval — the allowance is granted off-chain and can later authorize transfers."],
+        warnings: ["ERC-2612 permit is a gasless, signature-based approval: the allowance is granted off-chain and can later authorize transfers."],
         status: "ok",
         details: { ...base, method: "permit", category: "approval", spender, amountRaw: value.toString(), unlimited, isRevoke, counterpartyKnown: known, counterpartyLabel: label, canonicalContractEvidence: canonical },
       });
@@ -270,7 +270,7 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       return result({
         decision: r.decision, risk: r.risk,
         reasons: [r.reason, `Permit2 approval for token ${permitToken}${expiration !== "0" ? ` (expiration ${expiration})` : ""}.`],
-        warnings: ["Permit2 approval — authorizes the spender to move the token via Permit2 (signature-driven). Deep PermitSingle/PermitBatch/permitTransferFrom decode is out of scope."],
+        warnings: ["Permit2 approval: authorizes the spender to move the token via Permit2 (signature-driven). Deep PermitSingle/PermitBatch/permitTransferFrom decode is out of scope."],
         status: "ok", experimental: true,
         details: { ...base, method: "permit2_approve", category: "approval", token: permitToken, spender, amountRaw: amount.toString(), unlimited, isRevoke, counterpartyKnown: known, counterpartyLabel: label, canonicalContractEvidence: canonical, tokenRegistryEvidence: tokenRegistryEvidence(permitToken) },
       });
@@ -282,11 +282,11 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       let decision: InternalDecision; let risk: RiskLevel; let reason: string;
       if (!isAddress(operator)) { decision = "BLOCK"; risk = "CRITICAL"; reason = "Operator address is invalid."; }
       else if (!approved) { decision = "ALLOW"; risk = "LOW"; reason = `Revoking blanket operator approval for ${operator}${label ? ` (${label})` : ""}.`; }
-      else if (!known) { decision = "BLOCK"; risk = "CRITICAL"; reason = `Blanket collection approval (setApprovalForAll) to an UNKNOWN operator (${operator}) — this authorizes transfer of every token in the collection. Blocked.`; }
-      else { decision = "REQUIRE_CONFIRMATION"; risk = "HIGH"; reason = `Blanket collection approval to a known operator (${label}) — high risk, confirm intent.`; }
+      else if (!known) { decision = "BLOCK"; risk = "CRITICAL"; reason = `Blanket collection approval (setApprovalForAll) to an UNKNOWN operator (${operator}); this authorizes transfer of every token in the collection. Blocked.`; }
+      else { decision = "REQUIRE_CONFIRMATION"; risk = "HIGH"; reason = `Blanket collection approval to a known operator (${label}); high risk, confirm intent.`; }
       return result({
         decision, risk, reasons: [reason],
-        warnings: approved ? ["setApprovalForAll grants control over ALL tokens in the collection — a common NFT-drainer vector."] : [],
+        warnings: approved ? ["setApprovalForAll grants control over ALL tokens in the collection, a common NFT-drainer vector."] : [],
         status: "ok",
         details: { ...base, method: "setApprovalForAll", category: "approval", operator, approved, counterpartyKnown: known, counterpartyLabel: label, canonicalContractEvidence: canonical },
       });
@@ -310,7 +310,7 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       const { known, label, canonical } = classifyKnown(spender);
       const r = approvalRisk(spender, isRevoke, unlimited, known, label);
       return result({
-        decision: r.decision, risk: r.risk, reasons: [`increaseAllowance — ${r.reason}`],
+        decision: r.decision, risk: r.risk, reasons: [`increaseAllowance: ${r.reason}`],
         warnings: ["increaseAllowance raises an existing allowance on top of the current one."], status: "ok",
         details: { ...base, method: "increaseAllowance", category: "approval", spender, amountRaw: added.toString(), unlimited, isRevoke, counterpartyKnown: known, counterpartyLabel: label, canonicalContractEvidence: canonical },
       });
@@ -320,7 +320,7 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       const subtracted = (args[1] as bigint).toString();
       const { known, label, canonical } = classifyKnown(spender);
       return result({
-        decision: "ALLOW", risk: "LOW", reasons: [`decreaseAllowance — lowering the allowance for ${spender}${label ? ` (${label})` : ""}.`],
+        decision: "ALLOW", risk: "LOW", reasons: [`decreaseAllowance: lowering the allowance for ${spender}${label ? ` (${label})` : ""}.`],
         warnings: [], status: "ok",
         details: { ...base, method: "decreaseAllowance", category: "approval", spender, amountRaw: subtracted, counterpartyKnown: known, counterpartyLabel: label, canonicalContractEvidence: canonical },
       });
@@ -339,7 +339,7 @@ function transferResult(details: CalldataAnalysisDetails, recipient: string): An
   if (isDenylistedRecipient(recipient)) {
     return result({
       decision: "BLOCK", risk: "CRITICAL",
-      reasons: [`${label} recipient ${recipient} is on the operator denylist — blocked.`],
+      reasons: [`${label} recipient ${recipient} is on the operator denylist; blocked.`],
       warnings: [], status: "ok",
       details: { ...details, category: "transfer", recipientDenylisted: true },
     });
@@ -348,7 +348,7 @@ function transferResult(details: CalldataAnalysisDetails, recipient: string): An
   // firewall must require confirmation. Never ALLOW/LOW for an unknown recipient.
   return result({
     decision: "REQUIRE_CONFIRMATION", risk: "MEDIUM",
-    reasons: [`${label} moves tokens to ${recipient} — recipient is not verified; confirm before signing.`],
+    reasons: [`${label} moves tokens to ${recipient}; recipient is not verified; confirm before signing.`],
     warnings: [], status: "ok",
     details: { ...details, category: "transfer" },
   });
@@ -364,8 +364,8 @@ function dangerousAdmin(selector: string, args: readonly unknown[], base: Callda
   } as Record<string, string>)[selector] ?? null;
   return result({
     decision: "REQUIRE_CONFIRMATION", risk: "HIGH",
-    reasons: [`Dangerous/admin call: this transaction ${label}${targetArg ? ` (target ${targetArg})` : ""} — confirm this is intended.`],
-    warnings: ["Recognized as a privileged/admin function. This dangerous-selector list is NOT exhaustive — absence of a warning is not proof of safety."],
+    reasons: [`Dangerous/admin call: this transaction ${label}${targetArg ? ` (target ${targetArg})` : ""}; confirm this is intended.`],
+    warnings: ["Recognized as a privileged/admin function. This dangerous-selector list is NOT exhaustive; absence of a warning is not proof of safety."],
     status: "ok",
     details: { ...base, method, category: "admin", dangerous: true, spender: targetArg, recipient: targetArg },
   });

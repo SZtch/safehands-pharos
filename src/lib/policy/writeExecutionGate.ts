@@ -58,7 +58,7 @@ export function enforceWriteDecision(
   if (opts.requireRiskEvidence && !policy.checks.some((c) => c.name.startsWith("risk_"))) {
     return fail(
       "POLICY_EVIDENCE_MISSING",
-      `${opts.toolName} is blocked fail-closed: the policy decision was evaluated WITHOUT risk-engine evidence (no risk_* check present). This indicates a wiring defect — the assessRisk result must be passed to evaluateActionPolicy via riskEvidenceFromAssessment(). Not confirmable.`,
+      `${opts.toolName} is blocked fail-closed: the policy decision was evaluated WITHOUT risk-engine evidence (no risk_* check present). This indicates a wiring defect: the assessRisk result must be passed to evaluateActionPolicy via riskEvidenceFromAssessment(). Not confirmable.`,
       false,
       opts.toolName
     );

@@ -90,7 +90,7 @@ export function buildSupportedAssets(): unknown {
     provider: "chainlink-push",
     feedDecimalsDefault: 18,
     heartbeatSeconds: 3600,
-    note: "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price — including stablecoins.",
+    note: "Feed addresses are static config; prices are ALWAYS read live from the feed contracts via eth_call. Never hardcode a price, including stablecoins.",
     feeds,
     aliases: PRICE_FEED_ALIASES,
     aliasNotes: {
@@ -193,7 +193,7 @@ export function buildSupportedProtocols(): unknown {
       "FaroSwap pass-key or internal frontend endpoints",
       "GraphQL hosts that do not resolve over public DNS (e.g. backend.faroswap.xyz/graphql at the time of writing)",
       "Scraping websites or block explorers",
-      "Treating any DEX/pool/route quote as a canonical price — canonical pricing is Chainlink Push feeds only (see supported-assets.json)",
+      "Treating any DEX/pool/route quote as a canonical price: canonical pricing is Chainlink Push feeds only (see supported-assets.json)",
     ],
     providers,
     protocols,

@@ -122,7 +122,7 @@ export async function handleBroadcastSigned(raw: unknown) {
     });
 
     broadcastStatus = "success";
-    message = "Transaction verified and broadcast. The execution outcome is not awaited — poll get_transaction_status with the returned txHash for the mined receipt.";
+    message = "Transaction verified and broadcast. The execution outcome is not awaited; poll get_transaction_status with the returned txHash for the mined receipt.";
   }
 
   return {

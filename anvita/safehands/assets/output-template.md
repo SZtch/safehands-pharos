@@ -1,9 +1,9 @@
-# SafeHands Safety Report — Output Template
+# SafeHands Safety Report: Output Template
 
 SafeHands is the transaction firewall for AI agent finance on Pharos. Hosted here it runs in
-no-custody mode: read-only safety verdicts only — it never signs, broadcasts, or executes.
-For **meaningful checks** — wallet / contract / intent analysis, allowance and approval risk,
-and transaction introspection (estimate / simulate / status) — render the engine result in the
+no-custody mode: read-only safety verdicts only; it never signs, broadcasts, or executes.
+For **meaningful checks** (wallet / contract / intent analysis, allowance and approval risk,
+and transaction introspection via estimate / simulate / status), render the engine result in the
 exact format below. Every field is filled **only from engine output**; never invent a cell. Where evidence
 is absent, use `UNKNOWN`, `INSUFFICIENT_EVIDENCE`, `NOT_CONFIGURED`, or `NOT_SUPPORTED`.
 
@@ -38,15 +38,15 @@ Proceed / Review manually / Provide missing input / Stop.
 
 ## How to fill it from engine output
 
-The engine already returns every value the report needs — do not recompute or re-score.
+The engine already returns every value the report needs; do not recompute or re-score.
 
 | Report field | Source (engine output) |
 |---|---|
 | **Verdict** | `recommendation` uppercased → `ALLOW` / `WARN` / `BLOCK` (bands: allow ≤ 30 < warn < 70 ≤ block). |
 | **Risk Score** | `riskScore` (0–100), verbatim. |
 | **Mode** | Derived from `subjectType` / `action`: contract→Token, wallet→Wallet, `check_allowance`→Approval, `action:swap`→Swap, `bridge`→Bridge, `vault_deposit`/`yield_deposit`→Vault, `staking`→Staking, `tokenized_asset`→RWA, `get_gas_price`→Gas, `get_transaction_status`/estimate/simulate→Transaction, `x402_payment`→x402. |
-| **Operator Note** | One neutral sentence synthesized from `explanation` — state the finding, not reassurance. |
-| **Risk Factors** | `riskFactors[]` verbatim (they are the evidence). "None found at heuristic depth" if empty — never "safe". |
+| **Operator Note** | One neutral sentence synthesized from `explanation`: state the finding, not reassurance. |
+| **Risk Factors** | `riskFactors[]` verbatim (they are the evidence). "None found at heuristic depth" if empty, never "safe". |
 | **Missing Inputs** | `missingInputs` list, or `None`. |
 | **Final Action** | From `nextAction` / verdict: ALLOW→Proceed, WARN→Review manually, missing inputs→Provide missing input, BLOCK→Stop. |
 
@@ -68,13 +68,13 @@ layer has no evidence, not `PASS`.
 
 The verdict stays **three-valued** (ALLOW / WARN / BLOCK). `NOT_CONFIGURED`, `NOT_SUPPORTED`,
 `UNKNOWN`, and `INSUFFICIENT_EVIDENCE` describe *evidence quality* and live in the Result /
-Evidence cells and Missing Inputs — they never become a fourth verdict. When evidence is
+Evidence cells and Missing Inputs; they never become a fourth verdict. When evidence is
 insufficient, the engine's fail-closed logic already pushes the verdict to WARN or BLOCK; the
 report surfaces the reason rather than guessing.
 
-## Scope — when NOT to use the full report
+## Scope: when NOT to use the full report
 
 Compact single-value reads (`health`, `get_gas_price`, `get_token_price`) and structured
 errors (`VALIDATION_ERROR`, `FEED_STALE`, `*_NOT_CONFIGURED`, RPC outages, `KEY_MATERIAL_REJECTED`)
-stay concise — report the parsed field or the error code plainly. Do not force the full Safety
+stay concise; report the parsed field or the error code plainly. Do not force the full Safety
 Report onto them.

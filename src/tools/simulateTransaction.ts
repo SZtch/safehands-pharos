@@ -20,7 +20,7 @@ export type SimulateTransactionInput = z.infer<typeof simulateTransactionSchema>
 
 export const simulateTransactionTool = {
   name: "simulate_transaction",
-  description: "Dry run a swap or transfer via eth_call — no gas spent. Returns expected output, gas estimate, and revert reasons.",
+  description: "Dry run a swap or transfer via eth_call; no gas spent. Returns expected output, gas estimate, and revert reasons.",
   inputSchema: simulateTransactionSchema,
 };
 

@@ -25,7 +25,7 @@ export interface TokenRegistryEvidence {
 }
 
 const RISK_RELEVANCE =
-  "Recognized via the network token registry by address; recognition is metadata, not a safety guarantee — a known token does not make a risky action safe.";
+  "Recognized via the network token registry by address; recognition is metadata, not a safety guarantee; a known token does not make a risky action safe.";
 
 interface ResolvedToken {
   symbol: string;
@@ -97,7 +97,7 @@ export function tokenRegistryEvidence(input: string, network: PharosNetwork = ge
       decimals: null,
       source: "to_verify",
       status: "to_verify",
-      riskRelevance: "Token is a valid address but not in the official network registry — treat as unverified/custom (TO_VERIFY).",
+      riskRelevance: "Token is a valid address but not in the official network registry; treat as unverified/custom (TO_VERIFY).",
     };
   }
   return null;

@@ -1,8 +1,8 @@
 # SafeHands full-enabled self-host design (reference backend)
 
-> **The hosted SafeHands service agent is the Anvita Flow skill** (https://flow.anvita.xyz/home) — once published, discoverable and callable by any Steward Agent, with no backend of your own to run. The TypeScript backend in `src/` is an **optional, self-hostable reference**: nothing here is "the production service." Reach for this doc only if you want to run every endpoint, skill, and tool yourself on your own host.
+> **The hosted SafeHands service agent is the Anvita Flow skill** (https://flow.anvita.xyz/home): once published, discoverable and callable by any Steward Agent, with no backend of your own to run. The TypeScript backend in `src/` is an **optional, self-hostable reference**: nothing here is "the production service." Reach for this doc only if you want to run every endpoint, skill, and tool yourself on your own host.
 
-This is the recommended layout when the goal is **all endpoints active, all skills active, all tools active** on a self-hosted backend (the horizontal scaling path — see [`ARCHITECTURE_DECISION.md`](./ARCHITECTURE_DECISION.md)). It is host-agnostic: any container host that can run a Node process and mount a persistent volume works (Docker, a VPS, Fly, etc.).
+This is the recommended layout when the goal is **all endpoints active, all skills active, all tools active** on a self-hosted backend (the horizontal scaling path; see [`ARCHITECTURE_DECISION.md`](./ARCHITECTURE_DECISION.md)). It is host-agnostic: any container host that can run a Node process and mount a persistent volume works (Docker, a VPS, Fly, etc.).
 
 ## Best architecture
 
@@ -11,11 +11,11 @@ Run the same repository as separate services with different start commands:
 | Service | Public? | Start command | Purpose |
 |---|---:|---|---|
 | `safehands-api` | Yes | `npm run start:api` | SafeHands API, prepare/broadcast, attestation lookup, metrics, hosted `/tools` gateway for all 33 tools, **and the zero-custody x402 `/paid/*` gate (recommended paid tier)** |
-| `safehands-x402` | Dev / single-tenant only | `npm run start:x402` | Standalone x402 server with a LOCAL facilitator key (custody) — see warning below |
+| `safehands-x402` | Dev / single-tenant only | `npm run start:x402` | Standalone x402 server with a LOCAL facilitator key (custody); see warning below |
 | `safehands-worker` | No | `npm run start:worker` | Durable attestation retry queue and background jobs |
 | `safehands-anvita-mcp` | Host-dependent | `npm run start:mcp` | MCP/Anvita Skill runtime exposing the same 33 tools over stdio |
 
-> **Paid endpoints in production — use the API's x402 gate, not the standalone server.** The recommended public path is the `safehands-api` service's `/paid/*` gate: set `X402_PAY_TO` (receive-only) plus `X402_FACILITATOR_URL` (an **external** facilitator that verifies/settles off-host), and no signing key ever touches your host (zero-custody). The standalone `safehands-x402` server instead signs settlements locally with `X402_FACILITATOR_PRIVATE_KEY` — that is custody, intended for dev and intentional self-hosted single-tenant setups only. With `NODE_ENV=production` it refuses to start unless `SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true` is set explicitly.
+> **Paid endpoints in production: use the API's x402 gate, not the standalone server.** The recommended public path is the `safehands-api` service's `/paid/*` gate: set `X402_PAY_TO` (receive-only) plus `X402_FACILITATOR_URL` (an **external** facilitator that verifies/settles off-host), and no signing key ever touches your host (zero-custody). The standalone `safehands-x402` server instead signs settlements locally with `X402_FACILITATOR_PRIVATE_KEY`; that is custody, intended for dev and intentional self-hosted single-tenant setups only. With `NODE_ENV=production` it refuses to start unless `SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true` is set explicitly.
 
 Optional later:
 
@@ -43,7 +43,7 @@ The same safety gates still apply. For example, `execute_swap`, `send_payment`, 
 
 ## Host layout
 
-Build one image from this repo (the included `Dockerfile`) and run it as several long-lived processes with different start commands. Any container host works — Docker Compose, a VPS with systemd, Fly, or similar. Each process binds `0.0.0.0:$PORT` and exposes `GET /health` for liveness where noted.
+Build one image from this repo (the included `Dockerfile`) and run it as several long-lived processes with different start commands. Any container host works: Docker Compose, a VPS with systemd, Fly, or similar. Each process binds `0.0.0.0:$PORT` and exposes `GET /health` for liveness where noted.
 
 ### 1. `safehands-api`
 
@@ -56,15 +56,15 @@ Build one image from this repo (the included `Dockerfile`) and run it as several
 
 - Start command: `npm run start:x402`
 - Liveness: `GET /health`
-- Main env: `X402_SERVER_PORT=4021`, `X402_FACILITATOR_PRIVATE_KEY` (custody — hot key on this host), and `SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true` when `NODE_ENV=production`
-- Publicly reachable: not recommended — for public production use the zero-custody `/paid/*` gate on `safehands-api` (`X402_PAY_TO` + `X402_FACILITATOR_URL`) instead
+- Main env: `X402_SERVER_PORT=4021`, `X402_FACILITATOR_PRIVATE_KEY` (custody: hot key on this host), and `SAFEHANDS_ALLOW_LOCAL_FACILITATOR=true` when `NODE_ENV=production`
+- Publicly reachable: not recommended; for public production use the zero-custody `/paid/*` gate on `safehands-api` (`X402_PAY_TO` + `X402_FACILITATOR_URL`) instead
 
 ### 3. `safehands-worker`
 
 - Start command: `npm run start:worker`
 - Liveness: none (background process)
 - Publicly reachable: no
-- Needs the durable state directory (see below) — this process owns the attestation retry queue.
+- Needs the durable state directory (see below); this process owns the attestation retry queue.
 
 ### 4. `safehands-anvita-mcp`
 
@@ -86,7 +86,7 @@ PHAROS_RPC_URL=https://rpc.pharos.xyz
 # Public URL where your self-hosted API is reachable (local self-host default below;
 # on a container host, use the host's public URL)
 SAFEHANDS_PUBLIC_BASE_URL=http://localhost:3000
-# Durable state dir — point at a mounted persistent volume so state survives restarts
+# Durable state dir: point at a mounted persistent volume so state survives restarts
 SAFEHANDS_STATE_DIR=/data
 
 WRITE_TOOLS_ENABLED=true
@@ -110,7 +110,7 @@ DODO_API_KEY=
 DODO_ROUTER_ALLOWLIST=0x...
 DODO_SPENDER_ALLOWLIST=0x...
 
-# x402 paid tier — RECOMMENDED: zero-custody gate on the API service
+# x402 paid tier; RECOMMENDED: zero-custody gate on the API service
 X402_PAY_TO=0x...
 X402_FACILITATOR_URL=https://your-external-facilitator.example
 X402_PAYMENT_TOKEN_ADDRESS=0x...

@@ -231,7 +231,7 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
     if (!profile) {
       return fail(
         "TOKEN_SECURITY_DATA_UNAVAILABLE",
-        "GoPlus returned an unrecognized token-security schema for this contract (honeypot signal missing or not boolean). Failing closed — token treated as unreviewed, not safe.",
+        "GoPlus returned an unrecognized token-security schema for this contract (honeypot signal missing or not boolean). Failing closed: token treated as unreviewed, not safe.",
         true,
         "goplus_api"
       );
@@ -337,7 +337,7 @@ export async function evaluateTokenSecurityGate(
     // tokens stay caller-confirmable (identity verified on the official token registry);
     // everything else is "unavailable" and the write gate fails closed on it (P0-2).
     if (isRegistryToken(tokenAddress)) {
-      return { verdict: "review", policyStatus: "unknown", flags: [], detail: `${res.error.message} Token address matches the official active-network token registry — identity verified; GoPlus intel unavailable.` };
+      return { verdict: "review", policyStatus: "unknown", flags: [], detail: `${res.error.message} Token address matches the official active-network token registry: identity verified; GoPlus intel unavailable.` };
     }
     return { verdict: "review", policyStatus: "unavailable", flags: [], detail: res.error.message };
   }

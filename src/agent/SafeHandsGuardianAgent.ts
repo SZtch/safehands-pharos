@@ -79,7 +79,7 @@ export class SafeHandsGuardianAgent {
           riskLevel: "CRITICAL",
           summary: `SafeHands → BLOCK: recipient ${req.to} is on the operator denylist (known-bad address).`,
           reasons: ["Recipient is on the operator denylist (known-bad address).", ...decision.reasons],
-          recommendedAction: "Do not send to this address — it is flagged as known-bad by the operator.",
+          recommendedAction: "Do not send to this address; it is flagged as known-bad by the operator.",
           callerObligation: obligationFor("BLOCK").obligation,
         };
       }

@@ -116,7 +116,7 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
       decision: "REQUIRE_CONFIRMATION",
       internalDecision: "REQUIRE_CONFIRMATION",
       riskLevel: "MEDIUM",
-      reasons: ["approve() calldata could not be decoded — malformed approval."],
+      reasons: ["approve() calldata could not be decoded: malformed approval."],
       warnings: ["Malformed approval calldata."],
       analyzerStatus: "partial",
       details: { isApproval: true, selector, token: token ?? null, spender: null, spenderKnown: false, spenderLabel: null, isPermit2Spender: false, amountRaw: null, unlimited: false, isRevoke: false, canonicalContractEvidence: null, tokenRegistryEvidence: tokenEvidence, spenderRegistryRecognition: null },
@@ -126,10 +126,10 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
   const unlimited = isUnlimitedApprovalAmount(amount.toString());
   const isRevoke = amount === 0n;
   const { known, label, isPermit2, canonical, registryRecognition } = classifySpender(spender);
-  if (isPermit2) warnings.push("Spender is Permit2 — Permit2-based approvals can later authorize transfers via signatures (deep Permit2 decode is Experimental).");
+  if (isPermit2) warnings.push("Spender is Permit2: Permit2-based approvals can later authorize transfers via signatures (deep Permit2 decode is Experimental).");
   if (!known && registryRecognition?.recognized) {
     warnings.push(
-      `Spender matches ecosystem-registry entry "${registryRecognition.contractLabel}" (${registryRecognition.verificationStatus}) — recognition only, not a safety signal.`
+      `Spender matches ecosystem-registry entry "${registryRecognition.contractLabel}" (${registryRecognition.verificationStatus}); recognition only, not a safety signal.`
     );
   } else if (!known && registryRecognition?.note) {
     warnings.push(registryRecognition.note);
@@ -145,19 +145,19 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
   } else if (isRevoke) {
     internalDecision = "ALLOW";
     riskLevel = "LOW";
-    reasons.push(`Zero approval — revoking the allowance for ${spender}${label ? ` (${label})` : ""}.`);
+    reasons.push(`Zero approval: revoking the allowance for ${spender}${label ? ` (${label})` : ""}.`);
   } else if (unlimited && !known) {
     internalDecision = "BLOCK";
     riskLevel = "CRITICAL";
-    reasons.push(`Unlimited approval to an unknown spender (${spender}) — blocked.`);
+    reasons.push(`Unlimited approval to an unknown spender (${spender}); blocked.`);
   } else if (unlimited && known) {
     internalDecision = "REQUIRE_CONFIRMATION";
     riskLevel = "HIGH";
-    reasons.push(`Unlimited approval to a known spender (${label}) — high risk, confirm intent.`);
+    reasons.push(`Unlimited approval to a known spender (${label}); high risk, confirm intent.`);
   } else if (!known) {
     internalDecision = "REQUIRE_CONFIRMATION";
     riskLevel = "MEDIUM";
-    reasons.push(`Approval (amount ${amount.toString()}) to an unknown spender (${spender}) — confirm before approving.`);
+    reasons.push(`Approval (amount ${amount.toString()}) to an unknown spender (${spender}); confirm before approving.`);
   } else {
     internalDecision = "ALLOW";
     riskLevel = "LOW";

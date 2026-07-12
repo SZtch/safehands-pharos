@@ -11,7 +11,7 @@ export const DEMO_PAGE_HTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SafeHands — live policy demo · Pharos Pacific Mainnet</title>
+<title>SafeHands: live policy demo · Pharos Pacific Mainnet</title>
 <meta name="description" content="Paste an agent intent, get a real ALLOW / BLOCK decision from the live SafeHands policy engine on Pharos Pacific Mainnet (1672).">
 <style>
   :root{
@@ -81,7 +81,7 @@ export const DEMO_PAGE_HTML = `<!doctype html>
     <span class="chip">Pharos Pacific Mainnet · 1672</span>
     <span class="chip">zero-custody · read-only</span>
   </header>
-  <p class="sub">Every button below sends a real agent intent to the <b>live deterministic policy engine</b> running behind this page (<code>POST /tools/safehands_preflight_check</code>). No wallet, no keys, no transaction — this is the check an AI agent runs <b>before</b> it signs anything on Pharos.</p>
+  <p class="sub">Every button below sends a real agent intent to the <b>live deterministic policy engine</b> running behind this page (<code>POST /tools/safehands_preflight_check</code>). No wallet, no keys, no transaction: this is the check an AI agent runs <b>before</b> it signs anything on Pharos.</p>
 
   <div class="grid" id="presets"></div>
 
@@ -108,7 +108,7 @@ export const DEMO_PAGE_HTML = `<!doctype html>
     { name: "Wrong chain", hint: "agent targets Ethereum, not Pharos", tag: "BLOCK", cls: "block",
       intent: { actionType: "send_payment", chainId: 1, amount: "0.5", amountUnit: "PROS",
                 recipient: "0x0000000000000000000000000000000000000001" } },
-    { name: "Safe small payment", hint: "0.001 PROS within policy — safe; sign it yourself", tag: "PREPARE", cls: "prepare",
+    { name: "Safe small payment", hint: "0.001 PROS within policy: safe; sign it yourself", tag: "PREPARE", cls: "prepare",
       intent: { actionType: "send_payment", chainId: 1672, isMainnet: true, amount: "0.001",
                 amountUnit: "PROS", recipient: "0x0000000000000000000000000000000000000001" } },
     { name: "Unregistered RWA token", hint: "tokenized asset not in registry", tag: "CONFIRM", cls: "confirm",

@@ -133,11 +133,11 @@ export async function runInit() {
     console.log(`   🛡️  Agent wallet created automatically!`);
     console.log(`   Address: ${account.address}`);
     console.log("");
-    console.log(`   Next step — fund your wallet with PROS on Mainnet for gas:`);
+    console.log(`   Next step: fund your wallet with PROS on Mainnet for gas:`);
     console.log(`   (No faucet available on mainnet. Transfer PROS to your wallet address.)`);
     console.log("");
     console.log(`   Wallet is encrypted (AES-256-GCM) and stored at .agents/wallets.json`);
-    console.log(`   Encryption key saved to .agents/.key — do not share or delete this file.`);
+    console.log(`   Encryption key saved to .agents/.key; do not share or delete this file.`);
   } else if (pk.trim() && enableWrite) {
     console.log("   Wallet mode: env (using your private key)");
   }

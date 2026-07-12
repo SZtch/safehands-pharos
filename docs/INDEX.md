@@ -1,4 +1,4 @@
-# SafeHands Docs — Index & Reading Order
+# SafeHands Docs: Index & Reading Order
 
 SafeHands is the **transaction firewall for AI agent finance on Pharos**: it renders a
 deterministic safety verdict (`ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY`) on risky
@@ -17,12 +17,12 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | Doc | What it covers |
 |-----|----------------|
 | [REVIEWER_QUICKSTART.md](./REVIEWER_QUICKSTART.md) | Clone → build → test → demo in minutes. No keys/wallet needed. |
-| [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md) | Guided reviewer walkthrough — live URLs, live contracts, expected outputs. |
+| [SAFEHANDS_REVIEWER_DEMO_SCRIPT.md](./SAFEHANDS_REVIEWER_DEMO_SCRIPT.md) | Guided reviewer walkthrough: live URLs, live contracts, expected outputs. |
 | [DECISION_CONTRACT.md](./DECISION_CONTRACT.md) | The public 4-value decision vocabulary, its internal mappings, and the confirmation trust anchor. Load-bearing. |
 | [REALFI_RWA_ALIGNMENT.md](./REALFI_RWA_ALIGNMENT.md) | How SafeHands serves Real-Fi & RWA on Pharos: what is live today vs roadmap. |
 | [PRODUCTION_BACKEND.md](./PRODUCTION_BACKEND.md) | The read-only SafeHands HTTP API: endpoints, capability flags, request safety. |
-| [PREPARE_TRANSACTION.md](./PREPARE_TRANSACTION.md) | P9 prepare-only mode — `POST /prepare/tx` returns an unsigned tx; the user signs externally. |
-| [WALLET_HANDOFF.md](./WALLET_HANDOFF.md) | P10A — `POST /wallet/prepare` returns a wallet-ready request for an external wallet to sign + send. |
+| [PREPARE_TRANSACTION.md](./PREPARE_TRANSACTION.md) | P9 prepare-only mode: `POST /prepare/tx` returns an unsigned tx; the user signs externally. |
+| [WALLET_HANDOFF.md](./WALLET_HANDOFF.md) | P10A: `POST /wallet/prepare` returns a wallet-ready request for an external wallet to sign + send. |
 
 ## API, deployment & operations
 
@@ -56,12 +56,12 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 | Doc | What it covers |
 |-----|----------------|
 | [CANONICAL_CONTRACTS.md](./CANONICAL_CONTRACTS.md) | Ground truth for the official Pharos canonical contracts the preflight engine recognizes. |
-| [reports/AUDIT_REMEDIATION_2026-07.md](./reports/AUDIT_REMEDIATION_2026-07.md) | Full July 2026 repository audit + remediation record — every finding, fix, and verification gate. |
+| [reports/AUDIT_REMEDIATION_2026-07.md](./reports/AUDIT_REMEDIATION_2026-07.md) | Full July 2026 repository audit + remediation record: every finding, fix, and verification gate. |
 | [deployment/ARCHITECTURE_DECISION.md](./deployment/ARCHITECTURE_DECISION.md) | ADR for the optional self-hosted reference backend (single-instance profile). |
 | [deployment/FULL_SERVICE_DESIGN.md](./deployment/FULL_SERVICE_DESIGN.md) | Layout for running every endpoint/service self-hosted (API + x402 + worker). |
-| [indexing/GOLDSKY_ATTESTATION_INDEXING.md](./indexing/GOLDSKY_ATTESTATION_INDEXING.md) | Goldsky indexing design — mainnet contracts stay the source of truth. |
+| [indexing/GOLDSKY_ATTESTATION_INDEXING.md](./indexing/GOLDSKY_ATTESTATION_INDEXING.md) | Goldsky indexing design; mainnet contracts stay the source of truth. |
 
-## Archive (historical snapshots — superseded, kept for provenance)
+## Archive (historical snapshots, superseded, kept for provenance)
 
 Planning-era documents whose status labels no longer reflect the product. Each carries
 a supersession banner; **do not cite them for current capabilities.**

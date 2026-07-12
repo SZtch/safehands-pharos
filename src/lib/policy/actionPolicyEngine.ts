@@ -245,7 +245,7 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
   // payment is disabled by default and gated separately (WRITE_TOOLS_ENABLED and
   // the network executionAllowed flag) — it is never live here.
   if (isMainnet) {
-    pushCheck(checks, "mainnet_guard", "pass", `${network ? network.label : "Pharos mainnet"} — read-only SafeHands checks allowed; execution/write/payment is gated and disabled by default.`);
+    pushCheck(checks, "mainnet_guard", "pass", `${network ? network.label : "Pharos mainnet"}: read-only SafeHands checks allowed; execution/write/payment is gated and disabled by default.`);
   } else {
     pushCheck(checks, "mainnet_guard", "pass", "Action is not targeting mainnet.");
   }
@@ -259,7 +259,7 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
   if (input.requiresSigner && input.signerAvailable === false) {
     pushCheck(checks, "signer", "fail", "No signer is available for this write/payment action.", reasons, requiredActions, "No signer available.", "Configure WALLET_MODE=managed-mainnet, X402_SIGNER_PRIVATE_KEY, or PRIVATE_KEY for mainnet only.");
   } else if (input.requiresSigner && input.signerAvailable === undefined) {
-    pushCheck(checks, "signer_unknown", "warn", "Signer availability is unknown — a signer will be required for execution.", reasons, requiredActions, undefined, "Ensure a signer is available before executing this write/payment action.");
+    pushCheck(checks, "signer_unknown", "warn", "Signer availability is unknown; a signer will be required for execution.", reasons, requiredActions, undefined, "Ensure a signer is available before executing this write/payment action.");
   }
 
     if (input.actionType === "send_payment") {
@@ -283,14 +283,14 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
       if (input.recipient && !isAddress(input.recipient)) {
         pushCheck(checks, "recipient_address", "fail", "Recipient address is invalid.", reasons, requiredActions, "Invalid recipient address.", "Provide a valid EVM address.");
       } else if (isDenylistedRecipient(input.recipient)) {
-        pushCheck(checks, "recipient_denylist", "fail", "Recipient is on the operator denylist (known-bad address).", reasons, requiredActions, "Recipient address is denylisted.", "Do not send to this address — it is flagged as known-bad by the operator.");
+        pushCheck(checks, "recipient_denylist", "fail", "Recipient is on the operator denylist (known-bad address).", reasons, requiredActions, "Recipient address is denylisted.", "Do not send to this address; it is flagged as known-bad by the operator.");
       } else if (input.recipientVerified === false) {
         pushCheck(checks, "recipient_reputation", "warn", "Recipient is unverified.", reasons, requiredActions, undefined, "Verify recipient before sending funds.");
       } else if (input.recipient && input.recipientVerified === undefined) {
         // Fail-closed: recipientVerified is a caller CLAIM. When it is omitted, no
         // verification happened — treat exactly like an unverified recipient instead
         // of silently skipping the reputation check (truth-model rule 5).
-        pushCheck(checks, "recipient_reputation", "unknown", "Recipient verification was not asserted — the recipient is treated as an unverified claim.", reasons, requiredActions, undefined, "Verify the recipient against chain/registry evidence before sending funds.");
+        pushCheck(checks, "recipient_reputation", "unknown", "Recipient verification was not asserted; the recipient is treated as an unverified claim.", reasons, requiredActions, undefined, "Verify the recipient against chain/registry evidence before sending funds.");
       } else if (input.recipient && input.recipientVerified === true) {
         pushCheck(checks, "recipient_reputation", "pass", "Recipient verification asserted by the caller (caller-attested claim; not independently verified by SafeHands).");
       }
@@ -315,7 +315,7 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
       pushCheck(checks, "spender_reputation", "warn", "Spender is unverified.", reasons, requiredActions, undefined, "Verify spender contract before approving.");
     } else if (input.spender && input.spenderVerified === undefined) {
       // Fail-closed: same rule as recipientVerified — an omitted claim is not evidence.
-      pushCheck(checks, "spender_reputation", "unknown", "Spender verification was not asserted — the spender is treated as an unverified claim.", reasons, requiredActions, undefined, "Verify the spender contract against chain/registry evidence before approving.");
+      pushCheck(checks, "spender_reputation", "unknown", "Spender verification was not asserted; the spender is treated as an unverified claim.", reasons, requiredActions, undefined, "Verify the spender contract against chain/registry evidence before approving.");
     } else if (input.spender && input.spenderVerified === true) {
       pushCheck(checks, "spender_reputation", "pass", "Spender verification asserted by the caller (caller-attested claim; not independently verified by SafeHands).");
     }
@@ -332,7 +332,7 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
     // MAX_DAILY_SPEND_USD and has no per-transaction ceiling — the spend caps would
     // silently not apply. Deny by default (fail → BLOCK, never confirmable).
     if (input.tokenIn && resolvePriceableToken(input.tokenIn) === null) {
-      pushCheck(checks, "swap_notional_unpriceable", "fail", `Swap input token ${input.tokenIn} cannot be priced in USD, so the daily USD cap and per-transaction ceiling cannot bound this spend — denied by default.`, reasons, requiredActions, "Unpriceable input token would escape spend caps.", "Swap a priceable token (PROS, WPROS, USDC, USDT) or add the token to the price map before enabling it.");
+      pushCheck(checks, "swap_notional_unpriceable", "fail", `Swap input token ${input.tokenIn} cannot be priced in USD, so the daily USD cap and per-transaction ceiling cannot bound this spend; denied by default.`, reasons, requiredActions, "Unpriceable input token would escape spend caps.", "Swap a priceable token (PROS, WPROS, USDC, USDT) or add the token to the price map before enabling it.");
     }
 
     const balance = numeric(input.walletBalancePhs);
@@ -404,7 +404,7 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
     // P0-2: intel is MISSING (provider outage / token not indexed) — nothing was
     // reviewed. Distinct check name so the write-execution gate can fail closed on it
     // (a caller confirmation cannot substitute for intel that never existed).
-    pushCheck(checks, "token_security_intel_missing", "unknown", "Token security intelligence is unavailable (provider outage or token not indexed) — the token was NOT reviewed.", reasons, requiredActions, undefined, "Retry when the token-security provider is reachable, or verify the token independently before executing.");
+    pushCheck(checks, "token_security_intel_missing", "unknown", "Token security intelligence is unavailable (provider outage or token not indexed); the token was NOT reviewed.", reasons, requiredActions, undefined, "Retry when the token-security provider is reachable, or verify the token independently before executing.");
   } else if (input.tokenSecurityStatus === "unknown") {
     pushCheck(checks, "token_security_provider", "unknown", "Token security provider is unavailable or unknown.", reasons, requiredActions, undefined, "Proceed only after manual token review.");
   }
@@ -421,7 +421,7 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
     }
 
     if (typeof risk.counterpartyRisk === "number" && risk.counterpartyRisk >= COUNTERPARTY_CRITICAL_THRESHOLD) {
-      pushCheck(checks, "risk_counterparty", "fail", `Counterparty risk ${risk.counterpartyRisk}/100 is critical (≥ ${COUNTERPARTY_CRITICAL_THRESHOLD}) — missing, invalid, or zero-address counterparty.`, reasons, requiredActions, "Critically risky counterparty (missing/invalid/zero recipient).", "Provide a valid, verified counterparty address.");
+      pushCheck(checks, "risk_counterparty", "fail", `Counterparty risk ${risk.counterpartyRisk}/100 is critical (≥ ${COUNTERPARTY_CRITICAL_THRESHOLD}): missing, invalid, or zero-address counterparty.`, reasons, requiredActions, "Critically risky counterparty (missing/invalid/zero recipient).", "Provide a valid, verified counterparty address.");
     } else if (typeof risk.counterpartyRisk === "number") {
       pushCheck(checks, "risk_counterparty", "pass", `Counterparty risk ${risk.counterpartyRisk}/100 is below the critical threshold (${COUNTERPARTY_CRITICAL_THRESHOLD}).`);
     }
@@ -429,13 +429,13 @@ export function evaluateActionPolicy(input: ActionPolicyInput): ActionPolicyResu
     if (risk.degraded) {
       let detail = (risk.degradedReasons ?? []).join(" ") || "A critical risk signal could not be evaluated.";
       if (risk.swapProviderNotConfigured && !detail.includes("SWAP_LIQUIDITY_NOT_CONFIGURED")) {
-        detail += " The swap liquidity provider is not configured for this chain (SWAP_LIQUIDITY_NOT_CONFIGURED) — a permanent configuration state, not a transient outage.";
+        detail += " The swap liquidity provider is not configured for this chain (SWAP_LIQUIDITY_NOT_CONFIGURED), a permanent configuration state, not a transient outage.";
       }
-      pushCheck(checks, "risk_degraded", "unknown", `Risk assessment is degraded — ${detail}`, reasons, requiredActions, undefined, "Re-invoke with confirm=true only after manually reviewing the degraded risk data.");
+      pushCheck(checks, "risk_degraded", "unknown", `Risk assessment is degraded: ${detail}`, reasons, requiredActions, undefined, "Re-invoke with confirm=true only after manually reviewing the degraded risk data.");
       // Unknown-status checks do not populate `reasons`; surface the degradation
       // detail there anyway so the CONFIRMATION_REQUIRED envelope explains itself
       // (parity with the former tool-level degraded message).
-      reasons.push(`Risk assessment is degraded — ${detail}`);
+      reasons.push(`Risk assessment is degraded: ${detail}`);
     } else {
       pushCheck(checks, "risk_degraded", "pass", "No critical risk signal was missing during assessment.");
     }

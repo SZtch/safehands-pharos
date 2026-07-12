@@ -1,11 +1,11 @@
-# Pharos Ecosystem Evidence — Awareness Registry, Classifier & Decision Impact
+# Pharos Ecosystem Evidence: Awareness Registry, Classifier & Decision Impact
 
 > **Awareness, not integration.** SafeHands is *ecosystem-aware*: it recognizes Pharos
 > ecosystem providers and uses that recognition as **evidence** to explain risk. The
 > awareness registry below does **not** mean SafeHands integrates with, calls, holds
 > keys for, or settles through a provider. Implementation:
 > `src/lib/pharos/ecosystem.ts` (registry) + `src/lib/pharos/ecosystemEvidence.ts`
-> (classifier). Pure and deterministic — **no RPC, no keys, no external API calls** in
+> (classifier). Pure and deterministic: **no RPC, no keys, no external API calls** in
 > this subsystem.
 >
 > *(This document consolidates the former `PHAROS_ECOSYSTEM_INTEGRATIONS.md`.)*
@@ -13,7 +13,7 @@
 > **Product-level status vs subsystem status.** The registry rows mirror the awareness
 > subsystem. Three capabilities have since shipped **elsewhere in the product** and are
 > NOT captured by the rows below: live Chainlink Push price reads (`get_token_price`
-> via `eth_call` — `src/lib/price/priceResolver.ts`), SPV/Merkle inclusion verification
+> via `eth_call`; `src/lib/price/priceResolver.ts`), SPV/Merkle inclusion verification
 > (`verify_risk_inclusion`, `spvVerifier.ts`), and opt-in self-hosted x402 mainnet USDC
 > settlement (`/paid/*`; hosted mode still never pays). The ecosystem-awareness rows
 > remain accurate for what *this subsystem* does: recognition-as-evidence only.
@@ -37,13 +37,13 @@
 ## 2. Awareness registry
 
 > Status legend: **implemented** · **experimental** · **roadmap** · **to_verify** ·
-> **not_implemented** — statuses describe the awareness subsystem (see the
-> product-level note above). **No contract address is invented** — only official
+> **not_implemented**: statuses describe the awareness subsystem (see the
+> product-level note above). **No contract address is invented**: only official
 > addresses are listed.
 
 | Provider | Category | Status | Source | SafeHands behavior |
 |----------|----------|--------|--------|--------------------|
-| Chainlink Price Feeds (CRE) | oracle | roadmap *(subsystem)* | official_docs | Recognize the Pharos-native price-feed cache by official address — **evidence only** in this subsystem. *(Product level: live Chainlink Push price reads shipped in `get_token_price`.)* |
+| Chainlink Price Feeds (CRE) | oracle | roadmap *(subsystem)* | official_docs | Recognize the Pharos-native price-feed cache by official address; **evidence only** in this subsystem. *(Product level: live Chainlink Push price reads shipped in `get_token_price`.)* |
 | Chainlink CCIP | cross_chain | roadmap | official_docs | Bridge-like → `REQUIRE_CONFIRMATION` unless trusted. No CCIP call. |
 | Circle CCTP | cross_chain | roadmap | official_docs | Bridge-like → `REQUIRE_CONFIRMATION` unless trusted. No CCTP call. |
 | LayerZero | cross_chain | roadmap | official_docs | Bridge-like → `REQUIRE_CONFIRMATION` unless trusted. No LayerZero call. |
@@ -64,7 +64,7 @@
 | Chainlink price-feed cache | pacific-mainnet | 1672 | `0xc71f7d98d3d9a000Fdfe307fBdb9d94AbD56424B` |
 | Chainlink price-feed cache | atlantic-testnet | 688689 | `0x5456fD07A1622d33969f833d52aA5AD2c68C3Fa2` |
 
-*(Ecosystem dApp protocol addresses — e.g. the registry-VERIFIED Morpho deployments —
+*(Ecosystem dApp protocol addresses, e.g. the registry-VERIFIED Morpho deployments,
 live in the canonical ecosystem registry, `src/data/ecosystemRegistry.data.ts`, which
 is the single source of truth for address-level trust.)*
 
@@ -85,7 +85,7 @@ interface EcosystemEvidence {
   source: EvidenceSource;                 // official_docs | existing_registry | to_verify
   officialDocsUrl: string | null;
   riskRelevance: string;
-  safehandsBehavior: string;              // honest behavior — never an integration claim
+  safehandsBehavior: string;              // honest behavior; never an integration claim
   recommendedDecisionImpact: "REQUIRE_CONFIRMATION" | "none";  // escalate-only hint
   network: NetworkName | null;
   chainId: number | null;
@@ -108,9 +108,9 @@ current decision and the evidence's recommended impact. It **never** downgrades.
 
 | Category | Recommended impact | Rationale |
 |----------|--------------------|-----------|
-| `cross_chain` | **REQUIRE_CONFIRMATION** | Bridge/relayer/finality trust — cross-chain & unknown bridge-like intents require confirmation unless explicitly trusted. |
+| `cross_chain` | **REQUIRE_CONFIRMATION** | Bridge/relayer/finality trust: cross-chain & unknown bridge-like intents require confirmation unless explicitly trusted. |
 | `evm_wasm_interop` | **REQUIRE_CONFIRMATION** | WASM↔EVM interop can bypass EVM-only assumptions; experimental, no analyzer. |
-| `oracle` | none | Evidence only — no direct oracle analyzer; price-dependency is explained, not auto-escalated. |
+| `oracle` | none | Evidence only: no direct oracle analyzer; price-dependency is explained, not auto-escalated. |
 | `indexing` | none | Optional read-only data source; not an execution path. |
 | `wallet_infrastructure` | none | Pre-sign awareness; SafeHands holds no keys. |
 | `custody_infrastructure` | none | External custody awareness; SafeHands holds no keys. |
@@ -127,7 +127,7 @@ current decision and the evidence's recommended impact. It **never** downgrades.
 - **Ecosystem evidence does not make risky actions safe.** A known token/canonical/oracle
   contract does **not** relax any existing risk rule.
 - **A BLOCK stays a BLOCK.** Escalation only raises severity; `applyEcosystemEscalation`
-  on a `BLOCK` returns `BLOCK` for any evidence — pinned by
+  on a `BLOCK` returns `BLOCK` for any evidence; pinned by
   `test/truth-model.test.ts` ("a hard BLOCK is NEVER downgraded by ecosystem evidence").
 - **Unlimited approval → unknown spender remains BLOCK** even with a bridge-like provider
   hint (the unlimited-approval hard fail in `test/action-policy.test.ts` combined with the
@@ -138,10 +138,10 @@ current decision and the evidence's recommended impact. It **never** downgrades.
 
 ## 7. Where it surfaces
 
-- `POST /guardian/check` — `ecosystemEvidence` + escalate-only impact on the aggregate decision.
-- `POST /analyze/tx | /analyze/contract | /analyze/approval | /analyze/safe | /analyze/x402` — `ecosystemEvidence`.
-- `POST /agent/check`, `POST /agent/a2a/check` — `evidence.ecosystemEvidence` (via the decision formatter).
-- `GET /infra/status`, `GET /public-config` — `ecosystem` registry summary (counts only, secret-free).
+- `POST /guardian/check`: `ecosystemEvidence` + escalate-only impact on the aggregate decision.
+- `POST /analyze/tx | /analyze/contract | /analyze/approval | /analyze/safe | /analyze/x402`: `ecosystemEvidence`.
+- `POST /agent/check`, `POST /agent/a2a/check`: `evidence.ecosystemEvidence` (via the decision formatter).
+- `GET /infra/status`, `GET /public-config`: `ecosystem` registry summary (counts only, secret-free).
 
 Alongside the existing `analyzer`, `pharosEvidence`/`rpcEvidence`, `gasEvidence`, and
-`tokenRegistry` evidence — additive, no response shape removed.
+`tokenRegistry` evidence; additive, no response shape removed.

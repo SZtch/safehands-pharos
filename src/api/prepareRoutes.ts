@@ -96,7 +96,7 @@ export async function handlePrepareTx(
     signingAvailable: false,
     broadcastAvailable: false,
     nextStep: blocked
-      ? "Do not prepare — the action is unsafe. Abort and surface the block reason."
+      ? "Do not prepare: the action is unsafe. Abort and surface the block reason."
       : "WARNING: This prepared tx is for EXTERNAL broadcast only. SafeHands holds no keys. Do not submit this to /broadcast/signed because no internal record was saved.",
     source: "prepare_tx",
     ...readOnlyMeta(), // readOnly: true, executionAvailable: false

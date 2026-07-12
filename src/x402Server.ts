@@ -266,7 +266,7 @@ if (isPaidConfigured && resourceServer) {
         },
         "GET /pool-info": {
           accepts: { scheme: "exact", price: priceUsdc, network: `eip155:${CHAIN_ID}`, payTo: receiverAddress },
-          description: `DODO/FaroSwap pool data — price ratio, impact, fees (USDC ${priceUsdc})`,
+          description: `DODO/FaroSwap pool data: price ratio, impact, fees (USDC ${priceUsdc})`,
           mimeType: "application/json",
         },
         "GET /swap-route": {

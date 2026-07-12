@@ -1,4 +1,4 @@
-// ─── Agent Arena — DeFi Agent (ERC-20 approval) ────────────────────────
+// ─── Agent Arena: DeFi Agent (ERC-20 approval) ────────────────────────
 // A DeFi Agent wants to grant an UNLIMITED USDC approval to an unknown spender.
 // SafeHands decodes the approve() calldata and BLOCKs the unlimited grant.
 // Live Execution: Reads live from Pharos Pacific Mainnet RPC and DODO API.
@@ -31,7 +31,7 @@ function expect(name: string, actual: string, allowed: string[]) {
 async function main() {
   const agent = createGuardianAgent();
 
-  // Scenario B — unlimited approval to an unknown spender → BLOCK.
+  // Scenario B: unlimited approval to an unknown spender → BLOCK.
   const unlimited = await agent.checkForAgent("defi-agent", {
     to: USDC,
     token: USDC,
@@ -41,7 +41,7 @@ async function main() {
   expect("unlimited→unknown", unlimited.decision, ["BLOCK"]);
   expect("  caller obligation", unlimited.caller.obligation, ["stop"]);
 
-  // Contrast — a small, finite approval is safe; execution disabled → PREPARE_ONLY.
+  // Contrast: a small, finite approval is safe; execution disabled → PREPARE_ONLY.
   const limited = await agent.check({ to: USDC, token: USDC, data: approveData(UNKNOWN_SPENDER, 1000n) });
   expect("limited→unknown", limited.decision, ["REQUIRE_CONFIRMATION"]); // unknown spender still needs confirmation
 

@@ -130,7 +130,7 @@ function validatePolicy(raw: unknown): AgentPolicy | null {
  */
 function invalidPolicyFallback(label: string, path: string): AgentPolicy {
   console.warn(
-    `[SafeHands policy] ${label} policy file exists but is malformed or invalid — falling back to the 'conservative' profile (fail-closed). Fix ${path} to restore the intended limits.`
+    `[SafeHands policy] ${label} policy file exists but is malformed or invalid; falling back to the 'conservative' profile (fail-closed). Fix ${path} to restore the intended limits.`
   );
   return POLICY_PROFILES.conservative;
 }

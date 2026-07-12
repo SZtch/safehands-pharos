@@ -15,7 +15,7 @@ export const getAgentReputationTool = {
   description:
     "Read an address's on-chain SafeHands reputation: the count of SafeHands-verified safe broadcasts " +
     "attributed to it (+ recency) from the SafeHandsAttestation contract, plus registry authorization context. " +
-    "Read-only, keyless, composable — any agent can use it as a trust signal. A zero count means NEUTRAL " +
+    "Read-only, keyless, composable: any agent can use it as a trust signal. A zero count means NEUTRAL " +
     "(no track record yet), never negative.",
   inputSchema: getAgentReputationSchema,
 };
@@ -43,8 +43,8 @@ export async function handleGetAgentReputation(raw: GetAgentReputationInput) {
       hasRiskRecord: registry.hasRiskRecord,
       interpretation:
         reputation.verifiedCount > 0
-          ? `${reputation.verifiedCount} SafeHands-verified on-chain action(s) — positive track record.`
-          : "No SafeHands-verified actions yet — NEUTRAL. Absence of record is not negative.",
+          ? `${reputation.verifiedCount} SafeHands-verified on-chain action(s); positive track record.`
+          : "No SafeHands-verified actions yet: NEUTRAL. Absence of record is not negative.",
     });
   } catch (err) {
     return fail("REPUTATION_QUERY_FAILED", `Failed to read reputation: ${(err as Error).message}`, true, "get_agent_reputation");

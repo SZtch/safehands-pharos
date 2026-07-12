@@ -1,7 +1,7 @@
 # Wallet-Ready Transaction Handoff (P10A)
 
 SafeHands supports the **mainnet transaction flow** by preparing **wallet-ready requests**
-for external wallets. **The user/client signs and sends externally** — SafeHands never signs,
+for external wallets. **The user/client signs and sends externally**; SafeHands never signs,
 never broadcasts, never creates or manages a wallet, and holds no key.
 
 Wallet connection happens **outside** SafeHands; SafeHands only **reads** the wallet context
@@ -42,13 +42,13 @@ Decisions stay within the public contract: `ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATI
 
 | nextAction | Meaning |
 |---|---|
-| `CONNECT_WALLET_OR_PROVIDE_ADDRESS` | No wallet context — connect a wallet or pass `userAddress`/`from`. |
-| `SIGN_IN_EXTERNAL_WALLET` | Wallet-ready request prepared — sign + send it in your own wallet. |
-| `REVIEW_FIRST` | Confirmation required — review before signing. |
-| `STOP` | Blocked — do not proceed. |
+| `CONNECT_WALLET_OR_PROVIDE_ADDRESS` | No wallet context; connect a wallet or pass `userAddress`/`from`. |
+| `SIGN_IN_EXTERNAL_WALLET` | Wallet-ready request prepared; sign + send it in your own wallet. |
+| `REVIEW_FIRST` | Confirmation required; review before signing. |
+| `STOP` | Blocked; do not proceed. |
 
 The endpoint is read-only: `signingAvailable: false`, `broadcastAvailable: false`,
-`readOnly: true`, `executionAvailable: false`. Activity is sanitized — the `walletRequest`,
+`readOnly: true`, `executionAvailable: false`. Activity is sanitized: the `walletRequest`,
 the wallet address, and full calldata are never written to the public activity feed.
 
 ## What P10A does NOT do

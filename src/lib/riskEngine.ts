@@ -143,14 +143,14 @@ function scoreLiquidity(input: RiskInput, quote: DodoQuote | null, notConfigured
   if (!quote) {
     reasons.push(
       notConfigured
-        ? `Swap liquidity provider is not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED) — liquidity cannot be verified on this network.`
-        : "Failed to fetch liquidity data — route provider unavailable."
+        ? `Swap liquidity provider is not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED); liquidity cannot be verified on this network.`
+        : "Failed to fetch liquidity data: route provider unavailable."
     );
     return { score: 70, reasons };
   }
 
   if (!quote.routeAvailable) {
-    reasons.push("No swap route available — liquidity may be exhausted");
+    reasons.push("No swap route available; liquidity may be exhausted");
     return { score: 100, reasons };
   }
 
@@ -176,14 +176,14 @@ function scoreSlippage(input: RiskInput, quote: DodoQuote | null, notConfigured:
   if (!quote) {
     reasons.push(
       notConfigured
-        ? `Slippage cannot be estimated — swap route provider not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED).`
-        : "Slippage estimation failed — route provider unavailable."
+        ? `Slippage cannot be estimated: swap route provider not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED).`
+        : "Slippage estimation failed: route provider unavailable."
     );
     return { score: 60, reasons };
   }
 
   if (!quote.routeAvailable) {
-    reasons.push("Cannot estimate slippage — no route");
+    reasons.push("Cannot estimate slippage: no route");
     return { score: 90, reasons };
   }
 
@@ -206,7 +206,7 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
     // that holds on no network per the ecosystem registry.
     const router = quote?.routeAvailable && isAddress(quote.to) ? quote.to : null;
     if (!router) {
-      reasons.push("Swap counterparty (router) could not be determined — no route data to evaluate.");
+      reasons.push("Swap counterparty (router) could not be determined; no route data to evaluate.");
       return { score: 55, reasons };
     }
     const evidence = addressTrustEvidence(router, CHAIN_ID);
@@ -216,12 +216,12 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
     }
     if (evidence.recognized) {
       reasons.push(
-        `Swap router matches ecosystem-registry entry "${evidence.contractLabel}" (${evidence.verificationStatus}) — recognition only, not a safety signal.`
+        `Swap router matches ecosystem-registry entry "${evidence.contractLabel}" (${evidence.verificationStatus}); recognition only, not a safety signal.`
       );
       return { score: 40, reasons };
     }
     reasons.push(
-      `Swap router ${router} is not in the SafeHands ecosystem registry — unverified counterparty (the execution allowlist still constrains which router may execute at write time).`
+      `Swap router ${router} is not in the SafeHands ecosystem registry: unverified counterparty (the execution allowlist still constrains which router may execute at write time).`
     );
     return { score: 55, reasons };
   }
@@ -240,13 +240,13 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
 
   // Zero address check
   if (to === "0x0000000000000000000000000000000000000000") {
-    reasons.push("Sending to zero address — tokens will be burned");
+    reasons.push("Sending to zero address; tokens will be burned");
     return { score: 95, reasons };
   }
 
   // Self-send check
   if (to.toLowerCase() === input.walletAddress.toLowerCase()) {
-    reasons.push("Sending to own address — likely unintended");
+    reasons.push("Sending to own address; likely unintended");
     return { score: 50, reasons };
   }
 
@@ -254,7 +254,7 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
   try {
     const code = await publicClient.getCode({ address: to as `0x${string}` });
     if (code && code !== "0x") {
-      reasons.push("Recipient is a contract address — verify intent");
+      reasons.push("Recipient is a contract address; verify intent");
       return { score: 40, reasons };
     }
   } catch {
@@ -265,7 +265,7 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
   try {
     const balance = await publicClient.getBalance({ address: to as `0x${string}` });
     if (balance === 0n) {
-      reasons.push("Recipient has zero balance — new or unused address");
+      reasons.push("Recipient has zero balance; new or unused address");
       return { score: 30, reasons };
     }
   } catch {
@@ -296,7 +296,7 @@ async function scoreBalance(input: RiskInput): Promise<{ score: number; reasons:
 
       const usagePct = Number((amountWei * 100n) / balance);
       if (usagePct > MAX_BALANCE_USAGE_PCT) {
-        reasons.push(`Using ${usagePct}% of wallet balance — high exposure`);
+        reasons.push(`Using ${usagePct}% of wallet balance; high exposure`);
         return { score: clamp(60 + (usagePct - MAX_BALANCE_USAGE_PCT)), reasons };
       }
 
@@ -354,7 +354,7 @@ async function scoreMarketCondition(_input: RiskInput): Promise<{ score: number;
     const avgBlockTime = timeDiff / 10;
 
     if (avgBlockTime > 30) {
-      reasons.push(`Slow block production: ~${avgBlockTime.toFixed(1)}s/block — chain may be congested`);
+      reasons.push(`Slow block production: ~${avgBlockTime.toFixed(1)}s/block; chain may be congested`);
       return { score: 60, reasons };
     }
 
@@ -414,12 +414,12 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
   if (input.action === "swap" && swapQuote === null) {
     degradedReasons.push(
       swapProviderNotConfigured
-        ? `Swap liquidity provider is not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED) — this is a permanent configuration state on this network, not a transient outage.`
-        : "Liquidity/slippage could not be assessed — swap route fetch failed."
+        ? `Swap liquidity provider is not configured for chainId ${CHAIN_ID} (SWAP_LIQUIDITY_NOT_CONFIGURED); this is a permanent configuration state on this network, not a transient outage.`
+        : "Liquidity/slippage could not be assessed: swap route fetch failed."
     );
   }
   if (balance.degraded) {
-    degradedReasons.push("Wallet balance could not be verified — RPC unavailable.");
+    degradedReasons.push("Wallet balance could not be verified; RPC unavailable.");
   }
   const degraded = degradedReasons.length > 0;
   if (degraded && recommendation === "proceed") {
@@ -452,7 +452,7 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
       "Moderate risk detected. Review the risk breakdown carefully before proceeding. Consider reducing the amount or adjusting parameters.";
   } else {
     suggestion =
-      "High risk detected — execution blocked for safety. Review the reasons and adjust your transaction parameters significantly before retrying.";
+      "High risk detected: execution blocked for safety. Review the reasons and adjust your transaction parameters significantly before retrying.";
   }
 
   return {

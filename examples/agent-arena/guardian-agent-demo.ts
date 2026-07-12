@@ -1,4 +1,4 @@
-// ─── Agent Arena — SafeHands Agent Demo ───────────────────────
+// ─── Agent Arena: SafeHands Agent Demo ───────────────────────
 // Runs all Agent Arena scenarios against one Live SafeHands Agent and prints
 // each verdict plus the caller's obligation.
 // Live Execution: Reads live from Pharos Pacific Mainnet RPC and DODO API.
@@ -23,7 +23,7 @@ const MAX_UINT256 = 2n ** 256n - 1n;
 
 async function main() {
   console.log("══════════════════════════════════════════════════════════════════");
-  console.log("  SafeHands Agent — Agent Arena Demo (LIVE MAINNET)");
+  console.log("  SafeHands Agent: Agent Arena Demo (LIVE MAINNET)");
   console.log("  [Pharos Pacific Mainnet | Real RPC | Real DODO API]");
   console.log("══════════════════════════════════════════════════════════════════");
   console.log("\nAgent-to-Agent obligation contract:");
@@ -62,7 +62,7 @@ async function main() {
     text: "Why is an unlimited approval risky?",
   });
 
-  console.log("\n✅ SafeHands Agent demo complete — Enriched using live Mainnet data.");
+  console.log("\n✅ SafeHands Agent demo complete: Enriched using live Mainnet data.");
   process.exit(0);
 }
 

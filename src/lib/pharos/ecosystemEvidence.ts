@@ -55,7 +55,7 @@ const CATEGORY_IMPACT: Record<EcosystemCategory, EcosystemDecisionImpact> = {
 /** Generic descriptions for category-only / unknown classifications. */
 const CATEGORY_META: Record<EcosystemCategory, { riskRelevance: string; safehandsBehavior: string }> = {
   oracle: { riskRelevance: "Oracle/price dependency.", safehandsBehavior: "Evidence only; SafeHands has no direct oracle analyzer." },
-  cross_chain: { riskRelevance: "Cross-chain / bridge-like — relayer/finality risk.", safehandsBehavior: "Bridge-like intent → REQUIRE_CONFIRMATION unless trusted. No cross-chain API is called." },
+  cross_chain: { riskRelevance: "Cross-chain / bridge-like: relayer/finality risk.", safehandsBehavior: "Bridge-like intent → REQUIRE_CONFIRMATION unless trusted. No cross-chain API is called." },
   indexing: { riskRelevance: "Indexing/data source.", safehandsBehavior: "Optional read-only data source only; not an execution path." },
   wallet_infrastructure: { riskRelevance: "Smart-account / wallet infrastructure.", safehandsBehavior: "Awareness only; SafeHands holds no keys and never custodies." },
   custody_infrastructure: { riskRelevance: "External custody/key management.", safehandsBehavior: "Awareness only; SafeHands holds no keys." },
@@ -63,7 +63,7 @@ const CATEGORY_META: Record<EcosystemCategory, { riskRelevance: string; safehand
   payment: { riskRelevance: "Payment intent (x402).", safehandsBehavior: "Route to the x402 preflight analyzer. mainnet-only; never signs/settles." },
   rpc_provider: { riskRelevance: "RPC provider/infrastructure.", safehandsBehavior: "Read-only RPC only; secrets redacted." },
   security: { riskRelevance: "External security/compliance/audit intel.", safehandsBehavior: "Awareness only; SafeHands does not call it and its own verdicts remain the source of truth. An audit/screening is evidence, never a guarantee." },
-  identity: { riskRelevance: "Name service / identity / NFT — names can be spoofed; name ≠ address trust.", safehandsBehavior: "Awareness only; SafeHands never resolves or trusts names as identity — address verification is still required." },
+  identity: { riskRelevance: "Name service / identity / NFT: names can be spoofed; name ≠ address trust.", safehandsBehavior: "Awareness only; SafeHands never resolves or trusts names as identity; address verification is still required." },
   unknown: { riskRelevance: "No ecosystem category recognized.", safehandsBehavior: "No ecosystem awareness applies; base analyzers/policy still govern the decision." },
 };
 
