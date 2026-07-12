@@ -19,7 +19,7 @@
 // Honeypot/malicious tokens are turned into a hard BLOCK upstream (in the tool,
 // before this gate) while GoPlus token intel is available. When intel is MISSING
 // (provider outage / token not indexed / unresolvable address), the policy emits
-// the `token_security_intel_missing` check and this gate fails closed (P0-2):
+// the `token_security_intel_missing` check and this gate fails closed:
 // a caller confirmation cannot substitute for intel that never existed, so the
 // action stops with TOKEN_INTEL_UNAVAILABLE even with confirm=true. Only tokens
 // GoPlus actually reviewed-and-flagged remain confirmable after review.
@@ -88,7 +88,7 @@ export function enforceWriteDecision(
     case "REQUIRE_TOKEN_REVIEW":
     case "WARN":
     default:
-      // P0-2 fail-closed: when token-security intel is MISSING (not merely flagged),
+      // Fail-closed: when token-security intel is MISSING (not merely flagged),
       // nothing was reviewed — a caller confirmation cannot attest to a review that
       // never happened. Hard stop, never confirmable on the direct write path.
       if (policy.checks.some((c) => c.name === "token_security_intel_missing" && c.status === "unknown")) {

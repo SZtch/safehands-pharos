@@ -89,7 +89,7 @@ export async function handleApproveToken(raw: ApproveTokenInput) {
   if (isManagedExecutionFailure(gate)) return gate;
   const { signer } = gate;
 
-  // H3: consult token-security (GoPlus) on the token being approved. Honeypot /
+  // Consult token-security (GoPlus) on the token being approved. Honeypot /
   // extreme-tax → hard block; flagged/unavailable → REQUIRE_TOKEN_REVIEW.
   const sec = await evaluateTokenSecurityGate(resolved.tokenAddress);
   if (sec.verdict === "block") {

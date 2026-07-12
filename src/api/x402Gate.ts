@@ -104,7 +104,7 @@ function unconfiguredGuard(_req: express.Request, res: express.Response): void {
 
 /**
  * x402 X-PAYMENT is base64-encoded JSON. Reject obvious junk BEFORE recording it in
- * the replay store (M3): each store write is an O(n) full-file rewrite, so without
+ * the replay store: each store write is an O(n) full-file rewrite, so without
  * this an attacker could flood `/paid/*` with unique random headers and grow the
  * store / burn CPU+disk. A malformed header would fail downstream verification
  * anyway; dropping it here just avoids the write. Legitimate payments decode fine.
@@ -120,7 +120,7 @@ function looksLikeX402Payment(header: string): boolean {
 }
 
 /**
- * P1-3: client-facing message for a replay-store failure. Raw store errors can
+ * Client-facing message for a replay-store failure. Raw store errors can
  * carry internals — Upstash REST error strings, the Redis hostname from a DNS
  * failure, or state-dir filesystem paths — so production gets a generic
  * message; the detail stays in server-side logs (and in dev responses).

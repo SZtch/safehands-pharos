@@ -1,4 +1,4 @@
-// ─── M6 · SDK barrel is real + side-effect-free ────────────────────────────
+// ─── SDK barrel is real + side-effect-free ────────────────────────────
 // package.json main/types/exports now point at dist/sdk.js. This proves the
 // barrel (1) imports without starting the MCP server or touching a wallet, and
 // (2) actually re-exports callable engine functions — so `import from
@@ -8,7 +8,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert";
 import * as sdk from "../src/sdk.js";
 
-describe("M6 · SafeHands SDK barrel", () => {
+describe("SafeHands SDK barrel", () => {
   it("re-exports the deterministic policy engine as a callable", () => {
     assert.strictEqual(typeof sdk.evaluateActionPolicy, "function");
     const verdict = sdk.evaluateActionPolicy({

@@ -1,4 +1,4 @@
-// ─── P0-1 · GoPlus token-security fails CLOSED on schema drift ──────────────
+// ─── GoPlus token-security fails CLOSED on schema drift ──────────────
 // GoPlus's Pharos (chain 1672) support is new and its schema still maturing. If a
 // field is renamed or retyped, the old `=== "1"` checks would read every flag false
 // → riskScore 0 → safetyScore 100 → an effective ALLOW on data never assessed. The
@@ -10,7 +10,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert";
 import { handleCheckTokenSecurity, interpretGoplusTokenResult } from "../src/tools/checkTokenSecurity.js";
 
-describe("P0-1 · interpretGoplusTokenResult (fail-closed on GoPlus schema drift)", () => {
+describe("interpretGoplusTokenResult (fail-closed on GoPlus schema drift)", () => {
   it("parses a clean token as safe (honeypot false, zero tax)", () => {
     const p = interpretGoplusTokenResult({ is_honeypot: "0", buy_tax: "0", sell_tax: "0" });
     assert.ok(p, "clean token should parse");

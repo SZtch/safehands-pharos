@@ -123,7 +123,7 @@ function validatePolicy(raw: unknown): AgentPolicy | null {
 }
 
 /**
- * P1-2 fail-closed fallback: a policy file that EXISTS but is malformed or
+ * Fail-closed fallback: a policy file that EXISTS but is malformed or
  * invalid must never silently degrade to the more permissive `balanced`
  * profile (a typo in a conservative custom policy would otherwise 10× the
  * per-tx limits). Warn the operator and pin the most restrictive profile.

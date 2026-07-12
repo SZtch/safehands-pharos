@@ -102,7 +102,7 @@ export interface CapabilityFlags {
   ecosystemEvidenceAvailable: boolean;
   x402PreflightAvailable: boolean;
   railwayReady: boolean;
-  // Phase 7 — observability + access-control foundation + public activity API (read-only)
+  // Observability + access-control foundation + public activity API (read-only)
   publicReadApiAvailable: boolean;
   apiKeyAuthAvailable: boolean;
   scopedApiKeysAvailable: boolean;
@@ -168,7 +168,7 @@ export function getCapabilityFlags(network: PharosNetwork = getActiveNetwork()):
     x402PreflightAvailable: true,
     // Server binds 0.0.0.0 on process.env.PORT (see api/server.ts) → deploy-ready.
     railwayReady: true,
-    // Phase 7 — shipped read-only observability + public activity surface.
+    // Shipped read-only observability + public activity surface.
     publicReadApiAvailable: true,
     apiKeyAuthAvailable: true,
     scopedApiKeysAvailable: true,

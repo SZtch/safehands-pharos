@@ -232,7 +232,7 @@ export async function handleX402PayAndFetch(raw: X402PayAndFetchInput) {
     const paymentGate = enforceWriteDecision(paymentPolicy, { confirmed: input.confirm === true, toolName: "x402_pay_and_fetch" });
     if (paymentGate) return paymentGate;
 
-    // B2: x402 payments count toward the same per-wallet daily USD cap as
+    // x402 payments count toward the same per-wallet daily USD cap as
     // send_payment / execute_swap — otherwise a looping agent could drain the
     // wallet in per-call-cap increments. Reserve the payment BOUND
     // (maxPaymentUsdc; the 402 challenge amount is validated to be ≤ this)

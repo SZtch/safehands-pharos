@@ -5,7 +5,7 @@
 // NO facilitator, and NO write/publish path — execution is impossible by
 // construction. Separate file/port from x402Server.ts.
 //
-// Production hardening (Phase 6) lives in httpHardening.ts (pure, env-driven):
+// Production hardening lives in httpHardening.ts (pure, env-driven):
 // PORT/host, CORS allowlist, JSON body limit, rate limiting, error/404 shape.
 // The HTTP listener only starts when this module is run directly (e.g.
 // `node dist/api/server.js`), so importing it (tests/tools) never binds a port.
@@ -423,7 +423,7 @@ export function createGuardianApp(): express.Application {
     try { sendOk(req, res, await handleAgentReputation(req.params.address)); } catch (err) { sendError(res, err); }
   });
 
-  // ── Public activity feed + aggregate metrics (read-only, Phase 7) ──────
+  // ── Public activity feed + aggregate metrics (read-only) ──────
   app.get("/activity/summary", (req, res) => {
     try { sendOk(req, res, handleActivitySummary()); } catch (err) { sendError(res, err); }
   });

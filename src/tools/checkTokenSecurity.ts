@@ -47,7 +47,7 @@ function fetchGoplus(url: string): Promise<Response> {
   });
 }
 
-// ─── GoPlus schema parsing (P0-1 fail-closed) ───────────────────────────────
+// ─── GoPlus schema parsing (fail-closed) ───────────────────────────────
 // GoPlus's Pharos (chain 1672) support is new and its response schema is still
 // maturing. GoPlus encodes booleans as "1"/"0" strings; we tolerate numeric/boolean
 // drift too, so a retyped value can't make a real honeypot read as false. Crucially,
@@ -149,7 +149,7 @@ export async function fetchGoplusTokenIdentity(
 }
 
 /**
- * P1-5: network metadata for the tool response, derived from the ACTIVE network
+ * Network metadata for the tool response, derived from the ACTIVE network
  * instead of a hardcoded `isMainnet: true` (which misreported on
  * atlantic-testnet). Unknown chains report false. Pure + exported for tests.
  */
@@ -198,7 +198,7 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
 
     const details = data.result[address];
 
-    // P0-1: refuse to score an unrecognized GoPlus schema as "safe" — fail closed.
+    // Refuse to score an unrecognized GoPlus schema as "safe" — fail closed.
     const profile = interpretGoplusTokenResult(details);
     if (!profile) {
       return fail(
@@ -261,7 +261,7 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
   }
 }
 
-// ─── Reusable token-security gate for the EXECUTE path (H3) ─────────────────
+// ─── Reusable token-security gate for the EXECUTE path ─────────────────
 // Wraps handleCheckTokenSecurity into a fail-closed verdict the write tools feed
 // into evaluateActionPolicy. Maps to:
 //   • "block"  → honeypot / severe (hard stop in the tool — never confirmable)
@@ -271,7 +271,7 @@ export async function handleCheckTokenSecurity(raw: CheckTokenSecurityInput) {
 //   • "review" + policyStatus="unavailable" → GoPlus outage / token not indexed /
 //                unresolvable address — nothing was actually reviewed, so a caller
 //                confirmation cannot substitute for the missing intel. The write gate
-//                fails closed on this (P0-2). Exception: tokens whose address matches
+//                fails closed on this. Exception: tokens whose address matches
 //                the official active-network token registry keep "unknown" — identity
 //                is registry-verified even when GoPlus intel is missing.
 //   • "ok"     → clean → tokenSecurityStatus="ok"
@@ -307,7 +307,7 @@ export async function evaluateTokenSecurityGate(
   if (!res.success) {
     // GoPlus unavailable / token not indexed → nothing was reviewed. Registry-canonical
     // tokens stay caller-confirmable (identity verified on the official token registry);
-    // everything else is "unavailable" and the write gate fails closed on it (P0-2).
+    // everything else is "unavailable" and the write gate fails closed on it.
     if (isRegistryToken(tokenAddress)) {
       return { verdict: "review", policyStatus: "unknown", flags: [], detail: `${res.error.message} Token address matches the official active-network token registry: identity verified; GoPlus intel unavailable.` };
     }

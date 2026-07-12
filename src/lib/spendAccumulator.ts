@@ -112,7 +112,7 @@ export function recordSpend(walletAddress: string, amountUsd: number): void {
 }
 
 /**
- * Atomic check-and-reserve (M2). `checkDailyLimit` + `recordSpend` run with NO
+ * Atomic check-and-reserve. `checkDailyLimit` + `recordSpend` run with NO
  * `await` between them, so within Node's single-threaded event loop the reserve is
  * atomic: two concurrent tool calls can no longer both pass the cap by reading the
  * pre-spend bucket. Reserve immediately BEFORE broadcasting, then `releaseReservation`

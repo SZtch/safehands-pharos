@@ -8,7 +8,7 @@
 //     to the pre-enrichment shape.
 //   • registry tokens are never enriched (no GoPlus call at all).
 //   • the same is_honeypot-less payload that yields metadata here still makes
-//     check_token_security fail closed (P0-1 untouched).
+//     check_token_security fail closed (fail-closed path untouched).
 // Hermetic — globalThis.fetch is mocked and restored. GoPlus calls now go through
 // the SSRF-safe layer (src/lib/http.ts), whose DNS-pinned path bypasses global
 // fetch; only the loopback bypass (ALLOW_LOCAL_X402_FETCH + loopback host) routes
@@ -118,7 +118,7 @@ describe("token_registry_status · display-only metadata for custom tokens", () 
   });
 
   it("the same honeypot-less payload yields display metadata here but check_token_security STILL fails closed", async () => {
-    // token_name/token_symbol present, is_honeypot missing — the exact case from P0-1.
+    // token_name/token_symbol present, is_honeypot missing — the honeypot-missing case.
     const mock = goplusResponse({ token_name: "Legit Coin", token_symbol: "LGT", buy_tax: "0" });
 
     const registry = await withMockedFetch(mock, () => handleTokenRegistryStatus({ tokenAddress: CUSTOM }));

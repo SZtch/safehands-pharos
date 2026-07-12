@@ -1,6 +1,6 @@
 // ─── Agent-policy path-traversal guard ─────────────────────────────────────
 // agentId becomes a filename in saveAgentPolicy/loadAgentPolicy. This locks in
-// the P1 fix: a malicious agentId must NOT be able to escape the policies dir,
+// the path-traversal hardening fix: a malicious agentId must NOT be able to escape the policies dir,
 // and the write handler must reject it (VALIDATION_ERROR) before touching disk.
 // Only the REJECTION path is exercised (no FS side effects).
 // ───────────────────────────────────────────────────────────────────────────

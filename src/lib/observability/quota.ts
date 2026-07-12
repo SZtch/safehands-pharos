@@ -1,5 +1,5 @@
 // ─── Tiered In-Memory Quota ──────────────────────────────────────
-// Generalizes the Phase 6/7 in-memory rate limiter into per-caller-tier quota.
+// Generalizes the base in-memory rate limiter into per-caller-tier quota.
 // No Redis, no DB, no external dependency — a bounded in-memory bucket Map.
 //
 // Buckets are keyed by a TRUSTED identifier only: `key:<keyId>` for a valid API

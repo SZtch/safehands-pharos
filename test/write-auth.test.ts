@@ -1,5 +1,5 @@
 // ─── HTTP write-tool authentication gate ───────────────────────────────────
-// Regression guard for the P1 fix: the HTTP tool gateway must never let a WRITE
+// Regression guard for the write-auth hardening fix: the HTTP tool gateway must never let a WRITE
 // tool run on the open read origin. Read tools stay open; write tools + signed
 // broadcast require a VALID API key. Hermetic: in-process app on an ephemeral
 // port, no live RPC (write tools stop at auth / signer, never touching chain).

@@ -1,7 +1,7 @@
-// ─── B1 / M1 · Execution-path hardening ────────────────────────────────────
-// B1: the write-execution gate must halt on ANY non-ALLOW decision — not just
+// ─── Execution-path hardening ────────────────────────────────────
+// the write-execution gate must halt on ANY non-ALLOW decision — not just
 //     BLOCK — so a REQUIRE_CONFIRMATION action never auto-signs without an
-//     explicit confirm. M1: safehands_safe_execute must honor the documented
+//     explicit confirm. safehands_safe_execute must honor the documented
 //     SAFE_EXECUTE_ENABLED gate. All hermetic (no network, no signer).
 // ───────────────────────────────────────────────────────────────────────────
 import { describe, it } from "node:test";
@@ -14,7 +14,7 @@ import { handleSafeHandsSafeExecute } from "../src/tools/safehandsSafeExecute.js
 const DEAD = "0x000000000000000000000000000000000000dEaD";
 const MAINNET = { chainId: 1672, isMainnet: true } as const;
 
-describe("B1 · write-execution gate honors the full decision", () => {
+describe("write-execution gate honors the full decision", () => {
   it("ALLOW → proceeds (null)", () => {
     const allow = evaluateActionPolicy({
       ...MAINNET,
@@ -69,7 +69,7 @@ describe("B1 · write-execution gate honors the full decision", () => {
   });
 });
 
-describe("P0-2 · missing token intel is never caller-confirmable", () => {
+describe("missing token intel is never caller-confirmable", () => {
   const SWAP = {
     ...MAINNET,
     actionType: "execute_swap" as const,
@@ -96,7 +96,7 @@ describe("P0-2 · missing token intel is never caller-confirmable", () => {
   });
 });
 
-describe("P0-3 · unpriceable-token swaps are denied by default", () => {
+describe("unpriceable-token swaps are denied by default", () => {
   it("unpriceable tokenIn → BLOCK, never confirmable", () => {
     const p = evaluateActionPolicy({
       ...MAINNET,
@@ -122,7 +122,7 @@ describe("P0-3 · unpriceable-token swaps are denied by default", () => {
   });
 });
 
-describe("M1 · SAFE_EXECUTE_ENABLED is enforced (not decorative)", () => {
+describe("SAFE_EXECUTE_ENABLED is enforced (not decorative)", () => {
   it("safe_execute is disabled with WRITE_TOOLS_ENABLED=true but SAFE_EXECUTE_ENABLED unset", async () => {
     const savedWrite = process.env.WRITE_TOOLS_ENABLED;
     const savedSafe = process.env.SAFE_EXECUTE_ENABLED;

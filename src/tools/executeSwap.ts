@@ -26,7 +26,7 @@ export const executeSwapSchema = z.object({
 export type ExecuteSwapInput = z.input<typeof executeSwapSchema>;
 
 /**
- * P1-1: hard, non-confirmable quote guards. An unfavorable price is embedded in
+ * Hard, non-confirmable quote guards. An unfavorable price is embedded in
  * the quote ITSELF — minReturn/slippage only protect against movement AFTER
  * quoting — so a quote whose priceImpact exceeds the ceiling must hard-stop
  * here, before any signing. The ceiling is the caller's slippageTolerance or
@@ -55,7 +55,7 @@ export function evaluateSwapQuoteGuards(
 }
 
 /**
- * P1-4: simulate the exact swap call via eth_call and return the revert reason,
+ * Simulate the exact swap call via eth_call and return the revert reason,
  * or null when the call succeeds. The final broadcast passes an explicit
  * `gas: quote.gasLimit`, which bypasses viem's implicit estimateGas revert
  * check — without this a reverting route would burn gas on-chain. Takes the
@@ -98,10 +98,10 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
   const { signer } = gate;
   const walletAddress = signer.address;
 
-  // H3: consult token-security (GoPlus honeypot/tax) on the token being acquired.
+  // Consult token-security (GoPlus honeypot/tax) on the token being acquired.
   // Honeypot / extreme-tax → hard block; reviewed-and-flagged → "unknown" →
   // REQUIRE_TOKEN_REVIEW (confirmable after review); intel MISSING (outage /
-  // unindexed, non-registry) → "unavailable" → the write gate fails closed (P0-2).
+  // unindexed, non-registry) → "unavailable" → the write gate fails closed.
   let tokenSecurityStatus: "ok" | "unknown" | "unavailable" | undefined;
   if (!isNativeToken(input.tokenOut)) {
     let outAddr: string;
@@ -145,7 +145,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
   // directly — the policy engine's risk_* checks do that (never-weaken parity
   // with the former direct gates; requireRiskEvidence makes a wiring miss fail
   // closed instead of silently losing the risk gates).
-  // P0-3 lives here too: an unpriceable input token escaped the USD caps read
+  // The unpriceable-input guard lives here too: an unpriceable input token escaped the USD caps read
   // by checkDailyLimit above, and swap_notional_unpriceable → BLOCK (never
   // confirmable) stops it before any quote is fetched or budget is reserved.
   const policy = evaluateActionPolicy({
@@ -248,7 +248,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
       }
     }
 
-    // P1-4: pre-broadcast simulation of the exact calldata (after the approval
+    // Pre-broadcast simulation of the exact calldata (after the approval
     // above so the allowance is visible to eth_call). A reverting route fails
     // here for free instead of burning gas on-chain.
     const simulationError = await simulateSwapCalldata(publicClient, {
@@ -266,7 +266,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
       );
     }
 
-    // M2: atomically reserve the daily-spend budget immediately before the swap
+    // Atomically reserve the daily-spend budget immediately before the swap
     // broadcast (no await between reserve and send). Released below on revert/error.
     const reservation = reserveDailyLimit(walletAddress, amountUsd);
     if (!reservation.allowed) {

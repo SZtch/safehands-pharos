@@ -49,7 +49,7 @@ function cleanupExpired(target: PreparedTxState = state, now = Date.now(), shoul
   if (changed && shouldPersist) persist();
 }
 
-// M3: bound the store so an anonymous flood of /wallet/prepare writes cannot grow
+// Bound the store so an anonymous flood of /wallet/prepare writes cannot grow
 // it without limit between TTL sweeps. Evicts oldest-created first. (Public-scale
 // deployments should back this with Redis/Postgres rather than a JSON file.)
 const MAX_PREPARED_TX_RECORDS = Number(process.env.SAFEHANDS_PREPARED_TX_MAX || 5000);

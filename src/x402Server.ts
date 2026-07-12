@@ -231,7 +231,7 @@ function replayProtectionMiddleware(req: express.Request, res: express.Response,
       return next();
     })
     .catch((err: unknown) => {
-      // P1-3: raw store errors (Upstash detail, Redis hostname, fs paths) stay in
+      // Raw store errors (Upstash detail, Redis hostname, fs paths) stay in
       // server logs; production clients get a generic message.
       console.error("[SafeHands x402] replay store unavailable:", err instanceof Error ? err.message : String(err));
       return res.status(503).json(fail("X402_REPLAY_STORE_UNAVAILABLE", replayStoreUnavailableMessage(err), true, "x402_server"));

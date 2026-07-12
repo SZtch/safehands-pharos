@@ -1,9 +1,9 @@
 // ─── Risk engine behavioral tests (hermetic — mocked JSON-RPC, no network) ──
 // assessRisk() drives liquidity/slippage/counterparty/balance/market scoring
 // behind the public verdict. These tests pin the load-bearing behaviors:
-//   • the H1 fix — swap counterparty trust is registry-driven, NOT a hardcoded
+//   • swap counterparty trust is registry-driven, NOT a hardcoded
 //     "DODO protocol (known) → 5";
-//   • the H3 fix — when the DODO route API is NOT a configured provider for the
+//   • when the DODO route API is NOT a configured provider for the
 //     active chain, a swap surfaces swapProviderNotConfigured + degraded and never
 //     scores "proceed" (exercised here by pinning the supported set to testnet-only
 //     so mainnet 1672 hits the fail-closed branch);

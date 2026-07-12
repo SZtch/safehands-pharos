@@ -1,11 +1,11 @@
-// ─── P1 hardening (post-B1/B2/B3 re-audit) ─────────────────────────────────
-// Offline unit tests for the five P1 fixes:
-//   P1-1  executeSwap hard price-impact ceiling + non-positive amountOut guard
-//   P1-2  existing-but-invalid agent policy fails CLOSED to `conservative`
-//   P1-3  replay-store 503s never echo store internals in production
-//   P1-4  pre-broadcast simulation of the exact swap calldata (explicit gas
-//         bypasses viem's implicit estimateGas revert check)
-//   P1-5  check_token_security network metadata derives from the active network
+// ─── Input / execution hardening ───────────────────────────────────────────
+// Offline unit tests for five hardening fixes:
+//   - executeSwap hard price-impact ceiling + non-positive amountOut guard
+//   - existing-but-invalid agent policy fails CLOSED to `conservative`
+//   - replay-store 503s never echo store internals in production
+//   - pre-broadcast simulation of the exact swap calldata (explicit gas
+//     bypasses viem's implicit estimateGas revert check)
+//   - check_token_security network metadata derives from the active network
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { describe, it } from "node:test";
@@ -19,7 +19,7 @@ import { replayStoreUnavailableMessage } from "../src/api/x402Gate.js";
 import { tokenSecurityNetworkMetadata } from "../src/tools/checkTokenSecurity.js";
 import { CHAIN_ID, IS_MAINNET, MAX_SLIPPAGE_PCT, PHAROS_ENVIRONMENT } from "../src/lib/constants.js";
 
-describe("P1-1 · swap quote guards are hard stops", () => {
+describe("swap quote guards are hard stops", () => {
   it("blocks price impact above MAX_SLIPPAGE_PCT when no tolerance is given", () => {
     const guard = evaluateSwapQuoteGuards({ priceImpact: MAX_SLIPPAGE_PCT + 5, amountOut: "1" });
     assert.strictEqual(guard?.code, "PRICE_IMPACT_TOO_HIGH");
@@ -57,7 +57,7 @@ describe("P1-1 · swap quote guards are hard stops", () => {
   });
 });
 
-describe("P1-4 · pre-broadcast swap simulation", () => {
+describe("pre-broadcast swap simulation", () => {
   const args = {
     account: "0x000000000000000000000000000000000000dEaD" as const,
     to: "0x000000000000000000000000000000000000dEaD" as const,
@@ -78,7 +78,7 @@ describe("P1-4 · pre-broadcast swap simulation", () => {
   });
 });
 
-describe("P1-2 · existing-but-invalid agent policy fails closed to conservative", () => {
+describe("existing-but-invalid agent policy fails closed to conservative", () => {
   const policiesDir = join(process.cwd(), ".agents", "policies");
 
   function withWarnSpy<T>(fn: () => T): { result: T; warnings: string[] } {
@@ -136,7 +136,7 @@ describe("P1-2 · existing-but-invalid agent policy fails closed to conservative
   });
 });
 
-describe("P1-3 · replay-store failure messages are sanitized in production", () => {
+describe("replay-store failure messages are sanitized in production", () => {
   const leaky = new Error("getaddrinfo ENOTFOUND secret-instance.upstash.io — /data/.safehands/x402_replay.json EACCES");
 
   it("production → generic message with no store internals", () => {
@@ -152,7 +152,7 @@ describe("P1-3 · replay-store failure messages are sanitized in production", ()
   });
 });
 
-describe("P1-5 · token-security network metadata reflects the active network", () => {
+describe("token-security network metadata reflects the active network", () => {
   it("active chain id reports the active environment and mainnet flag", () => {
     assert.deepStrictEqual(tokenSecurityNetworkMetadata(CHAIN_ID), {
       chainId: CHAIN_ID,

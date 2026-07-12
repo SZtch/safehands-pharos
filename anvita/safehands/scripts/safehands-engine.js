@@ -313,7 +313,7 @@ const flagKnown = (v) => v === "1" || v === "0" || v === 1 || v === 0 || v === t
 async function goplusToken(addr) {
   const r = await goplusGet(`/api/v1/token_security/${CHAIN_ID}?contract_addresses=${addr}`);
   const d = r && (r[addr.toLowerCase()] || r[addr]); if (!d) return { reachable: !!r, data: null };
-  // P0-1 fail-closed: result object present but the honeypot decision field is unreadable
+  // Fail-closed: result object present but the honeypot decision field is unreadable
   // (renamed/retyped schema) → do NOT read every flag as false; signal drift so the caller
   // applies the missing-threat-intel floor instead of silently under-reporting the token.
   if (!flagKnown(d.is_honeypot)) return { reachable: true, data: null, schemaDrift: true, factors: [], add: 0 };

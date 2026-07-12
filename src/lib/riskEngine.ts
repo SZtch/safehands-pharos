@@ -60,7 +60,7 @@ export interface RiskAssessment {
   /**
    * True when a CRITICAL risk signal could not be evaluated (route/liquidity or
    * balance fetch failed). Callers must fail-closed on this — never silently
-   * proceed on degraded data (H2). Market-condition gaps are non-critical and do
+   * proceed on degraded data. Market-condition gaps are non-critical and do
    * NOT set this.
    */
   degraded: boolean;
@@ -407,7 +407,7 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
   const riskLevel = computeRiskLevel(riskScore);
   let recommendation = computeRecommendation(riskScore);
 
-  // H2 — fail-closed on missing CRITICAL data. A swap whose route/liquidity could
+  // Fail-closed on missing CRITICAL data. A swap whose route/liquidity could
   // not be fetched, or any action whose balance check threw, must NOT be scored as
   // safe on degraded inputs. Mark degraded and refuse to "proceed" silently.
   const degradedReasons: string[] = [];
@@ -426,7 +426,7 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
     recommendation = "caution";
   }
 
-  // H1 — advisory escalation mirroring the policy engine's `risk_counterparty`
+  // Advisory escalation mirroring the policy engine's `risk_counterparty`
   // check (the actual block mechanism). Kept so the published recommendation
   // stays honest for critically-risky transfers (missing / invalid / zero
   // recipient): weighted heuristics alone can never cross the block threshold

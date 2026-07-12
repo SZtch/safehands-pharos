@@ -124,7 +124,7 @@ export async function handleSendPayment(raw: SendPaymentInput) {
   const paymentGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "send_payment", requireRiskEvidence: true });
   if (paymentGate) return paymentGate;
 
-  // M2: atomically reserve the daily-spend budget immediately before broadcasting
+  // Atomically reserve the daily-spend budget immediately before broadcasting
   // (no await between reserve and send), so concurrent calls can't both exceed the cap.
   const reservation = reserveDailyLimit(walletAddress, amountUsd);
   if (!reservation.allowed) {

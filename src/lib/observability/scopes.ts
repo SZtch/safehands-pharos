@@ -2,7 +2,7 @@
 // Scope vocabulary for the optional API-key access-control layer. Scopes are
 // identity/access-control only — never payment. `future:*` scopes are DEFINED
 // here for forward-compatibility but are NOT granted by default and have NO live
-// endpoint behind them in P8A. Pure constants + helpers; no I/O, no secrets.
+// endpoint behind scoped API keys. Pure constants + helpers; no I/O, no secrets.
 // ────────────────────────────────────────────────────────────────────────
 
 export type Scope =

@@ -1,4 +1,4 @@
-// ─── B2 · x402 payments count toward the daily spend cap ───────────────────
+// ─── x402 payments count toward the daily spend cap ───────────────────
 // x402_pay_and_fetch must draw from the same per-wallet daily USD budget as
 // send_payment / execute_swap — otherwise a looping agent could drain the
 // wallet in per-call-cap increments. These tests use a temp spend-history file
@@ -82,7 +82,7 @@ after(() => {
   rmSync(SPEND_FILE, { force: true });
 });
 
-describe("B2 · x402 daily spend cap", () => {
+describe("x402 daily spend cap", () => {
   it("blocks a 402 payment with DAILY_SPEND_LIMIT_EXCEEDED when the cap is exhausted", async () => {
     recordSpend(WALLET, 10); // exhaust today's budget
     try {

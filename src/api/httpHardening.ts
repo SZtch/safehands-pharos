@@ -98,7 +98,7 @@ function toPositiveInt(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-// ── Activity feed (Phase 7) ───────────────────────────────────────────────
+// ── Activity feed ───────────────────────────────────────────────
 
 export interface ActivityConfig {
   enabled: boolean;
@@ -113,7 +113,7 @@ export function resolveActivityConfig(env: Env = process.env): ActivityConfig {
   return { enabled, capacity };
 }
 
-// ── Structured request logging (Phase 7) ──────────────────────────────────
+// ── Structured request logging ──────────────────────────────────
 
 export interface RequestLoggingConfig {
   enabled: boolean;
@@ -129,7 +129,7 @@ export function resolveLoggingConfig(env: Env = process.env): RequestLoggingConf
 
 /**
  * Per-tier in-memory quota config. Shares the rate-limit enable/window defaults so
- * existing behavior is preserved: the `anonymous` tier defaults to the Phase 6
+ * existing behavior is preserved: the `anonymous` tier defaults to the base
  * rate-limit max (120/60s). Generous defaults keep smoke tests + reviewer demos green.
  */
 export function resolveQuotaConfig(env: Env = process.env): QuotaConfig {
