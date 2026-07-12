@@ -17,9 +17,15 @@
 // (default pacific-mainnet). Existing PHAROS_* env vars still override for
 // backward compatibility and Atlantic testnet selection.
 
+import { createRequire } from "module";
 import { parseAbi } from "viem";
 import { getActiveNetwork, resolveRpcUrl, explorerTxBase } from "./networks.js";
 import { ECOSYSTEM_REGISTRY_ITEMS } from "../data/ecosystemRegistry.data.js";
+
+/** Package version, read once from package.json so callers never hardcode it. */
+export const SAFEHANDS_VERSION: string = (createRequire(import.meta.url)("../../package.json") as { version: string }).version;
+/** User-agent for outbound HTTP calls (GoPlus etc.), version-synced. */
+export const SAFEHANDS_USER_AGENT = `SafeHands/${SAFEHANDS_VERSION}`;
 
 const ACTIVE_NETWORK = getActiveNetwork();
 

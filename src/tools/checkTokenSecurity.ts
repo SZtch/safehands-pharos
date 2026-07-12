@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { isAddress } from "viem";
-import { CHAIN_ID, IS_MAINNET, PHAROS_ENVIRONMENT, activeTokenMap } from "../lib/constants.js";
+import { CHAIN_ID, IS_MAINNET, PHAROS_ENVIRONMENT, SAFEHANDS_USER_AGENT, activeTokenMap } from "../lib/constants.js";
 import { fetchWithTimeoutAndRetry } from "../lib/http.js";
 import { classifyExternalError, fail, ok } from "../lib/toolResponse.js";
 
@@ -42,7 +42,7 @@ function fetchGoplus(url: string): Promise<Response> {
     retryDelayMs: 300,
     headers: {
       accept: "application/json",
-      "user-agent": "SafeHands/2.4.0",
+      "user-agent": SAFEHANDS_USER_AGENT,
     },
   });
 }
@@ -131,7 +131,7 @@ export async function fetchGoplusTokenIdentity(
         retries: 0,
         headers: {
           accept: "application/json",
-          "user-agent": "SafeHands/2.4.0",
+          "user-agent": SAFEHANDS_USER_AGENT,
         },
       }
     );
