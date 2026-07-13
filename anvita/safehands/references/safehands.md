@@ -53,6 +53,7 @@ node scripts/safehands-engine.js analyze '{"subjectType":"intent","action":"swap
 | address | 0x-address | wallet, contract | Subject to analyze. |
 | action | transfer\|swap\|bridge\|yield_deposit\|vault_deposit\|staking\|tokenized_asset\|fiat_ramp\|reward_campaign\|x402_payment | intent | transfer/swap below; RealFi actions in `references/realfi-intents.md`. |
 | toAddress | 0x-address | transfer | Recipient. |
+| to, data | 0x-address, hex calldata | optional (transfer, swap) | Optional tx to check. When `data` is calldata, the engine runs the offline approval/transfer/admin decode (unlimited-approval and drainer detection, escalate-only). transfer/swap skip eth_call simulation; the decode needs no RPC. |
 | amount | decimal string | transfer (optional) | e.g. `"1.5"` PROS; checked against acting wallet balance. |
 | tokenIn / tokenOut | 0x-address | swap | Both required. |
 | walletAddress | 0x-address | intent (all) | Acting wallet; required for balance/history checks. |

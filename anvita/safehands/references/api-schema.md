@@ -18,6 +18,7 @@ In (one of):
 { "subjectType": "intent", "action": "transfer", "toAddress": "0x…", "amount": "1.5", "walletAddress": "0x…" }
 { "subjectType": "intent", "action": "swap", "tokenIn": "0x…", "tokenOut": "0x…", "walletAddress": "0x…" }
 ```
+`transfer` and `swap` intents also accept an optional tx object (`to`, `data`): when `data` is full calldata hex, the engine runs the same offline approval/transfer/admin decode as every other intent (unlimited-approval and drainer detection, escalate-only floor), so an unlimited approve carried on a swap is caught exactly as on any other action. transfer/swap skip the read-only eth_call simulation (they already probe the recipient / tokenIn / tokenOut); the decode itself needs no RPC.
 RealFi intent actions (`bridge`, `yield_deposit`, `vault_deposit`, `staking`, `tokenized_asset`, `fiat_ramp`, `reward_campaign`, `x402_payment`) share the intent shape and add per-action fields (target contract key, `url`, `payTo`, optional tx object). Their output adds `evidenceUsed[]`, `missingInputs[]`, `intentNotes[]`, and, for vault/yield, `vaultRiskScore` + `vaultProviderData`. Full spec: `references/realfi-intents.md`.
 Out (success):
 ```json

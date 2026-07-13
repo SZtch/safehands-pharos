@@ -344,3 +344,58 @@ describe("Anvita engine — additive surfaces & invariants", () => {
     }
   });
 });
+
+// ── the offline decode must fire on EVERY intent action, not just RealFi ────
+// Regression guard: transfer/swap intents once skipped the calldata decode, so
+// an unlimited approve carried on a swap could return allow (fail-open on the
+// core check). The decode now runs for every fund-moving action (escalate-only),
+// proven here across transfer, swap, and a RealFi action.
+describe("Anvita engine — calldata decode fires on every intent action", () => {
+  let mock;
+  after(() => mock?.close());
+
+  const TOKEN_OUT = "0x3333333333333333333333333333333333333333";
+  const carriers = {
+    transfer: (data) => JSON.stringify({ subjectType: "intent", action: "transfer", walletAddress: WALLET, toAddress: RECIPIENT, to: TOKEN, data }),
+    swap: (data) => JSON.stringify({ subjectType: "intent", action: "swap", walletAddress: WALLET, tokenIn: TOKEN, tokenOut: TOKEN_OUT, to: TOKEN, data }),
+    vault_deposit: (data) => JSON.stringify({ subjectType: "intent", action: "vault_deposit", walletAddress: WALLET, vault: CANON, to: TOKEN, data }),
+  };
+
+  for (const [action, build] of Object.entries(carriers)) {
+    it(`BLOCKs an unlimited approve to an UNKNOWN spender via a ${action} intent (>= 90)`, async () => {
+      mock = startMock();
+      const { out } = await runEngine("analyze", build(approveData(UNKNOWN_SPENDER, MAX_UINT256)), envFor(mock));
+      mock.close();
+      assert.strictEqual(out.recommendation, "block", `${action} did not block`);
+      assert.ok(out.riskScore >= 90, `${action} score ${out.riskScore} < 90`);
+      assert.ok(out.components && out.components.calldata, `${action} dropped the calldata decode`);
+      assert.strictEqual(out.components.calldata.unlimited, true);
+      assert.strictEqual(out.components.calldata.spender, UNKNOWN_SPENDER);
+    });
+
+    it(`BLOCKs setApprovalForAll to an UNKNOWN operator via a ${action} intent (>= 90)`, async () => {
+      mock = startMock();
+      const { out } = await runEngine("analyze", build(setApprovalForAllData(UNKNOWN_SPENDER, true)), envFor(mock));
+      mock.close();
+      assert.strictEqual(out.recommendation, "block", `${action} did not block setApprovalForAll`);
+      assert.ok(out.riskScore >= 90, `${action} score ${out.riskScore} < 90`);
+      assert.strictEqual(out.components.calldata.method, "setApprovalForAll");
+    });
+  }
+
+  it("a swap intent decodes calldata WITHOUT an eth_call simulation (deterministic, no extra RPC)", async () => {
+    mock = startMock();
+    const { out } = await runEngine("analyze", carriers.swap(approveData(UNKNOWN_SPENDER, MAX_UINT256)), envFor(mock));
+    mock.close();
+    assert.ok(out.components.calldata, "swap must still decode the calldata");
+    assert.strictEqual(out.components.simulation, undefined, "transfer/swap must skip the eth_call simulation");
+  });
+
+  it("a revoke (approve 0) carried on a swap is NOT blocked by the decode", async () => {
+    mock = startMock();
+    const { out } = await runEngine("analyze", carriers.swap(approveData(UNKNOWN_SPENDER, W("0"))), envFor(mock));
+    mock.close();
+    assert.ok(out.components.calldata, "revoke should still be decoded");
+    assert.notStrictEqual(out.recommendation, "block", "a revoke must never be blocked by the calldata floor");
+  });
+});

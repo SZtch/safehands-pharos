@@ -64,7 +64,7 @@ const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
 // Engine version: MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
-const ENGINE_VERSION = "2.4.0";
+const ENGINE_VERSION = "2.4.1";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
@@ -725,6 +725,58 @@ async function reputationOfTarget(addr) {
   } catch { return null; }
 }
 
+// Offline calldata decode (escalate-only floor) plus a read-only eth_call simulation and gas
+// estimate for any fund-moving intent that carries a tx. Consolidated into ONE place so that
+// no intent action can silently skip the calldata drainer check (the unlimited-approval and
+// dangerous-selector detection). evidenceUsed / missingInputs are optional: transfer and swap
+// use the compact report shape and pass neither. The decode floor may only RAISE the score
+// (Math.max), never lower it.
+async function evaluateCarriedTx(input, score, factors, parts, evidenceUsed, missingInputs, isUrlIntent, doSimulate) {
+  if (input.to == null && input.data == null) {
+    if (doSimulate && !isUrlIntent && missingInputs) missingInputs.push("tx object (from,to,data,value) for eth_call simulation and gas estimate");
+    return score;
+  }
+  if (typeof input.data === "string" && HEXDATA_RE.test(input.data) && input.data.length >= 10) {
+    const cd = analyzeTxCalldata(input.data, ADDRESS_RE.test(String(input.to || "")) ? String(input.to).toLowerCase() : null);
+    parts.calldata = cd;
+    if (evidenceUsed) evidenceUsed.push("offline calldata decode (approval/transfer/admin selectors; escalate-only)");
+    if (cd.factors.length) factors.push(...cd.factors);
+    score = Math.max(score, cd.floor);
+  }
+  // The offline decode above is the safety-critical, zero-RPC part and runs for every intent.
+  // The read-only eth_call simulation + gas estimate below add RPC load, so they run only for
+  // callers that opt in (RealFi intents). transfer/swap already probe tokenIn/tokenOut/recipient,
+  // so they skip the extra round-trips and rely on the deterministic decode floor.
+  if (!doSimulate) return score;
+  const { tx, errs } = buildTxObject(input);
+  if (errs.length) {
+    factors.push(`Provided tx object is invalid: ${errs.join("; ")}`); score += 10;
+  } else {
+    try {
+      const ret = await rpc("eth_call", [tx, "latest"]);
+      parts.simulation = { reverted: false, returnData: ret };
+      if (evidenceUsed) evidenceUsed.push("eth_call simulation against current chain state");
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (!/^RPC /.test(msg)) throw e;
+      parts.simulation = { reverted: true, reason: sanitizeReason(msg) };
+      factors.push("Simulation REVERTS against current chain state; the transaction would fail or is blocked");
+      score += 35;
+      if (evidenceUsed) evidenceUsed.push("eth_call simulation against current chain state");
+    }
+    try {
+      const gasHex = await rpc("eth_estimateGas", [tx]);
+      parts.gasEstimate = { estimatedGas: Number(decUint(gasHex)) };
+      if (evidenceUsed) evidenceUsed.push("eth_estimateGas dry run");
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (!/^RPC /.test(msg)) throw e;
+      parts.gasEstimate = { failed: true, reason: sanitizeReason(msg) };
+    }
+  }
+  return score;
+}
+
 async function analyzeRealFiIntent(input, action) {
   const factors = []; const parts = {}; const evidenceUsed = []; const missingInputs = [];
   let score = 10;
@@ -795,45 +847,8 @@ async function analyzeRealFiIntent(input, action) {
     }
   }
 
-  // simulation + gas estimate (only when real calldata is provided; both read-only)
-  if (input.to != null || input.data != null) {
-    // offline calldata decode: escalate-only floor, no extra RPC
-    if (typeof input.data === "string" && HEXDATA_RE.test(input.data) && input.data.length >= 10) {
-      const cd = analyzeTxCalldata(input.data, ADDRESS_RE.test(String(input.to || "")) ? String(input.to).toLowerCase() : null);
-      parts.calldata = cd;
-      evidenceUsed.push("offline calldata decode (approval/transfer/admin selectors; escalate-only)");
-      if (cd.factors.length) factors.push(...cd.factors);
-      score = Math.max(score, cd.floor);
-    }
-    const { tx, errs } = buildTxObject(input);
-    if (errs.length) {
-      factors.push(`Provided tx object is invalid: ${errs.join("; ")}`); score += 10;
-    } else {
-      try {
-        const ret = await rpc("eth_call", [tx, "latest"]);
-        parts.simulation = { reverted: false, returnData: ret };
-        evidenceUsed.push("eth_call simulation against current chain state");
-      } catch (e) {
-        const msg = String((e && e.message) || e);
-        if (!/^RPC /.test(msg)) throw e;
-        parts.simulation = { reverted: true, reason: sanitizeReason(msg) };
-        factors.push("Simulation REVERTS against current chain state; the transaction would fail or is blocked");
-        score += 35;
-        evidenceUsed.push("eth_call simulation against current chain state");
-      }
-      try {
-        const gasHex = await rpc("eth_estimateGas", [tx]);
-        parts.gasEstimate = { estimatedGas: Number(decUint(gasHex)) };
-        evidenceUsed.push("eth_estimateGas dry run");
-      } catch (e) {
-        const msg = String((e && e.message) || e);
-        if (!/^RPC /.test(msg)) throw e;
-        parts.gasEstimate = { failed: true, reason: sanitizeReason(msg) };
-      }
-    }
-  } else if (!isUrlIntent) {
-    missingInputs.push("tx object (from,to,data,value) for eth_call simulation and gas estimate");
-  }
+  // offline calldata decode + read-only simulation + gas estimate (shared with transfer/swap)
+  score = await evaluateCarriedTx(input, score, factors, parts, evidenceUsed, missingInputs, isUrlIntent, true);
 
   // native-amount sanity vs acting wallet
   if (input.amount != null && wallet && !ADDRESS_RE.test(token)) {
@@ -942,6 +957,10 @@ async function analyzeIntent(input) {
     }
   }
   if (wallet.nonce === 0) { factors.push("Acting wallet has zero transaction history"); score += 10; }
+  // Same offline calldata decode + read-only simulation as RealFi intents, so a swap or transfer
+  // that carries approval / transfer / admin calldata gets the unlimited-approval and drainer
+  // floor too. Escalate-only: this can only raise the verdict, never soften it.
+  score = await evaluateCarriedTx(input, score, factors, parts, undefined, undefined, false, false);
   const rep = report(score, factors, { type: "intent", action, walletAddress: input.walletAddress });
   rep.components = parts;
   return rep;
@@ -990,7 +1009,11 @@ async function cmdQuery(subject) {
         const res = await fetch(dataURI, { signal: ctl.signal }); clearTimeout(t);
         const text = (await res.text()).slice(0, 1_500_000);
         const batch = JSON.parse(text);
-        const recs = (batch.records || []).filter((r) => String(r.target || "").toLowerCase() === subject.toLowerCase());
+        // The committed batch is a bare array of records (matches scripts/flushBatchToMainnet.ts
+        // and the canonical src reader normalizeRiskRecords, which requires Array.isArray). A
+        // { records: [...] } wrapper is tolerated too so either shape reads correctly.
+        const batchRecords = Array.isArray(batch) ? batch : (Array.isArray(batch.records) ? batch.records : []);
+        const recs = batchRecords.filter((r) => String(r.target || "").toLowerCase() === subject.toLowerCase());
         out.records = recs.map((r) => ({
           target: r.target, actionHash: r.actionHash, riskScore: Number(String(r.score ?? r.riskScore ?? "").replace(/n$/, "")),
           riskLevel: LEVELS[Number(String(r.level ?? "").replace(/n$/, ""))] ?? r.level,
