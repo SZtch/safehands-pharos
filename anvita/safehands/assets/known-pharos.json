@@ -21,6 +21,8 @@
     "0x1c041b61a6cf43881be7e9394bb198b472ae17a2": "AquaFlux TokenFactory",
     "0x94eb66e69b158ed58edf2d4150638920205e3c88": "AquaFlux SwapRouter",
     "0x11625aab301ec4444ff38239f31e67735cae54ee": "AquaFlux LiquidityRouter",
+    "0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea": "OKX DEX Aggregation Router",
+    "0x78466a1488f1883d71cfddd1c621351572de0a1c": "OKX DEX Token Approve",
     "0x18573fa18fd17ddfd790b4a5b5b2977aad3b4efb": "Morpho Blue",
     "0xd5e02889c13230458506cc842347c4e62f8cdf3a": "Morpho AdaptiveCurveIRM",
     "0xb8118256d8aa950ec0b26a0b8be7c6c1a858f6a3": "Morpho ChainlinkOracleV2Factory"

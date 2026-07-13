@@ -82,6 +82,14 @@
       },
       "note": "Verified 2026-07-12 from AquaFlux's own docs Contracts page + on-chain checks (incl. the proxy's EIP-1967 slot matching the published implementation). Verification relaxes recognition only: an unlimited approval to AquaFlux contracts still requires confirmation. Implementation addresses, the shared Uniswap v4 AMM stack the docs also list (PoolManager, UniversalRouter, V4Quoter, StateView, PositionManager), Permit2, the timelock, and per-asset P/C/S token addresses are NOT bundled; assets are issued dynamically, verify each per use."
     },
+    "okx-dex": {
+      "verificationStatus": "verified",
+      "contracts": {
+        "0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea": "OKX DEX Aggregation Router",
+        "0x78466a1488f1883d71cfddd1c621351572de0a1c": "OKX DEX Token Approve"
+      },
+      "note": "Verified 2026-07-13 from OKX's own DEX Smart Contract dev-docs page (Pharos row) plus on-chain eth_getCode on chainId 1672. Verification relaxes recognition only: an unlimited approval to the OKX router or approve contract still requires confirmation. The aggregator routes dynamically through downstream pools/DEXes that are NOT individually bundled; Permit2 (a separate approval path OKX also supports) is the canonical infra singleton and is not re-bundled here. OKX's supported-chains API is key-gated and is never called at runtime; only the public docs plus on-chain reads back this entry."
+    },
     "zona": {
       "verificationStatus": "unverified",
       "note": "No officially published Zona contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."

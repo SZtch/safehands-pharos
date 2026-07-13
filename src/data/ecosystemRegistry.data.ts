@@ -500,6 +500,26 @@ export const ECOSYSTEM_REGISTRY_ITEMS: EcosystemItem[] = [
     notes: "Verified 2026-07-12 from AquaFlux's own docs Contracts page + on-chain checks (incl. the proxy's EIP-1967 slot matching the published implementation). Verification relaxes recognition only: an unlimited approval to AquaFlux contracts still requires confirmation. Implementation addresses, the shared Uniswap v4 AMM stack the docs also list (PoolManager, UniversalRouter, V4Quoter, StateView, PositionManager), Permit2, the timelock, and per-asset P/C/S token addresses are NOT bundled; assets are issued dynamically, verify each per use.",
   },
   {
+    id: "protocol:pacific-mainnet:okx-dex",
+    name: "OKX DEX Aggregator",
+    aliases: ["okx", "okx dex", "okx dex aggregator", "okx swap"],
+    category: "protocol",
+    chainId: 1672,
+    ecosystemStatus: "VERIFIED",
+    verificationStatus: "VERIFIED",
+    evidenceSources: [
+      { type: "official_docs", ref: "https://web3.okx.com/onchainos/dev-docs/trade/dex-smart-contract (OKX DEX Smart Contract dev-docs, Pharos row; OKX's own developer docs, not an ecosystem listing)", verifiedAt: "2026-07-13" },
+      { type: "onchain", ref: "eth_getCode non-empty for both bundled addresses on chainId 1672 (https://rpc.pharos.xyz): aggregation router 0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea = 24545 bytes, token-approve/settlement 0x78466A1488f1883d71cFddd1c621351572dE0a1C = 1605 bytes", verifiedAt: "2026-07-13" },
+    ],
+    contracts: [
+      { address: "0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea", label: "OKX DEX Aggregation Router", role: "dex", deterministic: false, verificationStatus: "VERIFIED", note: "Swap-execution router for the OKX DEX aggregator on Pharos, from OKX's own dev docs." },
+      { address: "0x78466A1488f1883d71cFddd1c621351572dE0a1C", label: "OKX DEX Token Approve", role: "approval-router", deterministic: false, verificationStatus: "VERIFIED", note: "Token-approval/settlement spender approved before an OKX DEX swap." },
+    ],
+    providers: [],
+    safetyUse: "allow_eligible",
+    notes: "Verified 2026-07-13 from OKX's own DEX Smart Contract dev-docs page (Pharos row) plus on-chain eth_getCode on chainId 1672. Verification relaxes recognition only: an unlimited approval to the OKX router or approve contract still requires confirmation. The aggregator routes dynamically through downstream pools/DEXes that are NOT individually bundled; Permit2 (a separate approval path OKX also supports) is the canonical infra singleton and is not re-bundled here. OKX's supported-chains API is key-gated and is never called at runtime; only the public docs plus on-chain reads back this entry.",
+  },
+  {
     id: "protocol:pacific-mainnet:zona",
     name: "Zona",
     aliases: ["zona"],
