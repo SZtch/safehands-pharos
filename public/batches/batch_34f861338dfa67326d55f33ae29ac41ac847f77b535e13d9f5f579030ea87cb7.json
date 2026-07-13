@@ -1,0 +1,12 @@
+[
+  {
+    "target": "0x6730d3a2a217108ab53ccfe60ffdad05d3c124e5",
+    "actionHash": "0xfe3edcec6abe49d592d47bc530e3c72cde0ab211730bb71b67bf3bca38f11aec",
+    "score": 62,
+    "level": 2,
+    "recommendation": 1,
+    "policyVersionHash": "0x404744f5eb2fc25e76c8be973c863f368423412141d38ee8e5669b55faa7a45f",
+    "evidenceHash": "0xf4915122cc2b3d2dae9e7d77a78c2eb0cef7b55de5c725eea56e2027332489e1",
+    "expiresAt": "1786548517n"
+  }
+]
