@@ -225,4 +225,4 @@ All 33 are exposed identically across MCP, HTTP, and CLI.
 - GoPlus token security does not cover Pharos Atlantic Testnet (`688689`).
 - DODO reverse routes can occasionally lack liquidity for exotic pairs.
 - L1 risk-root committer automation and the DA-serving endpoint are roadmap; the on-chain read/verify path (`verify_risk_inclusion`) is live.
-- The risk-root pipeline (queue, batch flush, `commitRiskRoot`, inclusion verify) is functional end to end, but the first production batch has not been committed yet: a registry `query` currently reports `hasCommittedRoot:false`. The attestation contract, by contrast, already has live on-chain usage.
+- The risk-root pipeline (queue, batch flush, `commitRiskRoot`, inclusion verify) is functional end to end and the first production batch is committed on-chain: a registry `query` reports `hasCommittedRoot:true` and returns a risk record sourced from the committed data-availability pointer. The attestation contract also has live on-chain usage.
