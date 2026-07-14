@@ -25,7 +25,7 @@ One deterministic policy engine, delivered where you need the verdict: from a ze
 
 | You are… | Use | What it is |
 |---|---|---|
-| A **user or Steward agent** that wants a pre-execution verdict | the **Anvita Flow hosted skill** | Zero-infra, no keys, no custody: you get the verdict *before* you sign. The hosted deliverable in [`anvita/safehands/`](anvita/safehands/) (being published to Anvita). |
+| A **user or Steward agent** that wants a pre-execution verdict | the **Anvita Flow hosted skill** | Zero-infra, no keys, no custody: you get the verdict *before* you sign. The hosted deliverable in [`anvita/safehands/`](anvita/safehands/), live on Anvita Flow as `safehands`. |
 | A **developer** wiring safety into your own agent | the **npm package**: MCP server, CLI & SDK | `npx … --demo`, drop it into any MCP client, or `import { evaluateActionPolicy } from "safehands-pharos"`. The verdict path is the product; write tools are reference-only and stay gated behind env flags + a signer + the same verdict. |
 | An **operator** who wants the HTTP API | the **self-hosted reference backend** | `node dist/api/server.js` → `http://localhost:4022`; free verdict endpoints plus the optional x402-gated `/paid/*` bundle. |
 
@@ -35,9 +35,7 @@ The compact hosted engine returns an `allow / warn / block` risk recommendation;
 
 ## SafeHands on Anvita Flow
 
-SafeHands is packaged as a fully-hosted, zero-infrastructure Service Agent for [Anvita Flow](https://flow.anvita.xyz/home) (Pharos Agent Carnival, Phase 2): a Steward Agent asks it about an action and gets a deterministic verdict back *before* anything is signed. No server, no keys, no custody anywhere in the running system. The hosted package lives in [`anvita/safehands/`](anvita/safehands/), a Pharos Skill powered by a zero-dependency deterministic risk engine ([`safehands-engine.js`](anvita/safehands/scripts/safehands-engine.js)). Every verdict is computed by code, not guessed by an LLM; the AI layer only handles conversation, and every analysis links to [Pharosscan](https://www.pharosscan.xyz) so users verify the evidence themselves. Full integration guide: **[docs/ANVITA_FLOW.md](docs/ANVITA_FLOW.md)**.
-<!-- after publish: replace "being published" wording repo-wide with the live marketplace link + "tell your Steward: go find SafeHands" -->
-
+SafeHands is live on [Anvita Flow](https://flow.anvita.xyz/home) as **`safehands`**, a fully-hosted, zero-infrastructure Service Agent (Pharos Agent Carnival, Phase 2): tell your Steward Agent to find `safehands` on the marketplace, ask it about an action, and it returns a deterministic verdict *before* anything is signed. No server, no keys, no custody anywhere in the running system. The hosted package lives in [`anvita/safehands/`](anvita/safehands/), a Pharos Skill powered by a zero-dependency deterministic risk engine ([`safehands-engine.js`](anvita/safehands/scripts/safehands-engine.js)). Every verdict is computed by code, not guessed by an LLM; the AI layer only handles conversation, and every analysis links to [Pharosscan](https://www.pharosscan.xyz) so users verify the evidence themselves. Full integration guide: **[docs/ANVITA_FLOW.md](docs/ANVITA_FLOW.md)**.
 ---
 
 ## Try it in 10 seconds

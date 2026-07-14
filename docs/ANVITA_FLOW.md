@@ -6,7 +6,7 @@ SafeHands began as a suite of native Pharos Skills; for Agent Carnival Phase 2 t
 
 This guide demonstrates how to construct the SafeHands Agent visually in Anvita Flow and configure it for **Pharos Pacific Mainnet (Chain 1672)**.
 
-> **Hosted agent**: the SafeHands Agent is being published to **Anvita Flow** ([flow.anvita.xyz/home](https://flow.anvita.xyz/home)) (Agent Carnival Phase 2); once live it will be discoverable and callable by any Steward Agent; no install required. To exercise the raw HTTP endpoints referenced below (`/tools/*`, `/wallet/prepare`, `/broadcast/signed`, `/paid/*`), self-host the read-only reference backend locally (`npm run build && node dist/api/server.js`, default port 4022) and hit `http://localhost:4022`.
+> **Hosted agent**: the SafeHands Agent is live on **Anvita Flow** ([flow.anvita.xyz/home](https://flow.anvita.xyz/home)) as `safehands` (Agent Carnival Phase 2); discoverable and callable by any Steward Agent; no install required. To exercise the raw HTTP endpoints referenced below (`/tools/*`, `/wallet/prepare`, `/broadcast/signed`, `/paid/*`), self-host the read-only reference backend locally (`npm run build && node dist/api/server.js`, default port 4022) and hit `http://localhost:4022`.
 
 ## 1. Importing the SafeHands Skill Server
 

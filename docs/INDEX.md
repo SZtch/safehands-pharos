@@ -6,7 +6,7 @@ approvals, contract calls, payments, swaps, and prepared transactions *before* a
 agent signs. Hosted mode is a no-custody, read-only verdict you consult ahead of execution;
 self-hosted integrations can gate execution on the same verdict (write tools off by default).
 Default network is **Pharos Pacific Mainnet** (chain `1672`, `PROS`), with live contracts.
-The hosted agent is being published to [Anvita Flow](https://flow.anvita.xyz/home) (Agent Carnival Phase 2); once live it will be discoverable and callable
+The hosted agent is live on [Anvita Flow](https://flow.anvita.xyz/home) as `safehands` (Agent Carnival Phase 2); discoverable and callable
 by any Steward Agent; to hit the HTTP API directly, self-host the read-only backend locally
 (`npm run build && node dist/api/server.js` → `http://localhost:4022`).
 

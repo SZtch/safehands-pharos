@@ -157,7 +157,7 @@ From `src/lib/constants.ts` `docsSource` fields and existing config; all
   the read-only curl smoke set now lives in `SAFEHANDS_REVIEWER_DEMO_SCRIPT.md`. `npm start`
   runs the compiled read-only SafeHands API on `0.0.0.0:$PORT`; no private keys, no custody, no
   signing/sending in self-host mode. This is an optional developer/reviewer reference deploy,
-  not the production service; the hosted agent is being published to Anvita Flow (https://flow.anvita.xyz/home) (Agent Carnival Phase 2).
+  not the production service; the hosted agent is live on Anvita Flow (https://flow.anvita.xyz/home) as `safehands` (Agent Carnival Phase 2).
 - **Observability + public activity API** (read-only):
   `OBSERVABILITY_AND_ACTIVITY.md` covers request IDs, ephemeral-host-safe structured logging
   (stdout only, no persistent volume), the
