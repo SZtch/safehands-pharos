@@ -117,7 +117,7 @@ Aggregate counts over the ring window + counters.
 Safe aggregate metrics only: no env, no payloads, no secrets, no memory dumps.
 ```jsonc
 { "data": {
-  "service": "SafeHands API", "version": "2.4.1", "generatedAt": "…",
+  "service": "SafeHands API", "version": "2.4.2", "generatedAt": "…",
   "network": "pacific-mainnet", "chainId": 1672, "uptimeSeconds": 1234,
   "totalChecks": …, "totalAgentChecks": …, "totalA2AChecks": …,
   "totalBlocked": …, "totalRequireConfirmation": …, "totalPrepareOnly": …, "totalAllowed": …,

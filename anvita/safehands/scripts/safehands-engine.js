@@ -34,10 +34,13 @@
  * This engine never signs, broadcasts, approves, swaps, bridges, deposits, stakes,
  * pays, creates wallets, or publishes records.
  *
- * Output: single JSON object on stdout. Exit 0 on success, 1 on failure.
+ * Output: single JSON object on stdout. Exit 0 means the ANALYSIS completed
+ * (a BLOCK verdict still exits 0); exit 1 means the analysis itself failed. A
+ * caller MUST branch on the `recommendation` field (allow/warn/block), NEVER on
+ * the exit code, to decide whether an action is safe.
  * Requires Node >= 18 (built-in fetch).
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -64,7 +67,7 @@ const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
 // Engine version: MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
-const ENGINE_VERSION = "2.4.1";
+const ENGINE_VERSION = "2.4.2";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
@@ -208,10 +211,15 @@ function prosToWei(amountStr) {
   return BigInt(i + f.padEnd(18, "0").slice(0, 18));
 }
 function formatUnits(raw, decimals) {
+  const d = Number(decimals);
+  // Defensive: a hostile token/feed decimals() can be enormous; padStart with a
+  // huge target length throws RangeError. Never crash on attacker-controlled
+  // decimals; a caller wanting a strict result should pre-validate the range.
+  if (!Number.isInteger(d) || d < 0 || d > 100) return raw.toString();
   const neg = raw < 0n; const v = neg ? -raw : raw;
-  const s = v.toString().padStart(decimals + 1, "0");
-  const i = s.slice(0, s.length - decimals) || "0";
-  const f = decimals ? s.slice(s.length - decimals).replace(/0+$/, "") : "";
+  const s = v.toString().padStart(d + 1, "0");
+  const i = s.slice(0, s.length - d) || "0";
+  const f = d ? s.slice(s.length - d).replace(/0+$/, "") : "";
   return (neg ? "-" : "") + i + (f ? "." + f : "");
 }
 function decInt256(word64) { // 64 hex chars → signed BigInt (two's complement)
@@ -221,6 +229,13 @@ function decInt256(word64) { // 64 hex chars → signed BigInt (two's complement
 }
 // Revert/provider messages are surfaced to the user; strip non-printables and cap.
 function sanitizeReason(msg) { return String(msg || "").replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300); }
+// On-chain token metadata (name/symbol) is attacker-controlled and flows into
+// user-facing factors/output: strip non-printable bytes and cap length so a
+// hostile token cannot inject misleading/control-character text downstream.
+function sanitizeOnchainString(s) {
+  if (typeof s !== "string") return null;
+  return s.replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, " ").trim().slice(0, 128);
+}
 const TXHASH_RE = /^0x[0-9a-fA-F]{64}$/;
 const HEXDATA_RE = /^0x([0-9a-fA-F]{2})*$/;
 // Build a validated read-only tx object for eth_call / eth_estimateGas. Never broadcast.
@@ -264,6 +279,20 @@ function report(score, factors, subject, extra = {}) {
   };
 }
 
+// Escalate-only component composition. An intent verdict must NEVER be more
+// permissive than any sub-analysis it performed: a component the engine itself
+// scored WARN cannot yield an ALLOW intent, and a BLOCK component cannot yield a
+// WARN intent. The additive term keeps multiple medium signals stacking; the
+// trailing Math.max is the fail-closed FLOOR to the component's own score.
+function composeComponent(score, sub, label, factors, cap) {
+  if (!sub || typeof sub.riskScore !== "number") return score;
+  if (sub.riskScore > 30) {
+    factors.push(`${label} risk (${sub.riskLevel}): ${(sub.riskFactors && sub.riskFactors[0]) || ""}`);
+    score += Math.min(cap, sub.riskScore / 2);
+  }
+  return Math.max(score, sub.riskScore);
+}
+
 // ── subject probes ────────────────────────────────────────────────────────
 async function probeAddress(addr) {
   const [balHex, nonceHex, code] = await Promise.all([
@@ -276,8 +305,10 @@ async function probeAddress(addr) {
 async function erc20Probe(addr) {
   const out = {};
   const tryCall = async (key, sel, dec) => { try { const r = await ethCall(addr, sel); out[key] = dec(r); } catch { out[key] = null; } };
+  // name/symbol decode through the on-chain-string sanitizer (attacker-controlled).
+  const decStrSafe = (h) => { const v = decString(h); return v == null ? null : (sanitizeOnchainString(v) || null); };
   await Promise.all([
-    tryCall("name", SEL.name, decString), tryCall("symbol", SEL.symbol, decString),
+    tryCall("name", SEL.name, decStrSafe), tryCall("symbol", SEL.symbol, decStrSafe),
     tryCall("decimals", SEL.decimals, (h) => Number(decUint(h))), tryCall("totalSupply", SEL.totalSupply, (h) => decUint(h).toString()),
   ]);
   return out;
@@ -499,6 +530,34 @@ function urlRisk(rawUrl) {
   if (parsed.port && parsed.port !== "443") { factors.push(`Non-standard port ${parsed.port}`); add += 15; }
   if (String(rawUrl).length > 2048) { factors.push("Unusually long URL"); add += 10; }
   return { valid: true, host, fetched: false, factors, add: Math.min(add, 90) };
+}
+
+// The registry dataURI is operator-controlled on-chain. Even over https it must
+// not point the hosted engine at a local/reserved host (SSRF). String-only
+// classification mirroring urlRisk; no DNS lookups. Returns false to refuse.
+function isFetchableDataUri(u) {
+  let p; try { p = new URL(String(u)); } catch { return false; }
+  if (p.protocol !== "https:") return false;
+  const bare = p.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (/^(localhost|127\.|0\.0\.0\.0$|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(bare)) return false;
+  const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(bare);
+  if (isIpv4 && RESERVED_IPV4.some(([b, pfx]) => ipv4InCidr(bare, b, pfx))) return false;
+  if (bare.includes(":") && (bare === "::1" || bare.startsWith("fc") || bare.startsWith("fd") || bare.startsWith("fe80:") || bare.startsWith("::ffff:"))) return false;
+  return true;
+}
+// Bounded body reader: res.text() buffers the whole response first, so a hostile
+// or misconfigured endpoint could exhaust memory. Cap the bytes we buffer.
+async function readCapped(res, cap) {
+  if (!res.body || typeof res.body.getReader !== "function") return (await res.text()).slice(0, cap);
+  const reader = res.body.getReader(); let received = 0; const chunks = [];
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.length;
+    if (received > cap) { try { await reader.cancel(); } catch { /* ignore */ } throw new Error("response exceeds size cap"); }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 // ── offline calldata decode (approval / transfer / admin / batch) ─────────
@@ -796,7 +855,7 @@ async function analyzeRealFiIntent(input, action) {
   if (ADDRESS_RE.test(token)) {
     parts.token = await analyzeContract(token);
     evidenceUsed.push("token analysis (on-chain surface + registry + GoPlus threat intel)");
-    if (parts.token.riskScore > 30) { factors.push(`Token risk (${parts.token.riskLevel}): ${parts.token.riskFactors[0] || ""}`); score += Math.min(40, parts.token.riskScore / 2); }
+    score = composeComponent(score, parts.token, "Token", factors, 40);
   } else if (!isUrlIntent) {
     missingInputs.push("token (0x address); token legitimacy was not verified");
   }
@@ -807,14 +866,19 @@ async function analyzeRealFiIntent(input, action) {
   if (ADDRESS_RE.test(target)) {
     parts.target = await analyzeContract(target);
     evidenceUsed.push(`${targetLabel} contract analysis (code, canonical registry, GoPlus)`);
-    const canonicalTarget = (parts.target.riskFactors || []).some((f) => /^Canonical /.test(f));
+    // Role-correct recognition: a router/vault/market/staking target counts as
+    // "known" ONLY if it is a canonical Pharos CONTRACT (or the Permit2 singleton),
+    // never merely a canonical token address. Derived from the registry via
+    // classifyCounterparty, not by parsing display-string factors.
+    const canonicalTarget = classifyCounterparty(target).known;
     if (parts.target.onChain && parts.target.onChain.isContract === false) {
       factors.push(`Target ${targetLabel} has NO contract code on Pharos mainnet; nothing legitimate to interact with`);
       score = Math.max(score, 95);
     } else if (!canonicalTarget) {
       factors.push(`Target ${targetLabel} is not in the official Pharos canonical registry and its source is unverified; fail-closed: verify it independently before any ${action.replace(/_/g, " ")}`);
-      score = Math.max(score, isDeposit ? 45 : THREAT_INTEL_UNAVAILABLE_FLOOR);
-      if (parts.target.riskScore > 30) score += Math.min(30, parts.target.riskScore / 3);
+      // Fail-closed unverified-target floor AND never more permissive than the
+      // target contract's own analysis.
+      score = Math.max(score, isDeposit ? 45 : THREAT_INTEL_UNAVAILABLE_FLOOR, parts.target.riskScore);
     }
     const rep = await reputationOfTarget(target);
     if (rep) {
@@ -873,7 +937,7 @@ async function analyzeRealFiIntent(input, action) {
     if (ADDRESS_RE.test(payTo)) {
       parts.payTo = await analyzeWallet(payTo, { expect: "any" });
       evidenceUsed.push("payTo address analysis (on-chain + GoPlus)");
-      if (parts.payTo.riskScore > 30) { factors.push(`payTo risk (${parts.payTo.riskLevel}): ${parts.payTo.riskFactors[0] || ""}`); score += Math.min(35, parts.payTo.riskScore / 2); }
+      score = composeComponent(score, parts.payTo, "payTo", factors, 35);
       if (isDenylistedRecipient(payTo)) { factors.push(`payTo ${payTo} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST); blocked`); score = Math.max(score, 95); }
     } else {
       missingInputs.push("payTo (0x recipient) for recipient analysis");
@@ -937,7 +1001,7 @@ async function analyzeIntent(input) {
     if (!ADDRESS_RE.test(String(input.toAddress || ""))) return fail("VALIDATION_ERROR", "transfer intent requires a valid 'toAddress'.");
     const rec = await analyzeWallet(input.toAddress, { expect: "any" });
     parts.recipient = rec;
-    if (rec.riskScore > 30) { factors.push(`Recipient risk: ${rec.riskFactors.join("; ") || rec.riskLevel}`); score += Math.min(35, rec.riskScore / 2); }
+    score = composeComponent(score, rec, "Recipient", factors, 35);
     if (isDenylistedRecipient(input.toAddress)) { factors.push(`Recipient ${input.toAddress} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST); blocked`); score = Math.max(score, 95); }
     const wei = input.amount != null ? prosToWei(input.amount) : null;
     if (input.amount != null && wei === null) return fail("VALIDATION_ERROR", "'amount' must be a positive decimal string, e.g. \"1.5\".");
@@ -953,7 +1017,7 @@ async function analyzeIntent(input) {
     const [ti, to] = await Promise.all([analyzeContract(input.tokenIn), analyzeContract(input.tokenOut)]);
     parts.tokenIn = ti; parts.tokenOut = to;
     for (const [label, r] of [["tokenIn", ti], ["tokenOut", to]]) {
-      if (r.riskScore > 30) { factors.push(`${label} risk (${r.riskLevel}): ${r.riskFactors[0] || ""}`); score += Math.min(40, r.riskScore / 2); }
+      score = composeComponent(score, r, label, factors, 40);
     }
   }
   if (wallet.nonce === 0) { factors.push("Acting wallet has zero transaction history"); score += 10; }
@@ -982,6 +1046,34 @@ async function cmdAnalyze(raw) {
   return fail("VALIDATION_ERROR", "subjectType must be 'wallet', 'contract', or 'intent'. (tx-hash analysis requires the full SafeHands backend and is not available fully-hosted.)");
 }
 
+// Normalize a committed risk record into the query response shape. A missing or
+// unparseable score becomes null (unknown), NEVER a fabricated 0 that would read
+// as a permissive "allow". level/recommendation accept either the numeric enum
+// index (as flushed) or an already-decoded string.
+function normalizeBatchRecord(r) {
+  const rec = r || {};
+  const rawScore = String(rec.score ?? rec.riskScore ?? "").replace(/n$/, "");
+  const scoreNum = rawScore !== "" && Number.isFinite(Number(rawScore)) ? Number(rawScore) : null;
+  const exp = rec.expiresAt != null ? String(rec.expiresAt).replace(/n$/, "") : null;
+  // Decode a numeric enum index (as flushed) or pass through an already-decoded
+  // string. A MISSING value is null (unknown), never index 0, which would
+  // fail open to the most permissive enum ("low"/"allow").
+  const decodeEnum = (arr, v) => {
+    if (v == null) return null;
+    let s = String(v).trim();
+    if (/^\d+n$/.test(s)) s = s.slice(0, -1); // BigInt-serialized numeric enum ("1n"), not a word like "warn"
+    if (s === "") return null;
+    if (/^\d+$/.test(s)) return arr[Number(s)] ?? null;
+    return s;
+  };
+  return {
+    target: rec.target ?? null, actionHash: rec.actionHash ?? null, riskScore: scoreNum,
+    riskLevel: decodeEnum(LEVELS, rec.level),
+    recommendation: decodeEnum(RECS, rec.recommendation),
+    expiresAt: exp, expired: exp && Number.isFinite(Number(exp)) ? Number(exp) * 1000 < Date.now() : null,
+  };
+}
+
 async function cmdQuery(subject) {
   if (!ADDRESS_RE.test(String(subject || ""))) return fail("VALIDATION_ERROR", "query expects a valid 0x EVM address argument.");
   const out = { success: true, subject, registry: { configured: false }, reputation: { configured: false }, records: [], recordsSource: null, network: "pacific-mainnet", chainId: CHAIN_ID, timestamp: new Date().toISOString() };
@@ -999,32 +1091,34 @@ async function cmdQuery(subject) {
     const dataURI = decString(uriHex);
     out.registry = {
       configured: true, contractAddress: REGISTRY_ADDR, currentMerkleRoot: root,
-      hasCommittedRoot: root && !/^0x0+$/.test(root), currentDataURI: dataURI,
+      hasCommittedRoot: /^0x[0-9a-fA-F]{64}$/.test(String(root)) && !/^0x0{64}$/.test(String(root)), currentDataURI: dataURI,
       isAuthorizedAgent: decUint(agentHex) === 1n,
       explorer: `${EXPLORER}/address/${REGISTRY_ADDR}`,
     };
-    if (dataURI && /^https:\/\//.test(dataURI)) {
+    // Records are read from the committed data-availability pointer but are NOT
+    // cryptographically proven against currentMerkleRoot by the hosted engine.
+    out.recordsVerifiedAgainstRoot = false;
+    if (dataURI && /^https:\/\//.test(dataURI) && isFetchableDataUri(dataURI)) {
       try {
         const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
-        const res = await fetch(dataURI, { signal: ctl.signal }); clearTimeout(t);
-        const text = (await res.text()).slice(0, 1_500_000);
+        const res = await fetch(dataURI, { signal: ctl.signal, redirect: "manual" }); clearTimeout(t);
+        if (res.status >= 300 && res.status < 400) throw new Error("dataURI redirected; refusing to follow to an unverified host");
+        const text = await readCapped(res, 2_000_000);
         const batch = JSON.parse(text);
         // The committed batch is a bare array of records (matches scripts/flushBatchToMainnet.ts
         // and the canonical src reader normalizeRiskRecords, which requires Array.isArray). A
         // { records: [...] } wrapper is tolerated too so either shape reads correctly.
         const batchRecords = Array.isArray(batch) ? batch : (Array.isArray(batch.records) ? batch.records : []);
-        const recs = batchRecords.filter((r) => String(r.target || "").toLowerCase() === subject.toLowerCase());
-        out.records = recs.map((r) => ({
-          target: r.target, actionHash: r.actionHash, riskScore: Number(String(r.score ?? r.riskScore ?? "").replace(/n$/, "")),
-          riskLevel: LEVELS[Number(String(r.level ?? "").replace(/n$/, ""))] ?? r.level,
-          recommendation: RECS[Number(String(r.recommendation ?? "").replace(/n$/, ""))] ?? r.recommendation,
-          expiresAt: r.expiresAt, expired: r.expiresAt ? Number(String(r.expiresAt).replace(/n$/, "")) * 1000 < Date.now() : null,
-        }));
+        const recs = batchRecords.filter((r) => r && String(r.target || "").toLowerCase() === subject.toLowerCase());
+        out.records = recs.map(normalizeBatchRecord);
         out.recordsSource = "dataURI";
+        out.recordsNote = "Records come from the on-chain-committed data-availability pointer (currentDataURI); the hosted engine does NOT verify them against currentMerkleRoot. Treat as advisory. Use verify_risk_inclusion (full SafeHands backend) for an authoritative on-chain inclusion proof.";
       } catch { out.recordsSource = "dataURI-unreachable"; }
+    } else if (dataURI && /^https:\/\//.test(dataURI)) {
+      // https but the host is local/reserved/IP-literal: refused, never fetched (SSRF guard).
+      out.recordsSource = "dataURI-host-not-public";
     } else if (dataURI) {
-      // The committed batch URI is fetched over https only; any other scheme
-      // (http, ipfs, file, ...) is reported, never fetched.
+      // Any non-https scheme (http, ipfs, file, ...) is reported, never fetched.
       out.recordsSource = "dataURI-scheme-not-fetchable";
     }
   }
@@ -1117,7 +1211,14 @@ async function cmdTokenPrice(raw) {
   }
   const answer = decInt256(answerBody.slice(0, 64));
   const updatedAt = Number(decUint(tsHex));
-  const feedDecimals = decHex ? Number(decUint(decHex)) : FEED_DECIMALS_DEFAULT;
+  const feedDecimalsRaw = decHex ? Number(decUint(decHex)) : FEED_DECIMALS_DEFAULT;
+  if (!Number.isInteger(feedDecimalsRaw) || feedDecimalsRaw < 0 || feedDecimalsRaw > 36) {
+    return fail("PROVIDER_UNAVAILABLE", "Chainlink feed reported an implausible decimals() value; refusing to quote a price.", {
+      ...base, provider: "chainlink-push", feedDecimalsRaw: String(feedDecimalsRaw),
+      safeFallback: "Do not guess a price; report the feed as unavailable.",
+    });
+  }
+  const feedDecimals = feedDecimalsRaw;
   if (answer <= 0n) {
     return fail("PROVIDER_UNAVAILABLE", "Feed answered a non-positive value; treating the feed as unavailable.", {
       ...base, provider: "chainlink-push", feedDecimals, answerRaw: answer.toString(),
@@ -1164,7 +1265,7 @@ async function cmdCheckAllowance(raw) {
     token: j.token, owner: j.owner, spender: j.spender,
     tokenSymbol: t.symbol ?? null, tokenDecimals: t.decimals ?? null,
     allowanceRaw: allowance.toString(),
-    allowanceFormatted: t.decimals != null ? formatUnits(allowance, t.decimals) : null,
+    allowanceFormatted: (Number.isInteger(t.decimals) && t.decimals >= 0 && t.decimals <= 100) ? formatUnits(allowance, t.decimals) : null,
     approvalRisk, approvalRiskHint,
     readOnly: "reads allowance(owner,spender) only; this command never grants, changes, or revokes an approval",
     chainId: CHAIN_ID, timestamp: new Date().toISOString(),
@@ -1311,7 +1412,7 @@ async function providerPost(endpoint, payload) {
       body: JSON.stringify(payload), signal: ctl.signal,
     });
     if (!res.ok) throw new Error(`provider HTTP ${res.status}`);
-    return JSON.parse((await res.text()).slice(0, 1_500_000));
+    return JSON.parse(await readCapped(res, 1_500_000));
   } finally { clearTimeout(t); }
 }
 
@@ -1378,26 +1479,46 @@ async function cmdPoolInfo(raw) {
 }
 
 // ── CLI ───────────────────────────────────────────────────────────────────
-const [cmd, arg] = process.argv.slice(2);
-const run = cmd === "health" ? cmdHealth()
-  : cmd === "analyze" ? cmdAnalyze(arg ?? "")
-  : cmd === "query" ? cmdQuery(arg ?? "")
-  : cmd === "get_gas_price" ? cmdGasPrice()
-  : cmd === "get_token_price" ? cmdTokenPrice(arg ?? "")
-  : cmd === "check_allowance" ? cmdCheckAllowance(arg ?? "")
-  : cmd === "get_transaction_status" ? cmdTxStatus(arg ?? "")
-  : cmd === "estimate_gas" ? cmdEstimateGas(arg ?? "")
-  : cmd === "simulate_transaction" ? cmdSimulateTransaction(arg ?? "")
-  : cmd === "get_spv_proof" ? cmdSpvProof(arg ?? "")
-  : cmd === "query_goldsky_subgraph" ? cmdGoldsky(arg ?? "")
-  : cmd === "get_execution_history" ? cmdExecutionHistory(arg ?? "")
-  : cmd === "get_pool_info" ? cmdPoolInfo(arg ?? "")
-  : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|get_gas_price|get_token_price|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
-run.then((r) => { console.log(JSON.stringify(r, null, 2)); process.exit(r.success ? 0 : 1); })
-   .catch((e) => {
-     const msg = String(e && e.message || e);
-     const code = e && e.safehandsCode ? e.safehandsCode
-       : /abort/i.test(msg) ? "RPC_TIMEOUT" : /HTTP|fetch|network/i.test(msg) ? "PHAROS_RPC_UNAVAILABLE" : "ENGINE_ERROR";
-     const retryable = code === "RPC_TIMEOUT" || code === "PHAROS_RPC_UNAVAILABLE";
-     console.log(JSON.stringify(fail(code, msg, { retryable }), null, 2)); process.exit(1);
-   });
+function dispatch(cmd, arg) {
+  return cmd === "health" ? cmdHealth()
+    : cmd === "analyze" ? cmdAnalyze(arg ?? "")
+    : cmd === "query" ? cmdQuery(arg ?? "")
+    : cmd === "get_gas_price" ? cmdGasPrice()
+    : cmd === "get_token_price" ? cmdTokenPrice(arg ?? "")
+    : cmd === "check_allowance" ? cmdCheckAllowance(arg ?? "")
+    : cmd === "get_transaction_status" ? cmdTxStatus(arg ?? "")
+    : cmd === "estimate_gas" ? cmdEstimateGas(arg ?? "")
+    : cmd === "simulate_transaction" ? cmdSimulateTransaction(arg ?? "")
+    : cmd === "get_spv_proof" ? cmdSpvProof(arg ?? "")
+    : cmd === "query_goldsky_subgraph" ? cmdGoldsky(arg ?? "")
+    : cmd === "get_execution_history" ? cmdExecutionHistory(arg ?? "")
+    : cmd === "get_pool_info" ? cmdPoolInfo(arg ?? "")
+    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|get_gas_price|get_token_price|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
+}
+
+// Run the CLI ONLY when executed directly (node safehands-engine.js <cmd>), not
+// when imported by a test. realpath both sides so symlinked launches (npx) still
+// match; default to running if the check is inconclusive, so CLI behavior is
+// never accidentally suppressed.
+function invokedDirectly() {
+  try {
+    if (!process.argv[1]) return false;
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
+  } catch { return true; }
+}
+if (invokedDirectly()) {
+  const [cmd, arg] = process.argv.slice(2);
+  dispatch(cmd, arg)
+    .then((r) => { console.log(JSON.stringify(r, null, 2)); process.exit(r.success ? 0 : 1); })
+    .catch((e) => {
+      const msg = String(e && e.message || e);
+      const code = e && e.safehandsCode ? e.safehandsCode
+        : /abort/i.test(msg) ? "RPC_TIMEOUT" : /HTTP|fetch|network/i.test(msg) ? "PHAROS_RPC_UNAVAILABLE" : "ENGINE_ERROR";
+      const retryable = code === "RPC_TIMEOUT" || code === "PHAROS_RPC_UNAVAILABLE";
+      console.log(JSON.stringify(fail(code, msg, { retryable }), null, 2)); process.exit(1);
+    });
+}
+
+// Exported for unit tests (import does not trigger the CLI above). These are the
+// pure decision/normalization helpers whose behavior the audit locks.
+export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel };
