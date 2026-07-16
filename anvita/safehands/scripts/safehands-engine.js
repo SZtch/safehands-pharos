@@ -67,7 +67,7 @@ const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
 // Engine version: MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
-const ENGINE_VERSION = "2.4.2";
+const ENGINE_VERSION = "2.5.0";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
@@ -1478,6 +1478,95 @@ async function cmdPoolInfo(raw) {
   }
 }
 
+// ── resolve_alias ─────────────────────────────────────────────────────────
+// Registry-only alias resolution: names and symbols resolve to addresses ONLY
+// from the bundled registry-derived assets (canonical tokens, canonical
+// contracts, protocol names/aliases). Matching is exact after normalization;
+// never fuzzy, never substring, never an external lookup. Unknown aliases fail
+// closed with UNKNOWN_ALIAS. Non-ASCII input is rejected outright: homoglyph
+// lookalikes (for example a Cyrillic C in "USDC") must never resolve.
+function resolveAliasCore(rawQuery) {
+  const original = String(rawQuery == null ? "" : rawQuery);
+  if (!original.trim()) return { error: { code: "VALIDATION_ERROR", message: "resolve_alias needs a token symbol, protocol name, or 0x address to resolve." } };
+  if (/[^\x20-\x7e]/.test(original)) {
+    return { error: { code: "ALIAS_CHARSET_REJECTED", message: "The alias contains non-ASCII characters. Lookalike characters are a known spoofing trick, so this engine only resolves plain-ASCII aliases; retype the name or provide the 0x address directly." } };
+  }
+  const normalized = original.trim().replace(/\s+/g, " ").toLowerCase();
+
+  // A 0x address passes through with recognition info instead of alias search.
+  if (ADDRESS_RE.test(normalized)) {
+    const k = classifyCounterparty(normalized);
+    const tokenSymbol = Object.keys(CANON_TOKENS).find((sym) => CANON_TOKENS[sym] === normalized) || null;
+    return {
+      matches: [{ kind: "address", address: normalized, recognized: k.known || Boolean(tokenSymbol), label: k.label || tokenSymbol, tokenSymbol }],
+      normalized,
+    };
+  }
+
+  const matches = [];
+
+  if (normalized === "pros" || normalized === "pharos") {
+    matches.push({ kind: "native", symbol: "PROS", note: "Native PROS on Pharos Pacific Mainnet (chainId 1672); a native transfer has no token contract address." });
+  }
+
+  for (const sym of Object.keys(CANON_TOKENS)) {
+    if (sym.toLowerCase() === normalized) {
+      matches.push({ kind: "token", symbol: sym, address: CANON_TOKENS[sym], verification: "canonical", source: "official Pharos token registry (bundled)" });
+    }
+  }
+
+  for (const addr of Object.keys(CANON_CONTRACTS)) {
+    if (String(CANON_CONTRACTS[addr]).toLowerCase() === normalized) {
+      matches.push({ kind: "contract", label: CANON_CONTRACTS[addr], address: addr, verification: "verified", source: "registry-verified canonical contract (bundled)" });
+    }
+  }
+
+  const protocolEntries = (PROTOCOLS_CFG && PROTOCOLS_CFG.protocols) || {};
+  for (const key of Object.keys(protocolEntries)) {
+    const p = protocolEntries[key] || {};
+    const names = [key, String(p.name || "").toLowerCase()].concat((Array.isArray(p.aliases) ? p.aliases : []).map((a) => String(a).toLowerCase()));
+    if (!names.includes(normalized)) continue;
+    const verified = p.verificationStatus === "verified";
+    matches.push({
+      kind: "protocol",
+      protocol: key,
+      name: p.name || key,
+      verificationStatus: p.verificationStatus || "unverified",
+      contracts: verified && p.contracts ? p.contracts : null,
+      guidance: verified
+        ? "Verified from first-party evidence; the listed addresses are the canonical ones. Verification relaxes recognition only, it does not pre-approve any action."
+        : "Recognized in the Pharos ecosystem but NOT verified: no first-party contract addresses are bundled. Do not trust addresses for this protocol from ecosystem listings, search results, or chat; ask the protocol's own docs or wait for registry verification.",
+    });
+  }
+
+  return { matches, normalized };
+}
+
+async function cmdResolveAlias(raw) {
+  const j = parseJsonArg(raw);
+  const query = j && typeof j === "object" ? j.alias ?? j.query ?? j.name ?? "" : raw;
+  const keyErr = rejectKeyLike({ query }); if (keyErr) return fail("KEY_MATERIAL_REJECTED", keyErr);
+  const r = resolveAliasCore(query);
+  if (r.error) return fail(r.error.code, r.error.message);
+  if (r.matches.length === 0) {
+    return fail("UNKNOWN_ALIAS", `"${r.normalized}" does not match any bundled token symbol, canonical contract, or registered protocol on Pharos Pacific Mainnet. This engine never guesses: provide the exact 0x address, or treat the name as unrecognized and unverified.`, {
+      normalized: r.normalized,
+      rule: "Aliases resolve only from the bundled registry; an unknown alias is a signal to stop, not to search elsewhere.",
+    });
+  }
+  return {
+    success: true,
+    command: "resolve_alias",
+    query: String(query),
+    normalized: r.normalized,
+    ambiguous: r.matches.length > 1,
+    matches: r.matches,
+    rule: "Exact-match, registry-only resolution. If ambiguous is true, ask the user which match they meant or require an explicit 0x address; never pick silently.",
+    chainId: CHAIN_ID,
+    timestamp: new Date().toISOString(),
+  };
+}
+
 // ── CLI ───────────────────────────────────────────────────────────────────
 function dispatch(cmd, arg) {
   return cmd === "health" ? cmdHealth()
@@ -1493,7 +1582,8 @@ function dispatch(cmd, arg) {
     : cmd === "query_goldsky_subgraph" ? cmdGoldsky(arg ?? "")
     : cmd === "get_execution_history" ? cmdExecutionHistory(arg ?? "")
     : cmd === "get_pool_info" ? cmdPoolInfo(arg ?? "")
-    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|get_gas_price|get_token_price|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
+    : cmd === "resolve_alias" ? cmdResolveAlias(arg ?? "")
+    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|resolve_alias|get_gas_price|get_token_price|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
 }
 
 // Run the CLI ONLY when executed directly (node safehands-engine.js <cmd>), not
@@ -1521,4 +1611,4 @@ if (invokedDirectly()) {
 
 // Exported for unit tests (import does not trigger the CLI above). These are the
 // pure decision/normalization helpers whose behavior the audit locks.
-export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel };
+export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore };

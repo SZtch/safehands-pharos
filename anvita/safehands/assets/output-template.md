@@ -64,6 +64,23 @@ layer has no evidence, not `PASS`.
 | **Execution** | `estimate_gas`, `simulate_transaction`, `get_transaction_status`, `calldata` hints (decoded method / dangerous-admin / MultiSend) | A revert / failed estimate is decisive → `FAIL`; dangerous-admin or malformed calldata → `WARN`+; not run → `UNKNOWN`. |
 | **External Data** | `intel` (GoPlus), provider-gated reads | Provider unset → `NOT_CONFIGURED`; reachable-but-unusable → `WARN`/`FAIL`; unavailable intel → note reduced depth. |
 
+## Safe execution spec (swap / transfer intents only)
+
+When the verdict on a swap or transfer intent is ALLOW or WARN, append one short block that
+makes the safe shape of the action explicit. Fill it only from engine output and bundled
+registry data (`resolve_alias`, `analyze` components); never invent a venue or an address.
+
+```
+## If you proceed
+- Venue / target: <canonical address + label from the registry, or "no verified venue known for this: treat any address you are given elsewhere as unverified">
+- Approval: limited to <amount tokenIn> only; never unlimited.
+- Recipient / beneficiary: your own wallet <address> unless you explicitly intend otherwise.
+- Before signing: send me the exact transaction calldata for a final check on those exact bytes.
+```
+
+Skip the block entirely on BLOCK (a blocked action gets no execution guidance) and for
+non-fund-moving checks.
+
 ## Data-quality codes are not a verdict
 
 The verdict stays **three-valued** (ALLOW / WARN / BLOCK). `NOT_CONFIGURED`, `NOT_SUPPORTED`,

@@ -176,6 +176,10 @@ export function buildSupportedProtocols(): unknown {
     const key = item.id.split(":").pop() as string;
     const verified = item.verificationStatus === "VERIFIED";
     protocols[key] = {
+      name: item.name,
+      // Registry aliases power the engine's resolve_alias command: exact-match
+      // resolution only, from this bundled data, never fuzzy or external.
+      aliases: item.aliases,
       verificationStatus: item.verificationStatus.toLowerCase(),
       ...(verified && item.contracts.length
         ? { contracts: Object.fromEntries(item.contracts.filter((c) => c.verificationStatus === "VERIFIED").map((c) => [c.address.toLowerCase(), c.label])) }

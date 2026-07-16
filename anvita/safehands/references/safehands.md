@@ -86,6 +86,23 @@ node scripts/safehands-engine.js query '<0xADDRESS>'
 
 ---
 
+## §K: Resolve names & aliases (registry-only)
+
+**Overview:** resolves a token symbol, protocol name/alias, or contract label to its canonical address(es) using ONLY the bundled registry-derived assets. Exact match after normalization; never fuzzy, never external. Also accepts a 0x address and reports whether it is recognized. No network calls.
+
+**Command Template:**
+```bash
+node scripts/safehands-engine.js resolve_alias '{"alias":"okx"}'
+```
+
+**Output Parsing:** `{success:true, query, normalized, ambiguous, matches[], rule}`. Match kinds: `token` (symbol, address, canonical), `contract` (label, address, verified), `protocol` (name, verificationStatus, contracts map when verified / null when not, guidance), `native` (PROS), `address` (recognition passthrough). `ambiguous:true` means multiple matches: ask the user which they meant or require an explicit 0x address; never pick silently.
+
+**Error Handling:** `UNKNOWN_ALIAS` → the name matches nothing bundled; treat it as unrecognized AND unverified, tell the user not to take an address for it from listings, search, or chat, and offer to check an explicit 0x address instead. `ALIAS_CHARSET_REJECTED` → non-ASCII input (lookalike-character guard); ask the user to retype plainly or give the address.
+
+**Agent Guidelines:** resolve names through this command BEFORE analyzing or quoting anything about them; never resolve a name from your own memory or from any external source. An UNVERIFIED protocol match is a useful answer: it means "known to exist, no first-party addresses"; say exactly that. Resolution is recognition only, never a safety verdict: analyzing the resolved address is still the next step.
+
+---
+
 ## §D: Explaining allow / warn / block
 
 No engine call needed. **allow** (score ≤ 30): no adverse signals at heuristic depth; proceed with normal caution. **warn** (31–69): concrete risk factors found; get explicit user confirmation before proceeding, list the factors. **block** (≥ 70): serious signals; advise against; do not help execute the action anyway. Always remind that SafeHands informs the decision, it does not guarantee outcomes.

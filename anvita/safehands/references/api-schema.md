@@ -76,13 +76,16 @@ get_spv_proof {address,storageKeys?,blockTag?}
 query_goldsky_subgraph {query,variables?}   → { provider, endpoint, data }   (gated)
 get_execution_history {address,limit?}      → { provider, endpoint, data }   (gated)
 get_pool_info {poolAddress?,tokenA?,tokenB?} → { provider, endpoint, data }   (gated)
+resolve_alias {alias}            → { query, normalized, ambiguous, matches[], rule }
+                                   (registry-only exact match, no network; UNKNOWN_ALIAS /
+                                    ALIAS_CHARSET_REJECTED on failure)
 ```
 Symbols/aliases and the feed-staleness rule: see `references/safehands.md` §G. Gated commands return `*_NOT_CONFIGURED` until an endpoint is set in `assets/supported-protocols.json`.
 
 ## Failure envelope (all commands)
 ```json
 { "success": false,
-  "error": { "code": "VALIDATION_ERROR|CHAIN_NOT_SUPPORTED|CHAIN_MISMATCH|KEY_MATERIAL_REJECTED|FEED_NOT_CONFIGURED|FEED_STALE|PROVIDER_UNAVAILABLE|NOT_SUPPORTED|ESTIMATE_FAILED|SIMULATION_REVERTED|GOLDSKY_NOT_CONFIGURED|HISTORY_PROVIDER_NOT_CONFIGURED|PROVIDER_NOT_CONFIGURED|PHAROS_RPC_UNAVAILABLE|RPC_TIMEOUT|ENGINE_ERROR|USAGE",
+  "error": { "code": "VALIDATION_ERROR|CHAIN_NOT_SUPPORTED|CHAIN_MISMATCH|KEY_MATERIAL_REJECTED|FEED_NOT_CONFIGURED|FEED_STALE|PROVIDER_UNAVAILABLE|NOT_SUPPORTED|ESTIMATE_FAILED|SIMULATION_REVERTED|GOLDSKY_NOT_CONFIGURED|HISTORY_PROVIDER_NOT_CONFIGURED|PROVIDER_NOT_CONFIGURED|UNKNOWN_ALIAS|ALIAS_CHARSET_REJECTED|PHAROS_RPC_UNAVAILABLE|RPC_TIMEOUT|ENGINE_ERROR|USAGE",
     "message": "…" },
   "provider": "…?", "providerStatus": "not_configured?", "reason": "…?", "safeFallback": "…?",
   "retryable": true, "chainId": 1672, "timestamp": "…" }

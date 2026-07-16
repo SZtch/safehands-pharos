@@ -37,42 +37,84 @@
   },
   "protocols": {
     "stargate": {
+      "name": "Stargate",
+      "aliases": [
+        "stargate"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published Stargate router address for Pharos Pacific Mainnet is bundled. Bridge intents to unlisted routers fail closed (warn/block)."
     },
     "faroswap": {
+      "name": "FaroSwap",
+      "aliases": [
+        "faroswap"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published FaroSwap contract addresses are bundled. Internal frontend endpoints and pass-keys are prohibited."
     },
     "stpros-premint": {
+      "name": "stPROS Pre-Mint",
+      "aliases": [
+        "stpros",
+        "stpros-premint"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published stPROS Pre-Mint contract address is bundled. Yield-deposit intents to unlisted contracts fail closed (warn/block)."
     },
     "oku": {
+      "name": "OKU",
+      "aliases": [
+        "oku",
+        "oku trade"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published OKU contract addresses are bundled. Swap/DEX intents to unlisted routers fail closed (warn/block)."
     },
     "agra": {
+      "name": "Agra",
+      "aliases": [
+        "agra"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published Agra contract addresses are bundled. Swap/DEX intents to unlisted routers fail closed (warn/block)."
     },
     "bitverse": {
+      "name": "Bitverse",
+      "aliases": [
+        "bitverse"
+      ],
       "verificationStatus": "unverified",
       "note": "Recognized in the Pharos DEX/DeFi and RWA ecosystem (single entry). No officially published Bitverse contract addresses are bundled. Trading/RWA intents to unlisted contracts fail closed (warn/block)."
     },
     "interport": {
+      "name": "InterPort",
+      "aliases": [
+        "interport"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published InterPort router address for Pharos Pacific Mainnet is bundled. Bridge/cross-chain intents to unlisted routers fail closed (warn/block)."
     },
     "r25": {
+      "name": "R25",
+      "aliases": [
+        "r25"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published R25 contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
     },
     "asseto": {
+      "name": "Asseto",
+      "aliases": [
+        "asseto"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published Asseto contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
     },
     "aquaflux": {
+      "name": "AquaFlux",
+      "aliases": [
+        "aquaflux"
+      ],
       "verificationStatus": "verified",
       "contracts": {
         "0x0da98a8447b6b4add9733011a812922954d3e127": "AquaFluxCore",
@@ -83,6 +125,13 @@
       "note": "Verified 2026-07-12 from AquaFlux's own docs Contracts page + on-chain checks (incl. the proxy's EIP-1967 slot matching the published implementation). Verification relaxes recognition only: an unlimited approval to AquaFlux contracts still requires confirmation. Implementation addresses, the shared Uniswap v4 AMM stack the docs also list (PoolManager, UniversalRouter, V4Quoter, StateView, PositionManager), Permit2, the timelock, and per-asset P/C/S token addresses are NOT bundled; assets are issued dynamically, verify each per use."
     },
     "okx-dex": {
+      "name": "OKX DEX Aggregator",
+      "aliases": [
+        "okx",
+        "okx dex",
+        "okx dex aggregator",
+        "okx swap"
+      ],
       "verificationStatus": "verified",
       "contracts": {
         "0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea": "OKX DEX Aggregation Router",
@@ -91,10 +140,19 @@
       "note": "Verified 2026-07-13 from OKX's own DEX Smart Contract dev-docs page (Pharos row) plus on-chain eth_getCode on chainId 1672. Verification relaxes recognition only: an unlimited approval to the OKX router or approve contract still requires confirmation. The aggregator routes dynamically through downstream pools/DEXes that are NOT individually bundled; Permit2 (a separate approval path OKX also supports) is the canonical infra singleton and is not re-bundled here. OKX's supported-chains API is key-gated and is never called at runtime; only the public docs plus on-chain reads back this entry."
     },
     "zona": {
+      "name": "Zona",
+      "aliases": [
+        "zona"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published Zona contract addresses are bundled. RWA/RealFi intents to unlisted contracts fail closed (warn/block)."
     },
     "morpho": {
+      "name": "Morpho",
+      "aliases": [
+        "morpho",
+        "morpho blue"
+      ],
       "verificationStatus": "verified",
       "contracts": {
         "0x18573fa18fd17ddfd790b4a5b5b2977aad3b4efb": "Morpho Blue",
@@ -104,14 +162,26 @@
       "note": "Verified 2026-07-11 from Morpho's own addresses page + on-chain checks. Verification relaxes recognition only: an unlimited approval to Morpho Blue still requires confirmation, and MetaMorpho vault addresses are NOT bundled (markets/vaults are permissionless; verify each vault separately)."
     },
     "termmax": {
+      "name": "TermMax",
+      "aliases": [
+        "termmax"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published TermMax contract addresses are bundled. Lending/fixed-rate intents to unlisted contracts fail closed (warn/block)."
     },
     "faroo": {
+      "name": "Faroo",
+      "aliases": [
+        "faroo"
+      ],
       "verificationStatus": "unverified",
       "note": "Distinct from FaroSwap. No officially published Faroo contract addresses are bundled. Lending/yield intents to unlisted contracts fail closed (warn/block)."
     },
     "ember": {
+      "name": "Ember",
+      "aliases": [
+        "ember"
+      ],
       "verificationStatus": "unverified",
       "note": "No officially published Ember contract addresses are bundled. Lending/vault/yield intents to unlisted contracts fail closed (warn/block)."
     }
