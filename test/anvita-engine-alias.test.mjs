@@ -54,6 +54,20 @@ describe("resolveAliasCore (imported)", () => {
     assert.strictEqual(p.verificationStatus, "verified");
   });
 
+  it("a protocol matching alongside its own contract label is ONE identity, not ambiguous", async () => {
+    // "morpho blue" hits both the Morpho protocol alias and the bundled
+    // "Morpho Blue" contract label; the contract belongs to the protocol, so
+    // the CLI must not force a needless disambiguation question.
+    const { code, json } = await runEngine(["resolve_alias", '{"alias":"morpho blue"}']);
+    assert.strictEqual(code, 0);
+    assert.ok(json.matches.length > 1, "expects both the protocol and contract-label matches");
+    assert.strictEqual(json.ambiguous, false);
+    const contract = json.matches.find((m) => m.kind === "contract");
+    const protocol = json.matches.find((m) => m.kind === "protocol");
+    assert.ok(contract && protocol);
+    assert.ok(Object.keys(protocol.contracts).includes(contract.address));
+  });
+
   it("an UNVERIFIED protocol resolves with null contracts and do-not-trust guidance", () => {
     const r = resolveAliasCore("faroswap");
     const p = r.matches.find((m) => m.kind === "protocol");

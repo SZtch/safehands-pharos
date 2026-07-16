@@ -1542,6 +1542,20 @@ function resolveAliasCore(rawQuery) {
   return { matches, normalized };
 }
 
+// Multiple matches are AMBIGUOUS only when they point at different identities.
+// A protocol plus contract labels that all belong to that same protocol (for
+// example "morpho blue" matching both the Morpho protocol alias and its own
+// bundled "Morpho Blue" contract) is ONE identity: complementary, not a
+// conflict, so the caller is not forced into a needless disambiguation question.
+function resolvedMatchesConflict(matches) {
+  if (matches.length <= 1) return false;
+  const protocols = matches.filter((m) => m.kind === "protocol");
+  const contracts = matches.filter((m) => m.kind === "contract");
+  if (protocols.length !== 1 || protocols.length + contracts.length !== matches.length) return true;
+  const owned = new Set(Object.keys(protocols[0].contracts || {}));
+  return !contracts.every((c) => owned.has(c.address));
+}
+
 async function cmdResolveAlias(raw) {
   const j = parseJsonArg(raw);
   const query = j && typeof j === "object" ? j.alias ?? j.query ?? j.name ?? "" : raw;
@@ -1559,7 +1573,7 @@ async function cmdResolveAlias(raw) {
     command: "resolve_alias",
     query: String(query),
     normalized: r.normalized,
-    ambiguous: r.matches.length > 1,
+    ambiguous: resolvedMatchesConflict(r.matches),
     matches: r.matches,
     rule: "Exact-match, registry-only resolution. If ambiguous is true, ask the user which match they meant or require an explicit 0x address; never pick silently.",
     chainId: CHAIN_ID,
