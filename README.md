@@ -42,7 +42,8 @@ Users can ask their Steward Agent to find **`safehands`** and evaluate a blockch
 No external server, private keys, or wallet custody are required.
 
 Hosted package: [`anvita/safehands/`](anvita/safehands/)  
-Integration guide: **[docs/ANVITA_FLOW.md](docs/ANVITA_FLOW.md)**
+Integration guide: **[docs/ANVITA_FLOW.md](docs/ANVITA_FLOW.md)**  
+Building an agent that should call SafeHands before signing? Start at **[docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md)**.
 
 ---
 ## Try it in 10 seconds

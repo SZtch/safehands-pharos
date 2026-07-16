@@ -25,6 +25,7 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 
 | Doc | What it covers |
 |-----|----------------|
+| [AGENT_INTEGRATION.md](./AGENT_INTEGRATION.md) | Integrate SafeHands into your agent: the 4-call core loop, agent autonomy levels (SafeHands makes Level 2-3 safe), hosted and self-hosted copy-paste examples. Start here if you are building an agent. |
 | [TOOLS.md](./TOOLS.md) | The 33 MCP/HTTP/CLI tools, grouped by surface (safety preflight, risk, market/chain, gated execution, policy, managed wallet). |
 | [SAFEHANDS_GUARDIAN_AGENT.md](./SAFEHANDS_GUARDIAN_AGENT.md) | The read-only SafeHands Agent surface. |
 | [AGENT_TO_AGENT.md](./AGENT_TO_AGENT.md) | A2A check flow + obligations. |
