@@ -67,7 +67,7 @@ const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
 // Engine version: MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
-const ENGINE_VERSION = "2.5.0";
+const ENGINE_VERSION = "2.6.0";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
@@ -1214,6 +1214,7 @@ async function analyzeIntent(input) {
       score = composeComponent(score, r, label, factors, 40);
     }
   }
+  score += await holdingsExposureFactor(input, action, wallet, factors);
   if (wallet.nonce === 0) { factors.push("Acting wallet has zero transaction history"); score += 10; }
   // Same offline calldata decode + read-only simulation as RealFi intents, so a swap or transfer
   // that carries approval / transfer / admin calldata gets the unlimited-approval and drainer
@@ -1363,6 +1364,36 @@ async function cmdGasPrice() {
   };
 }
 
+// Shared Chainlink Push read carrying every guard cmdTokenPrice enforces;
+// also powers portfolio valuation. Statuses: ok | not-configured | unreadable
+// | bad-decimals | non-positive | stale. Never returns a guessed price, and a
+// stale answer is surfaced only as clearly-labeled evidence, never as ok.
+async function readFeedPrice(requestedRaw) {
+  const requested = String(requestedRaw || "").trim().toUpperCase().replace(/^\$/, "");
+  const canonical = String(FEED_ALIASES[requested] || requested);
+  const feed = FEEDS[canonical];
+  if (!feed || !ADDRESS_RE.test(String(feed.feedAddress || ""))) return { status: "not-configured", requested, canonical };
+  // Sequential reads on purpose: the public Pharos RPC rate-limits parallel eth_call bursts.
+  const answerHex = await ethCall(feed.feedAddress, SEL.latestAnswer);
+  const tsHex = await ethCall(feed.feedAddress, SEL.latestTimestamp);
+  const decHex = await ethCall(feed.feedAddress, SEL.decimals).catch(() => null);
+  const answerBody = (answerHex || "0x").slice(2);
+  if (answerBody.length < 64) return { status: "unreadable", requested, canonical, feed };
+  const answer = decInt256(answerBody.slice(0, 64));
+  const updatedAt = Number(decUint(tsHex));
+  const feedDecimalsRaw = decHex ? Number(decUint(decHex)) : FEED_DECIMALS_DEFAULT;
+  if (!Number.isInteger(feedDecimalsRaw) || feedDecimalsRaw < 0 || feedDecimalsRaw > 36) {
+    return { status: "bad-decimals", requested, canonical, feed, feedDecimalsRaw };
+  }
+  if (answer <= 0n) return { status: "non-positive", requested, canonical, feed, feedDecimals: feedDecimalsRaw, answerRaw: answer.toString() };
+  const feedAgeSeconds = Math.max(0, Math.floor(Date.now() / 1000) - updatedAt);
+  const heartbeatSeconds = Number(feed.heartbeatSeconds) || FEED_HEARTBEAT_DEFAULT;
+  const price = formatUnits(answer, feedDecimalsRaw);
+  const detail = { feedDecimals: feedDecimalsRaw, answerRaw: answer.toString(), updatedAt, feedAgeSeconds, heartbeatSeconds };
+  if (feedAgeSeconds > heartbeatSeconds) return { status: "stale", requested, canonical, feed, detail, lastKnownAnswer: price };
+  return { status: "ok", requested, canonical, feed, detail, price };
+}
+
 async function cmdTokenPrice(raw) {
   const j = parseJsonArg(raw);
   let symbol = raw;
@@ -1375,10 +1406,9 @@ async function cmdTokenPrice(raw) {
   if (!/^[A-Z0-9]{2,12}$/.test(requested)) {
     return fail("VALIDATION_ERROR", "get_token_price expects a token symbol, e.g. 'PROS' or '{\"symbol\":\"PROS\"}'.");
   }
-  const canonical = String(FEED_ALIASES[requested] || requested);
-  const feed = FEEDS[canonical];
   const supported = [...Object.keys(FEEDS), ...Object.keys(FEED_ALIASES)].sort();
-  if (!feed || !ADDRESS_RE.test(String(feed.feedAddress || ""))) {
+  const r = await readFeedPrice(requested);
+  if (r.status === "not-configured") {
     return fail("FEED_NOT_CONFIGURED", `No Chainlink Push feed is configured for '${requested}' on Pharos Pacific Mainnet.`, {
       command: "get_token_price", provider: "chainlink-push",
       reason: "symbol not present in assets/supported-assets.json",
@@ -1387,55 +1417,42 @@ async function cmdTokenPrice(raw) {
     });
   }
   const base = {
-    command: "get_token_price", requestedSymbol: requested, symbol: canonical,
-    pair: feed.pair || `${canonical}/USD`, aliased: canonical !== requested,
-    feedAddress: feed.feedAddress,
+    command: "get_token_price", requestedSymbol: requested, symbol: r.canonical,
+    pair: r.feed.pair || `${r.canonical}/USD`, aliased: r.canonical !== requested,
+    feedAddress: r.feed.feedAddress,
     source: "chainlink-push feed via Pharos RPC eth_call (latestAnswer/latestTimestamp)",
     chainId: CHAIN_ID, timestamp: new Date().toISOString(),
   };
   if (FEED_ALIAS_NOTES[requested]) base.aliasNote = FEED_ALIAS_NOTES[requested];
-  if (feed.feedOnly) base.note = feed.note || "Feed-only symbol: price reads supported; wallet-balance/token analysis not claimed.";
-  // Sequential reads on purpose: the public Pharos RPC rate-limits parallel eth_call bursts.
-  const answerHex = await ethCall(feed.feedAddress, SEL.latestAnswer);
-  const tsHex = await ethCall(feed.feedAddress, SEL.latestTimestamp);
-  const decHex = await ethCall(feed.feedAddress, SEL.decimals).catch(() => null);
-  const answerBody = (answerHex || "0x").slice(2);
-  if (answerBody.length < 64) {
+  if (r.feed.feedOnly) base.note = r.feed.note || "Feed-only symbol: price reads supported; wallet-balance/token analysis not claimed.";
+  if (r.status === "unreadable") {
     return fail("PROVIDER_UNAVAILABLE", "Chainlink feed returned an unreadable latestAnswer payload.", {
       ...base, provider: "chainlink-push", reason: "short/invalid eth_call return",
       safeFallback: "Do not guess a price; report the feed as unavailable.",
     });
   }
-  const answer = decInt256(answerBody.slice(0, 64));
-  const updatedAt = Number(decUint(tsHex));
-  const feedDecimalsRaw = decHex ? Number(decUint(decHex)) : FEED_DECIMALS_DEFAULT;
-  if (!Number.isInteger(feedDecimalsRaw) || feedDecimalsRaw < 0 || feedDecimalsRaw > 36) {
+  if (r.status === "bad-decimals") {
     return fail("PROVIDER_UNAVAILABLE", "Chainlink feed reported an implausible decimals() value; refusing to quote a price.", {
-      ...base, provider: "chainlink-push", feedDecimalsRaw: String(feedDecimalsRaw),
+      ...base, provider: "chainlink-push", feedDecimalsRaw: String(r.feedDecimalsRaw),
       safeFallback: "Do not guess a price; report the feed as unavailable.",
     });
   }
-  const feedDecimals = feedDecimalsRaw;
-  if (answer <= 0n) {
+  if (r.status === "non-positive") {
     return fail("PROVIDER_UNAVAILABLE", "Feed answered a non-positive value; treating the feed as unavailable.", {
-      ...base, provider: "chainlink-push", feedDecimals, answerRaw: answer.toString(),
+      ...base, provider: "chainlink-push", feedDecimals: r.feedDecimals, answerRaw: r.answerRaw,
       safeFallback: "Do not guess a price; report the feed as unavailable.",
     });
   }
-  const feedAgeSeconds = Math.max(0, Math.floor(Date.now() / 1000) - updatedAt);
-  const heartbeatSeconds = Number(feed.heartbeatSeconds) || FEED_HEARTBEAT_DEFAULT;
-  const price = formatUnits(answer, feedDecimals);
-  const detail = { feedDecimals, answerRaw: answer.toString(), updatedAt, feedAgeSeconds, heartbeatSeconds };
-  if (feedAgeSeconds > heartbeatSeconds) {
+  if (r.status === "stale") {
     // Stale = heartbeat violation. The last answer is included as EVIDENCE, clearly
     // labeled; it must never be presented as a current price.
-    return fail("FEED_STALE", `Feed heartbeat violated: last update ${feedAgeSeconds}s ago (heartbeat ${heartbeatSeconds}s). Not serving this as a current price.`, {
-      ...base, ...detail, provider: "chainlink-push", stale: true, sourceStatus: "stale",
-      lastKnownAnswer: price,
+    return fail("FEED_STALE", `Feed heartbeat violated: last update ${r.detail.feedAgeSeconds}s ago (heartbeat ${r.detail.heartbeatSeconds}s). Not serving this as a current price.`, {
+      ...base, ...r.detail, provider: "chainlink-push", stale: true, sourceStatus: "stale",
+      lastKnownAnswer: r.lastKnownAnswer,
       safeFallback: "Report the feed as stale; do not quote lastKnownAnswer as the current price.",
     });
   }
-  return { success: true, ...base, ...detail, price, stale: false, sourceStatus: "ok" };
+  return { success: true, ...base, ...r.detail, price: r.price, stale: false, sourceStatus: "ok" };
 }
 
 async function cmdCheckAllowance(raw) {
@@ -1730,6 +1747,111 @@ async function cmdPoolInfo(raw) {
   }
 }
 
+// ── portfolio snapshot (canonical assets, advisory valuation) ─────────────
+// Read-only holdings picture used by get_portfolio and the intent exposure
+// check: native PROS plus the canonical token registry, valued through live
+// Chainlink reads. Fail-closed: an asset whose balance, decimals, or price
+// cannot be read stays listed with the gap disclosed and is EXCLUDED from
+// priceableUsd; nothing is ever valued by a guessed or stale price.
+async function portfolioSnapshot(address, opts = {}) {
+  const addr = address.toLowerCase();
+  const assets = [];
+  const priceCache = new Map();
+  const priceFor = async (symbol) => {
+    const key = String(FEED_ALIASES[symbol] || symbol);
+    if (!priceCache.has(key)) priceCache.set(key, await readFeedPrice(symbol));
+    return priceCache.get(key);
+  };
+
+  const rows = [];
+  const nativeWei = opts.nativeBalanceWei != null
+    ? BigInt(opts.nativeBalanceWei)
+    : decUint(await rpc("eth_getBalance", [addr, "latest"]));
+  rows.push({ symbol: "PROS", address: null, balRaw: nativeWei, decimals: 18 });
+
+  for (const sym of Object.keys(CANON_TOKENS)) {
+    const token = CANON_TOKENS[sym];
+    const balHex = await ethCall(token, SEL.balanceOf + encAddr(addr)).catch(() => null);
+    if (!balHex || balHex === "0x") {
+      assets.push({ symbol: sym, address: token, balanceRaw: null, balanceFormatted: null, priceUsd: null, valueUsd: null, note: "balanceOf returned no data; balance UNKNOWN, not zero" });
+      continue;
+    }
+    const decHex = await ethCall(token, SEL.decimals).catch(() => null);
+    const dec = decHex && decHex !== "0x" ? Number(decUint(decHex)) : null;
+    if (!Number.isInteger(dec) || dec < 0 || dec > 100) {
+      assets.push({ symbol: sym, address: token, balanceRaw: decUint(balHex).toString(), balanceFormatted: null, priceUsd: null, valueUsd: null, note: "decimals() unreadable; cannot scale or value this balance" });
+      continue;
+    }
+    rows.push({ symbol: sym, address: token, balRaw: decUint(balHex), decimals: dec });
+  }
+
+  let priceableUsd = 0;
+  for (const r of rows) {
+    const balanceFormatted = formatUnits(r.balRaw, r.decimals);
+    const p = await priceFor(r.symbol);
+    if (p.status === "ok") {
+      const valueUsd = Number(balanceFormatted) * Number(p.price);
+      priceableUsd += valueUsd;
+      assets.push({ symbol: r.symbol, address: r.address, balanceRaw: r.balRaw.toString(), balanceFormatted, priceUsd: p.price, valueUsd: Number(valueUsd.toFixed(6)), stale: false });
+    } else {
+      assets.push({ symbol: r.symbol, address: r.address, balanceRaw: r.balRaw.toString(), balanceFormatted, priceUsd: null, valueUsd: null, stale: p.status === "stale", note: `price unavailable (${p.status}); excluded from the total, never guessed` });
+    }
+  }
+  const unpriceableCount = assets.filter((a) => a.valueUsd === null).length;
+  return { assets, priceableUsd: Number(priceableUsd.toFixed(6)), unpriceableCount };
+}
+
+async function cmdPortfolio(raw) {
+  const j = parseJsonArg(raw);
+  const address = String((j && (j.address ?? j.wallet)) ?? raw ?? "").trim();
+  const keyErr = rejectKeyLike({ address }); if (keyErr) return fail("KEY_MATERIAL_REJECTED", keyErr);
+  if (j) { const cg = chainGuard(j); if (cg) return cg; }
+  if (!ADDRESS_RE.test(address)) return fail("VALIDATION_ERROR", "'address' must be a valid 0x EVM address.");
+  const snap = await portfolioSnapshot(address);
+  return {
+    success: true, command: "get_portfolio", address: address.toLowerCase(),
+    assets: snap.assets,
+    totals: { priceableUsd: snap.priceableUsd, unpriceableCount: snap.unpriceableCount },
+    valuation: "Advisory display valuation from live Chainlink Push reads; assets with a stale or missing feed are listed but excluded from priceableUsd, never guessed.",
+    limits: "Canonical registry assets only (native PROS plus the official token registry); other tokens are outside the registry ceiling and not listed here.",
+    readOnly: "reads eth_getBalance and balanceOf only; this command never moves, approves, or exposes funds",
+    chainId: CHAIN_ID, timestamp: new Date().toISOString(),
+  };
+}
+
+// ── intent holdings-exposure factor (escalate-only, advisory) ─────────────
+// "This action moves N% of the wallet's priceable holdings." Position-relative
+// risk on top of the absolute checks. Escalate-only: it can only add; any
+// input it cannot price (unknown token, stale feed, empty portfolio) becomes a
+// single disclosure factor with NO score change, never a guessed valuation.
+const EXPOSURE_REVIEW_PCT = 50;
+const EXPOSURE_CRITICAL_PCT = 90;
+async function holdingsExposureFactor(input, action, wallet, factors) {
+  const amountNum = Number(input.amount);
+  if (!(amountNum > 0)) return 0;
+  let symbol;
+  if (action === "transfer") symbol = "PROS";
+  else {
+    const tin = String(input.tokenIn || "").toLowerCase();
+    symbol = Object.keys(CANON_TOKENS).find((s) => CANON_TOKENS[s] === tin) || null;
+    if (!symbol) { factors.push("Portfolio exposure not evaluated: tokenIn is outside the canonical price set; no score change"); return 0; }
+  }
+  const p = await readFeedPrice(symbol);
+  if (p.status !== "ok") { factors.push(`Portfolio exposure not evaluated: ${symbol} price feed is ${p.status}; no score change`); return 0; }
+  const snap = await portfolioSnapshot(input.walletAddress, { nativeBalanceWei: wallet.balance });
+  if (!(snap.priceableUsd > 0)) { factors.push("Portfolio exposure not evaluated: no priceable holdings found for the acting wallet; no score change"); return 0; }
+  const pct = ((amountNum * Number(p.price)) / snap.priceableUsd) * 100;
+  if (pct >= EXPOSURE_CRITICAL_PCT) {
+    factors.push(`This action moves about ${Math.round(pct)}% of the wallet's priceable holdings (canonical assets, live Chainlink valuation): near-total exposure in a single action`);
+    return 25;
+  }
+  if (pct >= EXPOSURE_REVIEW_PCT) {
+    factors.push(`This action moves about ${Math.round(pct)}% of the wallet's priceable holdings (canonical assets, live Chainlink valuation)`);
+    return 15;
+  }
+  return 0;
+}
+
 // ── resolve_alias ─────────────────────────────────────────────────────────
 // Registry-only alias resolution: names and symbols resolve to addresses ONLY
 // from the bundled registry-derived assets (canonical tokens, canonical
@@ -1842,6 +1964,7 @@ function dispatch(cmd, arg) {
     : cmd === "get_token_price" ? cmdTokenPrice(arg ?? "")
     : cmd === "check_allowance" ? cmdCheckAllowance(arg ?? "")
     : cmd === "get_token_balance" ? cmdTokenBalance(arg ?? "")
+    : cmd === "get_portfolio" ? cmdPortfolio(arg ?? "")
     : cmd === "get_transaction_status" ? cmdTxStatus(arg ?? "")
     : cmd === "estimate_gas" ? cmdEstimateGas(arg ?? "")
     : cmd === "simulate_transaction" ? cmdSimulateTransaction(arg ?? "")
@@ -1850,7 +1973,7 @@ function dispatch(cmd, arg) {
     : cmd === "get_execution_history" ? cmdExecutionHistory(arg ?? "")
     : cmd === "get_pool_info" ? cmdPoolInfo(arg ?? "")
     : cmd === "resolve_alias" ? cmdResolveAlias(arg ?? "")
-    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|resolve_alias|get_gas_price|get_token_price|get_token_balance|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
+    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|resolve_alias|get_gas_price|get_token_price|get_token_balance|get_portfolio|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
 }
 
 // Run the CLI ONLY when executed directly (node safehands-engine.js <cmd>), not

@@ -1,6 +1,6 @@
 # SafeHands Reviewer Demo Script
 
-Current as of v2.5.0: Pharos Pacific Mainnet (chain `1672`), Anvita Flow hosted agent, live contracts.
+Current as of v2.6.0: Pharos Pacific Mainnet (chain `1672`), Anvita Flow hosted agent, live contracts.
 
 ## 1. Project one-liner
 

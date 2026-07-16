@@ -373,6 +373,61 @@ describe("Anvita engine — get_token_balance (read-only)", () => {
   });
 });
 
+describe("Anvita engine — portfolio snapshot & holdings exposure", () => {
+  const WALLET = "0x1111111111111111111111111111111111111111";
+
+  it("get_portfolio values native + canonical tokens from live-feed reads", async () => {
+    // 1 PROS native + 2.0 of each of the 4 canonical tokens, everything at
+    // the mock feed price 0.39 with 18 decimals: (1 + 4*2) * 0.39 = 3.51.
+    const mock = startMock({ nativeBalance: "0xde0b6b3a7640000", tokenBalance: (2n * 10n ** 18n).toString() });
+    try {
+      const { out, status } = await runEngine("get_portfolio", JSON.stringify({ address: WALLET }), envFor(mock));
+      assert.strictEqual(status, 0);
+      assert.strictEqual(out.assets.length, 5);
+      assert.strictEqual(out.totals.unpriceableCount, 0);
+      assert.ok(Math.abs(out.totals.priceableUsd - 3.51) < 1e-6, `priceableUsd ${out.totals.priceableUsd}`);
+      const pros = out.assets.find((a) => a.symbol === "PROS");
+      assert.strictEqual(pros.balanceFormatted, "1");
+      assert.strictEqual(pros.address, null);
+    } finally { mock.close(); }
+  });
+
+  it("stale feeds are disclosed and excluded from the total, never guessed", async () => {
+    const mock = startMock({ nativeBalance: "0xde0b6b3a7640000", tokenBalance: (2n * 10n ** 18n).toString(), feedAgeSeconds: 999999 });
+    try {
+      const { out } = await runEngine("get_portfolio", JSON.stringify({ address: WALLET }), envFor(mock));
+      assert.strictEqual(out.totals.priceableUsd, 0);
+      assert.strictEqual(out.totals.unpriceableCount, 5);
+      for (const a of out.assets) {
+        assert.strictEqual(a.valueUsd, null);
+        assert.ok(/never guessed/.test(a.note), a.note);
+      }
+    } finally { mock.close(); }
+  });
+
+  it("transfer intent moving ~90% of priceable holdings gets the near-total exposure factor", async () => {
+    // Wallet holds 1 PROS and nothing else priceable (token balanceOf answers
+    // no data); transferring 0.9 PROS is 90% of priceable holdings.
+    const mock = startMock({ nativeBalance: "0xde0b6b3a7640000" });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "transfer", toAddress: "0x5555555555555555555555555555555555555555", amount: "0.9", walletAddress: WALLET }), envFor(mock));
+      assert.ok(out.riskFactors.some((f) => /90% of the wallet's priceable holdings/.test(f) && /near-total/.test(f)), JSON.stringify(out.riskFactors));
+    } finally { mock.close(); }
+  });
+
+  it("unpriceable tokenIn yields one disclosure factor and NO score change", async () => {
+    const swap = (amount) => JSON.stringify({ subjectType: "intent", action: "swap", tokenIn: "0x2222222222222222222222222222222222222222", tokenOut: "0x3333333333333333333333333333333333333333", walletAddress: WALLET, ...(amount ? { amount } : {}) });
+    const a = startMock({});
+    const b = startMock({});
+    try {
+      const { out: withAmount } = await runEngine("analyze", swap("5"), envFor(a));
+      const { out: withoutAmount } = await runEngine("analyze", swap(null), envFor(b));
+      assert.ok(withAmount.riskFactors.some((f) => /Portfolio exposure not evaluated/.test(f) && /no score change/.test(f)));
+      assert.strictEqual(withAmount.riskScore, withoutAmount.riskScore, "disclosure must not move the score");
+    } finally { a.close(); b.close(); }
+  });
+});
+
 describe("Anvita engine — vault & pool safety probes", () => {
   const VAULT = "0x6666666666666666666666666666666666666666";
   const POOL = "0x7777777777777777777777777777777777777777";
@@ -802,6 +857,7 @@ describe("Anvita engine — read-only invariant", () => {
     await runEngine("simulate_transaction", JSON.stringify({ to: tok, data: SEL.symbol }), env);
     await runEngine("get_spv_proof", JSON.stringify({ address: tok }), env);
     await runEngine("get_token_balance", JSON.stringify({ address: "0x1111111111111111111111111111111111111111", token: tok }), env);
+    await runEngine("get_portfolio", JSON.stringify({ address: "0x1111111111111111111111111111111111111111" }), env);
     await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: tok }), env);
     await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "bridge", walletAddress: "0x1111111111111111111111111111111111111111", token: tok, bridgeContract: "0x3333333333333333333333333333333333333333" }), env);
     const methods = mock.methodsCalled;

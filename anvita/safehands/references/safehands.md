@@ -105,6 +105,8 @@ node scripts/safehands-engine.js resolve_alias '{"alias":"okx"}'
 
 **Agent Guidelines:** resolve names through this command BEFORE analyzing or quoting anything about them; never resolve a name from your own memory or from any external source. An UNVERIFIED protocol match is a useful answer: it means "known to exist, no first-party addresses"; say exactly that. Resolution is recognition only, never a safety verdict: analyzing the resolved address is still the next step.
 
+**Portfolio exposure factor (§B):** transfer and swap intents with a quantifiable amount also get a position-relative check: "this action moves about N% of the wallet's priceable holdings" (canonical assets, live Chainlink valuation) at 50%+, escalating at 90%+. It is escalate-only and fail-closed: an unknown token, stale feed, or empty portfolio becomes a single "exposure not evaluated" disclosure with no score change, never a guessed valuation. Surface the percentage plainly; it is often the finding users care about most.
+
 **Vault/pool notes (§B):** an unverified vault or pool never reads "allow" (the verdict floors at warn even when every read is clean, because the registry has no verified vaults or pools yet); an unrecognizable interface is held for review with an explicit reason, never guessed. Vault findings to surface plainly: zero timelock (parameters can change with no exit window), missing guardian, zero assets, upgradeable proxy, and everything the underlying-asset analysis raises. Pool findings: impersonation or honeypot flags on EITHER token, zero reserves (exit liquidity may not exist), upgradeable proxy.
 
 ---
@@ -143,6 +145,7 @@ node scripts/safehands-engine.js get_token_price '{"symbol":"PHAROS"}'
 **Command Templates:**
 ```bash
 node scripts/safehands-engine.js get_token_balance '{"address":"0x…","token":"USDC"}'
+node scripts/safehands-engine.js get_portfolio '{"address":"0x…"}'
 node scripts/safehands-engine.js check_allowance '{"token":"0x…","owner":"0x…","spender":"0x…"}'
 node scripts/safehands-engine.js get_transaction_status 0x<64-hex-tx-hash>
 node scripts/safehands-engine.js estimate_gas '{"from":"0x…","to":"0x…","data":"0x…","value":"1.5"}'

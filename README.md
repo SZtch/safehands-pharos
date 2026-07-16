@@ -288,7 +288,7 @@ Read-only preflight works with **no `.env` at all**. Every write/execution/attes
 
 The goal: be the safety decision every AI agent consults *before* it acts on-chain. One rule holds throughout: **the safety verdict stays deterministic. The model advises; the policy engine decides.** The arc is a single verdict engine moving from *advising* an action (hosted, today) to *gating* it (verdict-bound signing) without the safety logic ever changing.
 
-**Shipped (v2.5.0):** 33-tool agent surface across MCP, HTTP, and CLI; hosted Anvita engine at read-path capability parity (offline calldata/approval decoding, dangerous-admin recognition, MultiSend aggregation, operator recipient denylist); deterministic policy engine (mainnet guard, approval limits, SSRF guard, spend caps); registry + attestation contracts live on Pharos Pacific Mainnet; GoPlus token-security and Goldsky indexing; x402 preflight and gated `pay_and_fetch`.
+**Shipped (v2.6.0):** 33-tool agent surface across MCP, HTTP, and CLI; hosted Anvita engine at read-path capability parity (offline calldata/approval decoding, dangerous-admin recognition, MultiSend aggregation, operator recipient denylist); deterministic policy engine (mainnet guard, approval limits, SSRF guard, spend caps); registry + attestation contracts live on Pharos Pacific Mainnet; GoPlus token-security and Goldsky indexing; x402 preflight and gated `pay_and_fetch`.
 
 **Next:** L1 risk-root committer automation, a data-availability serving endpoint, broader cross-agent reputation reads, and compliance-provider integrations for RWA flows (TRM Labs screening, Circle CCTP settlement; currently roadmap, not integrated).
 

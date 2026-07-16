@@ -72,6 +72,10 @@ get_token_balance {address,token?}  → { address, token:"native"|0x…, tokenSy
                                    (token = 0x address, bundled symbol, or PROS/pharos for native;
                                     unresolvable name → UNKNOWN_ALIAS; no data → TOKEN_READ_FAILED,
                                     balance reported UNKNOWN, never zero)
+get_portfolio {address}             → { assets[{symbol,address,balanceRaw,balanceFormatted,priceUsd,valueUsd,stale?,note?}],
+                                     totals:{priceableUsd,unpriceableCount}, valuation, limits }
+                                   (canonical assets only; unpriceable assets disclosed and excluded
+                                    from the total, never guessed)
 check_allowance {token,owner,spender}
                                  → { allowanceRaw, allowanceFormatted?, tokenSymbol?, tokenDecimals?,
                                      approvalRisk:"none|scoped|unlimited", approvalRiskHint }
