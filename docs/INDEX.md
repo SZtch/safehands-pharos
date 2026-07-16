@@ -45,6 +45,7 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 |-----|----------------|
 | [CANONICAL_CONTRACTS.md](./CANONICAL_CONTRACTS.md) | Ground truth for the official Pharos canonical contracts the preflight engine recognizes. |
 | [CONTRACTS_V2_DESIGN.md](./CONTRACTS_V2_DESIGN.md) | Design note for a second contract iteration: known limits of the v1 registry, committed-root history, content-addressed DA, revocation, intent tickets. Designed, not scheduled. |
+| [SWAP_HANDOFF_DESIGN.md](./SWAP_HANDOFF_DESIGN.md) | Design note for intent-to-signature swap handoff: prepare-swap endpoint, hosted delegation to a pinned provider endpoint, conversational rules. Designed, not scheduled. |
 | [reports/AUDIT_REMEDIATION_2026-07.md](./reports/AUDIT_REMEDIATION_2026-07.md) | Full July 2026 repository audit + remediation record: every finding, fix, and verification gate. |
 
 ## Self-hosting & advanced backend
