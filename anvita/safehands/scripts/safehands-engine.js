@@ -83,6 +83,7 @@ const ATTEST_ADDR = process.env.SAFEHANDS_ATTESTATION_ADDRESS
 const SEL = {
   name: "0x06fdde03", symbol: "0x95d89b41", decimals: "0x313ce567", totalSupply: "0x18160ddd",
   allowance: "0xdd62ed3e",          // allowance(address,address)
+  balanceOf: "0x70a08231",          // balanceOf(address)
   latestAnswer: "0x50d25bcd",       // Chainlink Push latestAnswer() int256
   latestTimestamp: "0x8205bf6a",    // Chainlink Push latestTimestamp() uint256
   currentMerkleRoot: "0x9ea97190", currentDataURI: "0x59e99f26",
@@ -1272,6 +1273,61 @@ async function cmdCheckAllowance(raw) {
   };
 }
 
+// get_token_balance: read-only balance lookup. Native PROS via eth_getBalance;
+// ERC-20 via balanceOf eth_call. Token may be a 0x address, a bundled canonical
+// symbol, or "PROS"/"pharos" for native; any other name fails closed (use
+// resolve_alias). A balanceOf call that returns no data reports the balance as
+// UNKNOWN, never as zero: zero is a real balance, absence of data is not.
+async function cmdTokenBalance(raw) {
+  const j = parseJsonArg(raw);
+  if (!j) return fail("VALIDATION_ERROR", "get_token_balance expects JSON: {\"address\":…, \"token\":…} (token = 0x address, bundled symbol, or \"PROS\" for native; omit for native).");
+  const keyErr = rejectKeyLike(j); if (keyErr) return fail("KEY_MATERIAL_REJECTED", keyErr);
+  const cg = chainGuard(j); if (cg) return cg;
+  const address = String(j.address || j.wallet || "").toLowerCase();
+  if (!ADDRESS_RE.test(address)) return fail("VALIDATION_ERROR", "'address' must be a valid 0x EVM address.");
+  const tokenRaw = String(j.token == null ? "PROS" : j.token).trim();
+  const norm = tokenRaw.toLowerCase();
+
+  if (norm === "" || norm === "pros" || norm === "pharos") {
+    const balHex = await rpc("eth_getBalance", [address, "latest"]);
+    const bal = decUint(balHex);
+    return {
+      success: true, command: "get_token_balance", address, token: "native", tokenSymbol: "PROS", tokenDecimals: 18,
+      balanceRaw: bal.toString(), balanceFormatted: formatUnits(bal, 18),
+      readOnly: "reads eth_getBalance only; this command never moves, approves, or exposes funds",
+      chainId: CHAIN_ID, timestamp: new Date().toISOString(),
+    };
+  }
+
+  let tokenAddr = null; let resolvedSymbol = null;
+  if (ADDRESS_RE.test(norm)) tokenAddr = norm;
+  else {
+    const sym = Object.keys(CANON_TOKENS).find((s) => s.toLowerCase() === norm);
+    if (sym) { tokenAddr = CANON_TOKENS[sym]; resolvedSymbol = sym; }
+  }
+  if (!tokenAddr) {
+    return fail("UNKNOWN_ALIAS", `'${tokenRaw}' is not a bundled canonical token symbol on Pharos Pacific Mainnet. Provide the token contract address, or resolve the name first with resolve_alias; this command never guesses a token address.`);
+  }
+
+  const [balHex, t] = await Promise.all([
+    ethCall(tokenAddr, SEL.balanceOf + encAddr(address)).catch(() => null),
+    erc20Probe(tokenAddr),
+  ]);
+  if (!balHex || balHex === "0x") {
+    return fail("TOKEN_READ_FAILED", `balanceOf(${address}) returned no data from ${tokenAddr}; the address may not be an ERC-20 token contract on chainId ${CHAIN_ID}. The balance is UNKNOWN, not zero.`, { token: tokenAddr });
+  }
+  const bal = decUint(balHex);
+  const cleanDecimals = Number.isInteger(t.decimals) && t.decimals >= 0 && t.decimals <= 100 ? t.decimals : null;
+  return {
+    success: true, command: "get_token_balance", address, token: tokenAddr,
+    tokenSymbol: resolvedSymbol ?? t.symbol ?? null, tokenDecimals: cleanDecimals,
+    balanceRaw: bal.toString(),
+    balanceFormatted: cleanDecimals == null ? null : formatUnits(bal, cleanDecimals),
+    readOnly: "reads balanceOf(address) only; this command never moves, approves, or exposes funds",
+    chainId: CHAIN_ID, timestamp: new Date().toISOString(),
+  };
+}
+
 async function cmdTxStatus(raw) {
   const j = parseJsonArg(raw);
   let h = raw;
@@ -1589,6 +1645,7 @@ function dispatch(cmd, arg) {
     : cmd === "get_gas_price" ? cmdGasPrice()
     : cmd === "get_token_price" ? cmdTokenPrice(arg ?? "")
     : cmd === "check_allowance" ? cmdCheckAllowance(arg ?? "")
+    : cmd === "get_token_balance" ? cmdTokenBalance(arg ?? "")
     : cmd === "get_transaction_status" ? cmdTxStatus(arg ?? "")
     : cmd === "estimate_gas" ? cmdEstimateGas(arg ?? "")
     : cmd === "simulate_transaction" ? cmdSimulateTransaction(arg ?? "")
@@ -1597,7 +1654,7 @@ function dispatch(cmd, arg) {
     : cmd === "get_execution_history" ? cmdExecutionHistory(arg ?? "")
     : cmd === "get_pool_info" ? cmdPoolInfo(arg ?? "")
     : cmd === "resolve_alias" ? cmdResolveAlias(arg ?? "")
-    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|resolve_alias|get_gas_price|get_token_price|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
+    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|resolve_alias|get_gas_price|get_token_price|get_token_balance|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
 }
 
 // Run the CLI ONLY when executed directly (node safehands-engine.js <cmd>), not

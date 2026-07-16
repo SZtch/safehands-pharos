@@ -130,12 +130,13 @@ node scripts/safehands-engine.js get_token_price '{"symbol":"PHAROS"}'
 
 ---
 
-## §H: Transaction introspection (allowance, status, estimate, simulate, proof)
+## §H: Transaction introspection (balance, allowance, status, estimate, simulate, proof)
 
-**Overview:** read-only inspection of approvals, transactions, and would-be transactions. **Nothing here signs, broadcasts, or changes state.**
+**Overview:** read-only inspection of balances, approvals, transactions, and would-be transactions. **Nothing here signs, broadcasts, or changes state.**
 
 **Command Templates:**
 ```bash
+node scripts/safehands-engine.js get_token_balance '{"address":"0x…","token":"USDC"}'
 node scripts/safehands-engine.js check_allowance '{"token":"0x…","owner":"0x…","spender":"0x…"}'
 node scripts/safehands-engine.js get_transaction_status 0x<64-hex-tx-hash>
 node scripts/safehands-engine.js estimate_gas '{"from":"0x…","to":"0x…","data":"0x…","value":"1.5"}'

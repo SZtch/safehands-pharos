@@ -23,7 +23,7 @@ function encString(s) {
 }
 const SEL = {
   name: "0x06fdde03", symbol: "0x95d89b41", decimals: "0x313ce567", totalSupply: "0x18160ddd",
-  allowance: "0xdd62ed3e", latestAnswer: "0x50d25bcd", latestTimestamp: "0x8205bf6a",
+  allowance: "0xdd62ed3e", balanceOf: "0x70a08231", latestAnswer: "0x50d25bcd", latestTimestamp: "0x8205bf6a",
   reputationOf: "0xdb89c044",
 };
 const CODE = "0x" + "60".repeat(120); // 120-byte bytecode → isContract, no small-bytecode penalty
@@ -38,6 +38,8 @@ function startMock(opts = {}) {
     feedAgeSeconds = 60,                      // fresh (< heartbeat)
     decimalsValue = 18,
     allowance = "0",
+    tokenBalance = null,                     // wei string; null → balanceOf answers "0x" (no data)
+    nativeBalance = "0x0",
     estimateGas = "success",                 // "success" | "revert"
     emptyCodeAddrs = [],                     // addresses that return no code
     txByHash = {}, txReceipt = {},
@@ -57,7 +59,7 @@ function startMock(opts = {}) {
         methodsCalled.push(method);
         res.setHeader("content-type", "application/json");
         let result = "0x";
-        if (method === "eth_getBalance") result = "0x0";
+        if (method === "eth_getBalance") result = nativeBalance;
         else if (method === "eth_getTransactionCount") result = "0x1";
         else if (method === "eth_getCode") result = empty.has(String(params?.[0] || "").toLowerCase()) ? "0x" : CODE;
         else if (method === "eth_chainId") result = "0x688"; // 1672
@@ -78,6 +80,7 @@ function startMock(opts = {}) {
           else if (data.startsWith(SEL.decimals)) result = encUint(decimalsValue);
           else if (data.startsWith(SEL.totalSupply)) result = encUint(10n ** 24n);
           else if (data.startsWith(SEL.allowance)) result = encUint(allowance);
+          else if (data.startsWith(SEL.balanceOf)) result = tokenBalance == null ? "0x" : encUint(tokenBalance);
           else if (data.startsWith(SEL.latestAnswer)) result = encUint(feedAnswer);
           else if (data.startsWith(SEL.latestTimestamp)) result = encUint(Math.floor(Date.now() / 1000) - feedAgeSeconds);
           else if (data.startsWith(SEL.reputationOf)) result = encUint(0);
@@ -304,6 +307,55 @@ describe("Anvita engine — market & network reads", () => {
     assert.strictEqual(out.success, false);
     assert.strictEqual(out.error.code, "PROVIDER_UNAVAILABLE");
     assert.ok(!("price" in out));
+  });
+});
+
+describe("Anvita engine — get_token_balance (read-only)", () => {
+  const WALLET = "0x1111111111111111111111111111111111111111";
+  const USDC = "0xc879c018db60520f4355c26ed1a6d572cdac1815"; // canonical, from known-pharos.json
+
+  it("native PROS balance via eth_getBalance", async () => {
+    const mock = startMock({ nativeBalance: "0xde0b6b3a7640000" }); // 1e18
+    try {
+      const { out, status } = await runEngine("get_token_balance", JSON.stringify({ address: WALLET }), envFor(mock));
+      assert.strictEqual(status, 0);
+      assert.strictEqual(out.token, "native");
+      assert.strictEqual(out.tokenSymbol, "PROS");
+      assert.strictEqual(out.balanceFormatted, "1");
+    } finally { mock.close(); }
+  });
+
+  it("ERC-20 balance by canonical symbol resolves the bundled address and formats by decimals", async () => {
+    const mock = startMock({ tokenBalance: "500000", decimalsValue: 6, symbol: "USDC" });
+    try {
+      const { out, status } = await runEngine("get_token_balance", JSON.stringify({ address: WALLET, token: "usdc" }), envFor(mock));
+      assert.strictEqual(status, 0);
+      assert.strictEqual(out.token, USDC);
+      assert.strictEqual(out.tokenSymbol, "USDC");
+      assert.strictEqual(out.tokenDecimals, 6);
+      assert.strictEqual(out.balanceRaw, "500000");
+      assert.strictEqual(out.balanceFormatted, "0.5");
+    } finally { mock.close(); }
+  });
+
+  it("balanceOf returning no data is UNKNOWN, never zero (fail-closed)", async () => {
+    const mock = startMock({}); // tokenBalance null → balanceOf answers "0x"
+    try {
+      const { out, status } = await runEngine("get_token_balance", JSON.stringify({ address: WALLET, token: "0x2222222222222222222222222222222222222222" }), envFor(mock));
+      assert.strictEqual(status, 1);
+      assert.strictEqual(out.error.code, "TOKEN_READ_FAILED");
+      assert.ok(/not zero/i.test(out.error.message));
+    } finally { mock.close(); }
+  });
+
+  it("an unrecognized token name fails closed with UNKNOWN_ALIAS, no guessing", async () => {
+    const mock = startMock({});
+    try {
+      const { out, status } = await runEngine("get_token_balance", JSON.stringify({ address: WALLET, token: "pepe" }), envFor(mock));
+      assert.strictEqual(status, 1);
+      assert.strictEqual(out.error.code, "UNKNOWN_ALIAS");
+      assert.strictEqual(mock.methodsCalled.length, 0, "must fail before any RPC call");
+    } finally { mock.close(); }
   });
 });
 

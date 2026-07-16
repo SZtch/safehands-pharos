@@ -64,6 +64,11 @@ If `assets/contracts.json` addresses are empty, `registry.configured`/`reputatio
 get_gas_price                    → { wei, gwei, source }
 get_token_price <symbol|json>    → { price, pair, symbol, aliased, aliasNote?, feedAddress, feedDecimals,
                                      answerRaw, updatedAt, feedAgeSeconds, heartbeatSeconds, stale, sourceStatus }
+get_token_balance {address,token?}  → { address, token:"native"|0x…, tokenSymbol?, tokenDecimals?,
+                                     balanceRaw, balanceFormatted? }
+                                   (token = 0x address, bundled symbol, or PROS/pharos for native;
+                                    unresolvable name → UNKNOWN_ALIAS; no data → TOKEN_READ_FAILED,
+                                    balance reported UNKNOWN, never zero)
 check_allowance {token,owner,spender}
                                  → { allowanceRaw, allowanceFormatted?, tokenSymbol?, tokenDecimals?,
                                      approvalRisk:"none|scoped|unlimited", approvalRiskHint }

@@ -45,6 +45,7 @@ Market & network reads:
 |---|---|---|
 | Gas price | `get_gas_price` | safehands.md §G |
 | Token price (Chainlink Push) | `get_token_price <symbol>` | safehands.md §G |
+| Wallet balance (native PROS or ERC-20) | `get_token_balance {"address","token?"}` | safehands.md §H |
 | ERC-20 allowance & approval risk | `check_allowance {"token","owner","spender"}` | safehands.md §H |
 | Transaction status | `get_transaction_status <txhash>` | safehands.md §H |
 | Gas estimate (dry run) | `estimate_gas {"to","data?","value?"}` | safehands.md §H |
