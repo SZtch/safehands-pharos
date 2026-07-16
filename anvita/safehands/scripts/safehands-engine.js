@@ -303,6 +303,45 @@ async function probeAddress(addr) {
   ]);
   return { balance: decUint(balHex), nonce: Number(decUint(nonceHex)), isContract: code && code !== "0x", codeSize: code ? (code.length - 2) / 2 : 0 };
 }
+// ── EIP-1967 proxy probe (direct storage reads; no external intel needed) ──
+// An upgradeable proxy's logic can be replaced by its admin at any time, so
+// proxy-ness is first-class on-chain evidence, read from the standard slots
+// rather than inferred from third-party flags. Reads are serialized: public
+// RPC rate limits punish parallel bursts (same reason cmdQuery serializes).
+const EIP1967_SLOTS = {
+  implementation: "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+  admin: "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103",
+  beacon: "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50",
+};
+function slotToAddress(hex) {
+  const h = String(hex || "").toLowerCase().replace(/^0x/, "").padStart(64, "0");
+  if (!/^0{24}[0-9a-f]{40}$/.test(h)) return null;
+  const addr = "0x" + h.slice(24);
+  return addr === "0x0000000000000000000000000000000000000000" ? null : addr;
+}
+async function proxyProbe(addr) {
+  const out = { isProxy: false, implementation: null, implementationHasCode: null, implementationLabel: null, admin: null, beacon: null };
+  try {
+    for (const [key, slot] of Object.entries(EIP1967_SLOTS)) {
+      const raw = await rpc("eth_getStorageAt", [addr, slot, "latest"]);
+      const a = slotToAddress(raw);
+      if (key === "implementation") out.implementation = a;
+      else if (key === "admin") out.admin = a;
+      else out.beacon = a;
+    }
+    out.isProxy = Boolean(out.implementation || out.beacon);
+    if (out.implementation) {
+      const code = await rpc("eth_getCode", [out.implementation, "latest"]);
+      out.implementationHasCode = Boolean(code && code !== "0x");
+      out.implementationLabel = CANON_CONTRACTS[out.implementation.toLowerCase()] || null;
+    }
+  } catch {
+    // Storage reads failing is not evidence either way; report proxy status unknown.
+    return { isProxy: null, implementation: null, implementationHasCode: null, implementationLabel: null, admin: null, beacon: null };
+  }
+  return out;
+}
+
 async function erc20Probe(addr) {
   const out = {};
   const tryCall = async (key, sel, dec) => { try { const r = await ethCall(addr, sel); out[key] = dec(r); } catch { out[key] = null; } };
@@ -448,6 +487,19 @@ async function analyzeContract(addr) {
     score += 25;
   }
   if (p.codeSize < 100) { factors.push(`Suspiciously small bytecode (${p.codeSize} bytes); possible proxy shell or stub`); score += 15; }
+  const px = await proxyProbe(addr);
+  if (px.isProxy) {
+    if (px.implementation && px.implementationHasCode === false) {
+      factors.push(`EIP-1967 proxy whose implementation slot points to ${px.implementation}, an address with NO code: a broken or deceptive proxy that cannot execute its advertised logic`);
+      score += 40;
+    } else if (px.implementation) {
+      factors.push(`Upgradeable EIP-1967 proxy (implementation ${px.implementation}${px.implementationLabel ? `; that bytecode address carries the registry label "${px.implementationLabel}", but this proxy address itself is NOT registry-verified and inherits no trust from it` : ""}): the logic can be replaced by its admin at any time`);
+      score += 10;
+    } else {
+      factors.push("Upgradeable beacon proxy (EIP-1967 beacon slot set): the logic can be replaced through the beacon at any time");
+      score += 10;
+    }
+  }
   const gp = await goplusToken(addr);
   const gpUnindexedToken = gp.reachable && !gp.data && !gp.schemaDrift && looksToken; // GoPlus answered but has never vetted THIS token
   if (gp.data && gp.factors.length) { factors.push(...gp.factors); score += gp.add; }
@@ -465,7 +517,7 @@ async function analyzeContract(addr) {
     score = Math.max(score, THREAT_INTEL_UNAVAILABLE_FLOOR);
   }
   return report(score, factors, { type: "contract", address: addr }, {
-    onChain: { isContract: true, codeSize: p.codeSize, token: looksToken ? t : null },
+    onChain: { isContract: true, codeSize: p.codeSize, token: looksToken ? t : null, proxy: px },
     ...(gp.identity ? { goplusTokenIdentity: gp.identity } : {}), // display-only, never scored
     intel: gpVerified ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unverified)",
     limits: gpVerified ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
@@ -1682,4 +1734,4 @@ if (invokedDirectly()) {
 
 // Exported for unit tests (import does not trigger the CLI above). These are the
 // pure decision/normalization helpers whose behavior the audit locks.
-export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore };
+export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress };

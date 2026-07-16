@@ -40,6 +40,8 @@ function startMock(opts = {}) {
     allowance = "0",
     tokenBalance = null,                     // wei string; null → balanceOf answers "0x" (no data)
     nativeBalance = "0x0",
+    proxyImpl = null,                        // address → EIP-1967 implementation slot answers it
+    proxyBeacon = null,
     estimateGas = "success",                 // "success" | "revert"
     emptyCodeAddrs = [],                     // addresses that return no code
     txByHash = {}, txReceipt = {},
@@ -68,6 +70,12 @@ function startMock(opts = {}) {
         else if (method === "eth_estimateGas") {
           if (estimateGas === "revert") return void res.end(rpcError(id, 3, "execution reverted: gas estimate failed"));
           result = "0x6f36"; // 28470
+        } else if (method === "eth_getStorageAt") {
+          const slot = String(params?.[1] || "").toLowerCase();
+          const enc = (a) => (a ? "0x" + a.toLowerCase().slice(2).padStart(64, "0") : "0x" + "0".repeat(64));
+          if (slot === "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc") result = enc(proxyImpl);
+          else if (slot === "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50") result = enc(proxyBeacon);
+          else result = "0x" + "0".repeat(64);
         } else if (method === "eth_getTransactionByHash") result = txByHash[params?.[0]] ?? null;
         else if (method === "eth_getTransactionReceipt") result = txReceipt[params?.[0]] ?? null;
         else if (method === "eth_getProof") {
@@ -359,6 +367,60 @@ describe("Anvita engine — get_token_balance (read-only)", () => {
   });
 });
 
+describe("Anvita engine — EIP-1967 proxy inspection (direct storage reads)", () => {
+  const ADDR = "0x2222222222222222222222222222222222222222";
+  const IMPL = "0x3333333333333333333333333333333333333333";
+
+  it("non-proxy contract reports isProxy false and no proxy factor", async () => {
+    const mock = startMock({});
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: ADDR }), envFor(mock));
+      assert.strictEqual(out.onChain.proxy.isProxy, false);
+      assert.ok(!out.riskFactors.some((f) => /EIP-1967/.test(f)), "no proxy factor expected");
+    } finally { mock.close(); }
+  });
+
+  it("proxy with a live implementation surfaces the upgradeable factor and evidence", async () => {
+    const mock = startMock({ proxyImpl: IMPL });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: ADDR }), envFor(mock));
+      assert.strictEqual(out.onChain.proxy.isProxy, true);
+      assert.strictEqual(out.onChain.proxy.implementation, IMPL);
+      assert.strictEqual(out.onChain.proxy.implementationHasCode, true);
+      assert.ok(out.riskFactors.some((f) => /Upgradeable EIP-1967 proxy/.test(f) && f.includes(IMPL)));
+    } finally { mock.close(); }
+  });
+
+  it("proxy whose implementation has NO code escalates hard (broken or deceptive)", async () => {
+    const base = startMock({ proxyImpl: IMPL });
+    const broken = startMock({ proxyImpl: IMPL, emptyCodeAddrs: [IMPL] });
+    try {
+      const { out: ok } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: ADDR }), envFor(base));
+      const { out: bad } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: ADDR }), envFor(broken));
+      assert.strictEqual(bad.onChain.proxy.implementationHasCode, false);
+      assert.ok(bad.riskFactors.some((f) => /NO code/.test(f) && /proxy/i.test(f)));
+      assert.ok(bad.riskScore > ok.riskScore, "codeless implementation must score strictly worse");
+    } finally { base.close(); broken.close(); }
+  });
+
+  it("beacon proxy (implementation slot empty, beacon set) is still flagged upgradeable", async () => {
+    const mock = startMock({ proxyBeacon: IMPL });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: ADDR }), envFor(mock));
+      assert.strictEqual(out.onChain.proxy.isProxy, true);
+      assert.ok(out.riskFactors.some((f) => /beacon proxy/i.test(f)));
+    } finally { mock.close(); }
+  });
+
+  it("slotToAddress accepts only cleanly-padded nonzero addresses", async () => {
+    const { slotToAddress } = await import(new URL("../anvita/safehands/scripts/safehands-engine.js", import.meta.url));
+    assert.strictEqual(slotToAddress("0x" + "00".repeat(12) + "33".repeat(20)), "0x" + "33".repeat(20));
+    assert.strictEqual(slotToAddress("0x" + "0".repeat(64)), null, "zero slot is not a proxy");
+    assert.strictEqual(slotToAddress("0x" + "ab" + "0".repeat(22) + "33".repeat(20)), null, "dirty padding must not decode");
+    assert.strictEqual(slotToAddress(null), null);
+  });
+});
+
 describe("Anvita engine — transaction introspection (read-only)", () => {
   let mock;
   after(() => mock?.close());
@@ -577,6 +639,7 @@ describe("Anvita engine — read-only invariant", () => {
     "eth_chainId", "eth_blockNumber", "eth_getBalance", "eth_getTransactionCount",
     "eth_getCode", "eth_call", "eth_gasPrice", "eth_estimateGas",
     "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getProof",
+    "eth_getStorageAt",
   ]);
 
   it("a full command battery only ever issues read-only JSON-RPC methods", async () => {
@@ -591,6 +654,7 @@ describe("Anvita engine — read-only invariant", () => {
     await runEngine("estimate_gas", JSON.stringify({ to: tok, valueWei: "0" }), env);
     await runEngine("simulate_transaction", JSON.stringify({ to: tok, data: SEL.symbol }), env);
     await runEngine("get_spv_proof", JSON.stringify({ address: tok }), env);
+    await runEngine("get_token_balance", JSON.stringify({ address: "0x1111111111111111111111111111111111111111", token: tok }), env);
     await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: tok }), env);
     await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "bridge", walletAddress: "0x1111111111111111111111111111111111111111", token: tok, bridgeContract: "0x3333333333333333333333333333333333333333" }), env);
     const methods = mock.methodsCalled;
