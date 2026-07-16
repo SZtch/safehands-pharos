@@ -60,6 +60,8 @@ Provider-gated (return `*_NOT_CONFIGURED` unless an endpoint is set in `assets/s
 | Execution history | `get_execution_history {"address"}` | safehands.md §I |
 | Pool info | `get_pool_info {"poolAddress?"}` | safehands.md §I |
 
+**Do not spend a call to learn a provider is unset.** Before invoking any provider-gated command, check the matching `providers.*.endpoint` in the bundled `assets/supported-protocols.json`: when it is `null` (the shipped default for all four), answer directly that this data source is not configured on the hosted deployment and offer what IS available (on-chain reads, analysis, records), without running the command. Every engine call is platform-billed; a call whose only possible answer is `*_NOT_CONFIGURED` wastes the user's money. Invoke these commands only when the bundled file shows a real endpoint.
+
 For every operation, read `references/safehands.md` and follow the matching section exactly; it contains command templates, parameter tables, output parsing, error handling, and agent guidelines.
 
 ## Required inputs
