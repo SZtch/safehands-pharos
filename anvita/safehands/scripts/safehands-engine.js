@@ -84,6 +84,17 @@ const SEL = {
   name: "0x06fdde03", symbol: "0x95d89b41", decimals: "0x313ce567", totalSupply: "0x18160ddd",
   allowance: "0xdd62ed3e",          // allowance(address,address)
   balanceOf: "0x70a08231",          // balanceOf(address)
+  // vault (ERC-4626 + MetaMorpho-style privilege surface) and pool probes
+  asset: "0x38d52e0f",              // ERC-4626 asset()
+  totalAssets: "0x01e1d114",        // ERC-4626 totalAssets()
+  owner: "0x8da5cb5b",              // owner()
+  curator: "0xe66f53b7",            // curator()
+  guardian: "0x452a9320",           // guardian()
+  timelockFn: "0xd33219b4",         // timelock()
+  feeFn: "0xddca3f43",              // fee()
+  token0: "0x0dfe1681", token1: "0xd21220a7", getReserves: "0x0902f1ac", // v2-style pair
+  dodoBase: "0x4a248d2a", dodoQuote: "0xd4b97046",                        // DODO _BASE_TOKEN_/_QUOTE_TOKEN_
+  dodoBaseReserve: "0x7d721504", dodoQuoteReserve: "0xbbf5ce78",
   latestAnswer: "0x50d25bcd",       // Chainlink Push latestAnswer() int256
   latestTimestamp: "0x8205bf6a",    // Chainlink Push latestTimestamp() uint256
   currentMerkleRoot: "0x9ea97190", currentDataURI: "0x59e99f26",
@@ -522,6 +533,136 @@ async function analyzeContract(addr) {
     intel: gpVerified ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unverified)",
     limits: gpVerified ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
       : "GoPlus verdict unavailable for this call: heuristics only; honeypot status unknown.",
+  });
+}
+
+// ── vault & pool safety probes ───────────────────────────────────────────
+// Deterministic on-chain reads only; no analytics, no yields, no rankings.
+// Both analyzers compose the verdicts of the assets they contain through
+// composeComponent (escalate-only: the container is never safer than its
+// worst content), and an unverified vault/pool never reads "allow": the
+// registry has no verified vaults or pools yet, so the floor keeps the
+// verdict at warn (review) even when every read looks clean.
+const UNVERIFIED_CONTAINER_FLOOR = 45;
+
+async function analyzeVault(addr) {
+  const p = await probeAddress(addr);
+  if (!p.isContract) {
+    return report(95, [`No contract code at ${addr}; either not deployed on Pharos mainnet or self-destructed`],
+      { type: "vault", address: addr }, { onChain: { isContract: false } });
+  }
+  const readAddr = async (sel) => slotToAddress(await ethCall(addr, sel).catch(() => null));
+  const readUint = async (sel) => { const h = await ethCall(addr, sel).catch(() => null); return h && h !== "0x" ? decUint(h) : null; };
+
+  const asset = await readAddr(SEL.asset);
+  if (!asset) {
+    return report(60, ["Not a recognizable ERC-4626 vault: asset() does not answer with a clean token address; the hosted engine cannot classify this contract as a vault. Held for review, never assumed safe."],
+      { type: "vault", address: addr }, { onChain: { isContract: true, codeSize: p.codeSize, vault: null } });
+  }
+
+  const factors = []; let score = 15;
+  const totalAssets = await readUint(SEL.totalAssets);
+  const owner = await readAddr(SEL.owner);
+  const curator = await readAddr(SEL.curator);
+  const guardian = await readAddr(SEL.guardian);
+  const timelock = await readUint(SEL.timelockFn);
+  const feeRaw = await readUint(SEL.feeFn);
+  const px = await proxyProbe(addr);
+
+  // The vault is never safer than the asset it holds (impersonation and
+  // honeypot checks on the underlying run through the full contract analyzer).
+  const assetReport = await analyzeContract(asset);
+  score = composeComponent(score, assetReport, "Underlying asset", factors, 25);
+
+  if (totalAssets === 0n) { factors.push("Vault holds zero assets: brand new, drained, or abandoned; there is nothing backing its shares right now"); score += 15; }
+  if (timelock !== null && timelock === 0n) { factors.push("Curator timelock is 0 seconds: caps, fees, and allocations can change instantly, leaving depositors no exit window"); score += 15; }
+  if (curator && !guardian) { factors.push("No guardian configured: nothing can veto curator changes before they take effect"); score += 10; }
+  if (px.isProxy) {
+    if (px.implementation && px.implementationHasCode === false) { factors.push(`EIP-1967 proxy whose implementation slot points to ${px.implementation}, an address with NO code: a broken or deceptive proxy`); score += 40; }
+    else { factors.push("Upgradeable EIP-1967 proxy: the vault logic can be replaced by its admin at any time"); score += 10; }
+  }
+  if (score < UNVERIFIED_CONTAINER_FLOOR) {
+    factors.push("Vault is not registry-verified: no first-party evidence for its curator, code, or provenance; review before depositing");
+    score = UNVERIFIED_CONTAINER_FLOOR;
+  }
+  return report(score, factors, { type: "vault", address: addr }, {
+    onChain: {
+      isContract: true, codeSize: p.codeSize, proxy: px,
+      vault: {
+        standard: "ERC-4626 surface detected",
+        asset,
+        totalAssetsRaw: totalAssets === null ? null : totalAssets.toString(),
+        owner, curator, guardian,
+        timelockSeconds: timelock === null ? null : timelock.toString(),
+        feeRaw: feeRaw === null ? null : feeRaw.toString(),
+      },
+    },
+    components: { underlyingAsset: assetReport },
+    limits: "Vault-surface reads only (ERC-4626 + privilege getters): allocation strategy, market exposure, and off-chain curator behavior are not audited here.",
+  });
+}
+
+async function analyzePool(addr) {
+  const p = await probeAddress(addr);
+  if (!p.isContract) {
+    return report(95, [`No contract code at ${addr}; either not deployed on Pharos mainnet or self-destructed`],
+      { type: "pool", address: addr }, { onChain: { isContract: false } });
+  }
+  const readAddr = async (sel) => slotToAddress(await ethCall(addr, sel).catch(() => null));
+  const readUint = async (sel) => { const h = await ethCall(addr, sel).catch(() => null); return h && h !== "0x" ? decUint(h) : null; };
+
+  let shape = null, tokenA = null, tokenB = null, reserveA = null, reserveB = null;
+  const t0 = await readAddr(SEL.token0);
+  const t1 = t0 ? await readAddr(SEL.token1) : null;
+  if (t0 && t1) {
+    shape = "v2-pair"; tokenA = t0; tokenB = t1;
+    const rHex = await ethCall(addr, SEL.getReserves).catch(() => null);
+    if (rHex && rHex.length >= 2 + 128) { reserveA = BigInt("0x" + rHex.slice(2, 66)); reserveB = BigInt("0x" + rHex.slice(66, 130)); }
+  } else {
+    const b = await readAddr(SEL.dodoBase);
+    const q = b ? await readAddr(SEL.dodoQuote) : null;
+    if (b && q) {
+      shape = "dodo-machine"; tokenA = b; tokenB = q;
+      reserveA = await readUint(SEL.dodoBaseReserve);
+      reserveB = await readUint(SEL.dodoQuoteReserve);
+    }
+  }
+  if (!shape) {
+    return report(60, ["Not a recognizable pool interface (neither a v2-style pair nor a DODO machine): the hosted engine cannot classify this contract as a pool. Held for review, never assumed safe. Uniswap-v4-style pools are IDs inside a PoolManager, not standalone contracts, and cannot be probed this way."],
+      { type: "pool", address: addr }, { onChain: { isContract: true, codeSize: p.codeSize, pool: null } });
+  }
+
+  const factors = []; let score = 15;
+  // A pool is never safer than either of its sides: the classic pool scam
+  // pairs a canonical token with an impersonation of another canonical token.
+  const reportA = await analyzeContract(tokenA);
+  score = composeComponent(score, reportA, shape === "v2-pair" ? "token0" : "base token", factors, 25);
+  const reportB = await analyzeContract(tokenB);
+  score = composeComponent(score, reportB, shape === "v2-pair" ? "token1" : "quote token", factors, 25);
+
+  if (reserveA === 0n || reserveB === 0n) { factors.push("Pool reserves are zero on at least one side: empty or drained; exit liquidity may not exist"); score += 20; }
+  const px = await proxyProbe(addr);
+  if (px.isProxy) {
+    if (px.implementation && px.implementationHasCode === false) { factors.push(`EIP-1967 proxy whose implementation slot points to ${px.implementation}, an address with NO code: a broken or deceptive proxy`); score += 40; }
+    else { factors.push("Upgradeable EIP-1967 proxy: the pool logic can be replaced by its admin at any time"); score += 10; }
+  }
+  if (score < UNVERIFIED_CONTAINER_FLOOR) {
+    factors.push("Pool is not registry-verified: no first-party evidence ties this pool to a verified protocol; review before providing or routing liquidity");
+    score = UNVERIFIED_CONTAINER_FLOOR;
+  }
+  return report(score, factors, { type: "pool", address: addr }, {
+    onChain: {
+      isContract: true, codeSize: p.codeSize, proxy: px,
+      pool: {
+        shape,
+        [shape === "v2-pair" ? "token0" : "baseToken"]: tokenA,
+        [shape === "v2-pair" ? "token1" : "quoteToken"]: tokenB,
+        [shape === "v2-pair" ? "reserve0Raw" : "baseReserveRaw"]: reserveA === null ? null : reserveA.toString(),
+        [shape === "v2-pair" ? "reserve1Raw" : "quoteReserveRaw"]: reserveB === null ? null : reserveB.toString(),
+      },
+    },
+    components: { [shape === "v2-pair" ? "token0" : "baseToken"]: reportA, [shape === "v2-pair" ? "token1" : "quoteToken"]: reportB },
+    limits: "Pool-surface reads only (pair tokens + raw reserves): fees, price curves, impermanent-loss profiles, and LP-token distribution are not audited here. Raw reserves are liquidity context, never a canonical price.",
   });
 }
 
@@ -1091,12 +1232,15 @@ async function cmdAnalyze(raw) {
   if (input.chainId != null && Number(input.chainId) !== CHAIN_ID)
     return fail("CHAIN_NOT_SUPPORTED", `Only Pharos pacific-mainnet (chainId ${CHAIN_ID}) is supported.`);
   const st = String(input.subjectType || "");
-  if (st === "wallet" || st === "contract") {
+  if (st === "wallet" || st === "contract" || st === "vault" || st === "pool") {
     if (!ADDRESS_RE.test(String(input.address || ""))) return fail("VALIDATION_ERROR", "'address' must be a valid 0x EVM address.");
-    return st === "wallet" ? analyzeWallet(input.address) : analyzeContract(input.address);
+    return st === "wallet" ? analyzeWallet(input.address)
+      : st === "vault" ? analyzeVault(input.address)
+      : st === "pool" ? analyzePool(input.address)
+      : analyzeContract(input.address);
   }
   if (st === "intent") return analyzeIntent(input);
-  return fail("VALIDATION_ERROR", "subjectType must be 'wallet', 'contract', or 'intent'. (tx-hash analysis requires the full SafeHands backend and is not available fully-hosted.)");
+  return fail("VALIDATION_ERROR", "subjectType must be 'wallet', 'contract', 'vault', 'pool', or 'intent'. (tx-hash analysis requires the full SafeHands backend and is not available fully-hosted.)");
 }
 
 // Normalize a committed risk record into the query response shape. A missing or

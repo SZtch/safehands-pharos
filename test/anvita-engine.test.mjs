@@ -42,6 +42,7 @@ function startMock(opts = {}) {
     nativeBalance = "0x0",
     proxyImpl = null,                        // address → EIP-1967 implementation slot answers it
     proxyBeacon = null,
+    callResults = {},                        // "selector" or "to|selector" → raw eth_call result hex (checked first)
     estimateGas = "success",                 // "success" | "revert"
     emptyCodeAddrs = [],                     // addresses that return no code
     txByHash = {}, txReceipt = {},
@@ -83,7 +84,12 @@ function startMock(opts = {}) {
           result = { address: params?.[0], balance: "0x0", codeHash: "0x" + "cd".repeat(32), nonce: "0x0", storageHash: "0x" + "ab".repeat(32), accountProof: [], storageProof: [] };
         } else if (method === "eth_call") {
           const data = params?.[0]?.data ?? "";
-          if (data.startsWith(SEL.symbol)) result = encString(symbol);
+          const to = String(params?.[0]?.to ?? "").toLowerCase();
+          const sel10 = data.slice(0, 10);
+          const scoped = callResults[`${to}|${sel10}`];
+          if (scoped !== undefined) result = scoped;
+          else if (callResults[sel10] !== undefined) result = callResults[sel10];
+          else if (data.startsWith(SEL.symbol)) result = encString(symbol);
           else if (data.startsWith(SEL.name)) result = encString("Mock Token");
           else if (data.startsWith(SEL.decimals)) result = encUint(decimalsValue);
           else if (data.startsWith(SEL.totalSupply)) result = encUint(10n ** 24n);
@@ -363,6 +369,147 @@ describe("Anvita engine — get_token_balance (read-only)", () => {
       assert.strictEqual(status, 1);
       assert.strictEqual(out.error.code, "UNKNOWN_ALIAS");
       assert.strictEqual(mock.methodsCalled.length, 0, "must fail before any RPC call");
+    } finally { mock.close(); }
+  });
+});
+
+describe("Anvita engine — vault & pool safety probes", () => {
+  const VAULT = "0x6666666666666666666666666666666666666666";
+  const POOL = "0x7777777777777777777777777777777777777777";
+  const TOKEN_A = "0x8888888888888888888888888888888888888888";
+  const TOKEN_B = "0x9999999999999999999999999999999999999999";
+  const encAddrWord = (a) => "0x" + a.toLowerCase().slice(2).padStart(64, "0");
+  const SELX = {
+    asset: "0x38d52e0f", totalAssets: "0x01e1d114", timelock: "0xd33219b4",
+    curator: "0xe66f53b7", guardian: "0x452a9320",
+    token0: "0x0dfe1681", token1: "0xd21220a7", getReserves: "0x0902f1ac",
+    dodoBase: "0x4a248d2a", dodoQuote: "0xd4b97046", dodoBaseReserve: "0x7d721504", dodoQuoteReserve: "0xbbf5ce78",
+  };
+
+  it("ERC-4626 vault: underlying asset composed escalate-only, unverified floor at warn", async () => {
+    const mock = startMock({
+      callResults: {
+        [`${VAULT}|${SELX.asset}`]: encAddrWord(TOKEN_A),
+        [`${VAULT}|${SELX.totalAssets}`]: encUint(10n ** 18n),
+        [`${VAULT}|${SELX.timelock}`]: encUint(86400),
+      },
+    });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "vault", address: VAULT }), envFor(mock));
+      assert.strictEqual(out.success, true);
+      assert.strictEqual(out.subject.type, "vault");
+      assert.strictEqual(out.onChain.vault.asset, TOKEN_A);
+      assert.ok(out.components.underlyingAsset);
+      assert.ok(out.riskScore >= 45, "unverified vault must never fall below the review floor");
+      assert.ok(out.riskFactors.some((f) => /not registry-verified/i.test(f)) || out.riskScore > 45);
+      assert.notStrictEqual(out.recommendation, "allow");
+    } finally { mock.close(); }
+  });
+
+  it("vault with zero timelock and zero assets surfaces both findings", async () => {
+    const mock = startMock({
+      callResults: {
+        [`${VAULT}|${SELX.asset}`]: encAddrWord(TOKEN_A),
+        [`${VAULT}|${SELX.totalAssets}`]: encUint(0),
+        [`${VAULT}|${SELX.timelock}`]: encUint(0),
+        [`${VAULT}|${SELX.curator}`]: encAddrWord(TOKEN_B),
+      },
+    });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "vault", address: VAULT }), envFor(mock));
+      assert.ok(out.riskFactors.some((f) => /timelock is 0 seconds/i.test(f)));
+      assert.ok(out.riskFactors.some((f) => /zero assets/i.test(f)));
+      assert.ok(out.riskFactors.some((f) => /No guardian/i.test(f)));
+    } finally { mock.close(); }
+  });
+
+  it("a contract without asset() is held for review, never classified as a vault", async () => {
+    const mock = startMock({});
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "vault", address: VAULT }), envFor(mock));
+      assert.strictEqual(out.riskScore, 60);
+      assert.ok(out.riskFactors.some((f) => /cannot classify this contract as a vault/i.test(f)));
+      assert.strictEqual(out.onChain.vault, null);
+    } finally { mock.close(); }
+  });
+
+  it("v2 pool: both tokens analyzed, reserves read, unverified floor at warn", async () => {
+    const mock = startMock({
+      callResults: {
+        [`${POOL}|${SELX.token0}`]: encAddrWord(TOKEN_A),
+        [`${POOL}|${SELX.token1}`]: encAddrWord(TOKEN_B),
+        [`${POOL}|${SELX.getReserves}`]: "0x" + BigInt(5000).toString(16).padStart(64, "0") + BigInt(7000).toString(16).padStart(64, "0") + BigInt(1).toString(16).padStart(64, "0"),
+      },
+    });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "pool", address: POOL }), envFor(mock));
+      assert.strictEqual(out.onChain.pool.shape, "v2-pair");
+      assert.strictEqual(out.onChain.pool.token0, TOKEN_A);
+      assert.strictEqual(out.onChain.pool.token1, TOKEN_B);
+      assert.strictEqual(out.onChain.pool.reserve0Raw, "5000");
+      assert.ok(out.components.token0 && out.components.token1);
+      assert.ok(out.riskScore >= 45);
+      assert.notStrictEqual(out.recommendation, "allow");
+    } finally { mock.close(); }
+  });
+
+  it("pool with a zero reserve warns about missing exit liquidity", async () => {
+    const mock = startMock({
+      callResults: {
+        [`${POOL}|${SELX.token0}`]: encAddrWord(TOKEN_A),
+        [`${POOL}|${SELX.token1}`]: encAddrWord(TOKEN_B),
+        [`${POOL}|${SELX.getReserves}`]: "0x" + "0".repeat(64) + BigInt(7000).toString(16).padStart(64, "0") + "0".repeat(64),
+      },
+    });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "pool", address: POOL }), envFor(mock));
+      assert.ok(out.riskFactors.some((f) => /empty or drained/i.test(f)));
+    } finally { mock.close(); }
+  });
+
+  it("pool escalates to its worst side: an impersonation token0 dominates the verdict", async () => {
+    // Every erc20Probe answers symbol "USDC"; TOKEN_A is not the canonical
+    // USDC address, so the token analysis flags impersonation (+75) and the
+    // pool verdict must floor at that score (escalate-only composition).
+    const mock = startMock({
+      symbol: "USDC",
+      callResults: {
+        [`${POOL}|${SELX.token0}`]: encAddrWord(TOKEN_A),
+        [`${POOL}|${SELX.token1}`]: encAddrWord(TOKEN_B),
+        [`${POOL}|${SELX.getReserves}`]: "0x" + BigInt(5000).toString(16).padStart(64, "0") + BigInt(7000).toString(16).padStart(64, "0") + BigInt(1).toString(16).padStart(64, "0"),
+      },
+    });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "pool", address: POOL }), envFor(mock));
+      assert.ok(out.components.token0.riskScore >= 75, "token0 analysis must flag impersonation");
+      assert.ok(out.riskScore >= out.components.token0.riskScore, "pool must never score safer than its worst token");
+      assert.strictEqual(out.recommendation, "block");
+    } finally { mock.close(); }
+  });
+
+  it("DODO machine shape is recognized via base/quote getters", async () => {
+    const mock = startMock({
+      callResults: {
+        [`${POOL}|${SELX.dodoBase}`]: encAddrWord(TOKEN_A),
+        [`${POOL}|${SELX.dodoQuote}`]: encAddrWord(TOKEN_B),
+        [`${POOL}|${SELX.dodoBaseReserve}`]: encUint(1000),
+        [`${POOL}|${SELX.dodoQuoteReserve}`]: encUint(2000),
+      },
+    });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "pool", address: POOL }), envFor(mock));
+      assert.strictEqual(out.onChain.pool.shape, "dodo-machine");
+      assert.strictEqual(out.onChain.pool.baseToken, TOKEN_A);
+      assert.strictEqual(out.onChain.pool.quoteReserveRaw, "2000");
+    } finally { mock.close(); }
+  });
+
+  it("a contract with neither pool shape is held for review", async () => {
+    const mock = startMock({});
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "pool", address: POOL }), envFor(mock));
+      assert.strictEqual(out.riskScore, 60);
+      assert.ok(out.riskFactors.some((f) => /cannot classify this contract as a pool/i.test(f)));
     } finally { mock.close(); }
   });
 });

@@ -15,6 +15,8 @@ In (one of):
 ```json
 { "subjectType": "wallet",   "address": "0x…40hex" }
 { "subjectType": "contract", "address": "0x…40hex" }
+{ "subjectType": "vault",    "address": "0x…40hex" }   // ERC-4626 surface; onChain.vault + components.underlyingAsset
+{ "subjectType": "pool",     "address": "0x…40hex" }   // v2 pair / DODO machine; onChain.pool + components per token
 { "subjectType": "intent", "action": "transfer", "toAddress": "0x…", "amount": "1.5", "walletAddress": "0x…" }
 { "subjectType": "intent", "action": "swap", "tokenIn": "0x…", "tokenOut": "0x…", "walletAddress": "0x…" }
 ```

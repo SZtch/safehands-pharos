@@ -34,6 +34,8 @@ Analysis & records:
 | Engine & RPC health | `health` | safehands.md §A |
 | Wallet risk | `analyze {"subjectType":"wallet","address":…}` | safehands.md §B |
 | Token/contract risk | `analyze {"subjectType":"contract","address":…}` | safehands.md §B |
+| Vault safety (ERC-4626 surface + privilege reads) | `analyze {"subjectType":"vault","address":…}` | safehands.md §B |
+| Pool safety (v2 pair / DODO machine, both tokens analyzed) | `analyze {"subjectType":"pool","address":…}` | safehands.md §B |
 | Transfer/swap intent | `analyze {"subjectType":"intent","action":"transfer"|"swap",…}` | safehands.md §B |
 | RealFi intents | `analyze {"subjectType":"intent","action":"bridge"|"yield_deposit"|"vault_deposit"|"staking"|"tokenized_asset"|"fiat_ramp"|"reward_campaign"|"x402_payment",…}` | realfi-intents.md |
 | On-chain records & reputation | `query <address>` | safehands.md §C |

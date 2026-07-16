@@ -39,6 +39,10 @@ node scripts/safehands-engine.js health
 node scripts/safehands-engine.js analyze '{"subjectType":"wallet","address":"<0xADDR>"}'
 # token / contract
 node scripts/safehands-engine.js analyze '{"subjectType":"contract","address":"<0xADDR>"}'
+# vault (ERC-4626 surface: underlying asset fully analyzed, curator/guardian/timelock/fee read, proxy slots read)
+node scripts/safehands-engine.js analyze '{"subjectType":"vault","address":"<0xVAULT>"}'
+# pool (v2-style pair or DODO machine: BOTH tokens fully analyzed, raw reserves read; a pool is never safer than its worst side)
+node scripts/safehands-engine.js analyze '{"subjectType":"pool","address":"<0xPOOL>"}'
 # transfer intent (walletAddress REQUIRED)
 node scripts/safehands-engine.js analyze '{"subjectType":"intent","action":"transfer","toAddress":"<0xTO>","amount":"1.5","walletAddress":"<0xACTING>"}'
 # swap intent
@@ -100,6 +104,8 @@ node scripts/safehands-engine.js resolve_alias '{"alias":"okx"}'
 **Error Handling:** `UNKNOWN_ALIAS` → the name matches nothing bundled; treat it as unrecognized AND unverified, tell the user not to take an address for it from listings, search, or chat, and offer to check an explicit 0x address instead. `ALIAS_CHARSET_REJECTED` → non-ASCII input (lookalike-character guard); ask the user to retype plainly or give the address.
 
 **Agent Guidelines:** resolve names through this command BEFORE analyzing or quoting anything about them; never resolve a name from your own memory or from any external source. An UNVERIFIED protocol match is a useful answer: it means "known to exist, no first-party addresses"; say exactly that. Resolution is recognition only, never a safety verdict: analyzing the resolved address is still the next step.
+
+**Vault/pool notes (§B):** an unverified vault or pool never reads "allow" (the verdict floors at warn even when every read is clean, because the registry has no verified vaults or pools yet); an unrecognizable interface is held for review with an explicit reason, never guessed. Vault findings to surface plainly: zero timelock (parameters can change with no exit window), missing guardian, zero assets, upgradeable proxy, and everything the underlying-asset analysis raises. Pool findings: impersonation or honeypot flags on EITHER token, zero reserves (exit liquidity may not exist), upgradeable proxy.
 
 ---
 
