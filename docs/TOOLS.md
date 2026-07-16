@@ -53,7 +53,7 @@ Execution tools are OFF by default behind env gates plus the policy verdict (see
 | Tool | What it does |
 |------|--------------|
 | `safehands_safe_execute` | Preflight + execute in one call |
-| `execute_swap` | Swap via FaroSwap / DODO routing |
+| `execute_swap` | Swap via FaroSwap / DODO routing (default) or the OKX DEX aggregator (`venue: okx`, registry-verified router, requires OKX API credentials) |
 | `send_payment` | Send native PROS |
 | `approve_token` | ERC-20 approval (unlimited blocked by default) |
 | `publish_risk_score` | Publish a risk record (legacy) |

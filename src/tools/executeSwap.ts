@@ -3,10 +3,11 @@ import { z } from "zod";
 import { isAddress, type Account } from "viem";
 import { publicClient, createPharosWalletClientFromAccount, getExplorerUrl } from "../lib/pharosClient.js";
 import { getDodoRoute, isNativeToken, resolveTokenAddress, resolveTokenDecimals, toWei, DodoNotConfiguredError } from "../lib/dodoApi.js";
+import { getOkxSwapQuote, OkxNotConfiguredError, OkxCredentialsMissingError } from "../lib/okxDexApi.js";
 import { addressTrustEvidence } from "../lib/ecosystemRegistry.js";
 import { assessRisk } from "../lib/riskEngine.js";
 import { fail, ok, classifyExternalError } from "../lib/toolResponse.js";
-import { ERC20_ABI, MAX_SLIPPAGE_PCT, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist } from "../lib/constants.js";
+import { ERC20_ABI, MAX_SLIPPAGE_PCT, MAX_TX_AMOUNT_PROS, CHAIN_ID, PHAROS_ENVIRONMENT, IS_MAINNET, isAllowedDodoRouter, isAllowedDodoSpender, activeDodoRouterAllowlist, activeDodoSpenderAllowlist, isAllowedOkxRouter, isAllowedOkxSpender, activeOkxRouterAllowlist, activeOkxSpenderAllowlist } from "../lib/constants.js";
 import { requireManagedExecutionReady, isManagedExecutionFailure } from "../lib/managedExecution.js";
 import { evaluateActionPolicy, riskEvidenceFromAssessment } from "../lib/policy/actionPolicyEngine.js";
 import { enforceWriteDecision } from "../lib/policy/writeExecutionGate.js";
@@ -19,6 +20,7 @@ export const executeSwapSchema = z.object({
   tokenOut: z.string(),
   amountIn: z.string(),
   slippageTolerance: z.number().optional().describe("Override auto slippage. Default: 3 (Auto mode adjusts to 0.5 for major, 0.1 for stablecoins)"),
+  venue: z.enum(["dodo", "okx"]).optional().default("dodo").describe("Swap route venue. dodo (default): FaroSwap/DODO route API. okx: OKX DEX aggregator (registry-verified router/spender; requires OKX_API_KEY, OKX_API_SECRET, and OKX_API_PASSPHRASE, otherwise fails closed)."),
   agentId: z.string().optional().describe("Managed wallet agentId when WALLET_MODE=managed-mainnet"),
   confirm: z.boolean().optional().default(false).describe("Explicit acknowledgement to proceed when SafeHands returns REQUIRE_CONFIRMATION / REQUIRE_TOKEN_REVIEW. Hard BLOCK / honeypot / over-limit / unpriceable input token / missing token-security intel are never overridable."),
 }).strict();
@@ -48,7 +50,7 @@ export function evaluateSwapQuoteGuards(
   if (!Number.isFinite(amountOut) || amountOut <= 0) {
     return {
       code: "INVALID_QUOTE_AMOUNT_OUT",
-      message: `Swap blocked: DODO quote returned a non-positive amountOut (${quote.amountOut}). Broadcasting would spend tokenIn for nothing; this is a hard stop and is never confirmable.`,
+      message: `Swap blocked: the venue quote returned a non-positive amountOut (${quote.amountOut}). Broadcasting would spend tokenIn for nothing; this is a hard stop and is never confirmable.`,
     };
   }
   return null;
@@ -75,7 +77,7 @@ export async function simulateSwapCalldata(
 
 export const executeSwapTool = {
   name: "execute_swap",
-  description: "Swap tokens via FaroSwap/DODO. Runs a risk assessment first and feeds it as evidence to the SafeHands policy engine, the sole ALLOW/BLOCK/REQUIRE_CONFIRMATION decider (a risk score above the block threshold fails its risk_score check and blocks, never confirmable). Gated by WRITE_TOOLS_ENABLED.",
+  description: "Swap tokens via FaroSwap/DODO (default) or the OKX DEX aggregator (venue: okx). Runs a risk assessment first and feeds it as evidence to the SafeHands policy engine, the sole ALLOW/BLOCK/REQUIRE_CONFIRMATION decider (a risk score above the block threshold fails its risk_score check and blocks, never confirmable). Gated by WRITE_TOOLS_ENABLED.",
   inputSchema: executeSwapSchema,
 };
 
@@ -166,18 +168,22 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
   const swapGate = enforceWriteDecision(policy, { confirmed: input.confirm === true, toolName: "execute_swap", requireRiskEvidence: true });
   if (swapGate) return swapGate;
 
+  const venue = input.venue;
+  const venueSource = venue === "okx" ? "okx_dex_api" : "dodo_api";
+
   let reserved = false;
   try {
-    const quote = await getDodoRoute({
+    const quoteParams = {
       fromToken: input.tokenIn,
       toToken: input.tokenOut,
       amountHuman: input.amountIn,
       walletAddress,
       slippage: input.slippageTolerance,
-    });
+    };
+    const quote = venue === "okx" ? await getOkxSwapQuote(quoteParams) : await getDodoRoute(quoteParams);
 
     if (!quote.routeAvailable) {
-      return fail("NO_ROUTE_AVAILABLE", "No swap route available: insufficient liquidity", true, "dodo_api");
+      return fail("NO_ROUTE_AVAILABLE", "No swap route available: insufficient liquidity", true, venueSource);
     }
 
     const quoteGuard = evaluateSwapQuoteGuards(quote, input.slippageTolerance);
@@ -185,22 +191,41 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
       return fail(quoteGuard.code, quoteGuard.message, false, "execute_swap");
     }
 
-    if (!isAddress(quote.to) || !isAllowedDodoRouter(quote.to)) {
-      return fail(
-        "UNTRUSTED_DODO_ROUTER",
-        `DODO quote returned untrusted router/tx target ${quote.to}. Configure DODO_ROUTER_ALLOWLIST/SAFEHANDS_DODO_ROUTER_ALLOWLIST with a verified router before enabling mainnet swap execution. Current allowlist: ${activeDodoRouterAllowlist().join(",") || "empty"}`,
-        false,
-        "execute_swap"
-      );
+    // Containment, not trust: the quote's router/spender must be inside the
+    // venue's allowlist. Trust evidence still comes only from the registry
+    // (addressTrustEvidence below).
+    const routerAllowed = venue === "okx" ? isAllowedOkxRouter(quote.to) : isAllowedDodoRouter(quote.to);
+    if (!isAddress(quote.to) || !routerAllowed) {
+      return venue === "okx"
+        ? fail(
+            "UNTRUSTED_OKX_ROUTER",
+            `OKX quote returned untrusted router/tx target ${quote.to}. Configure OKX_ROUTER_ALLOWLIST/SAFEHANDS_OKX_ROUTER_ALLOWLIST with a verified router before enabling mainnet swap execution. Current allowlist: ${activeOkxRouterAllowlist().join(",") || "empty"}`,
+            false,
+            "execute_swap"
+          )
+        : fail(
+            "UNTRUSTED_DODO_ROUTER",
+            `DODO quote returned untrusted router/tx target ${quote.to}. Configure DODO_ROUTER_ALLOWLIST/SAFEHANDS_DODO_ROUTER_ALLOWLIST with a verified router before enabling mainnet swap execution. Current allowlist: ${activeDodoRouterAllowlist().join(",") || "empty"}`,
+            false,
+            "execute_swap"
+          );
     }
 
-    if (!isNativeToken(input.tokenIn) && (!isAddress(quote.approveAddress) || !isAllowedDodoSpender(quote.approveAddress))) {
-      return fail(
-        "UNTRUSTED_DODO_SPENDER",
-        `DODO quote returned untrusted approval target ${quote.approveAddress}. Configure DODO_SPENDER_ALLOWLIST/SAFEHANDS_DODO_SPENDER_ALLOWLIST with a verified approve proxy before enabling mainnet token swaps. Current allowlist: ${activeDodoSpenderAllowlist().join(",") || "empty"}`,
-        false,
-        "execute_swap"
-      );
+    const spenderAllowed = venue === "okx" ? isAllowedOkxSpender(quote.approveAddress) : isAllowedDodoSpender(quote.approveAddress);
+    if (!isNativeToken(input.tokenIn) && (!isAddress(quote.approveAddress) || !spenderAllowed)) {
+      return venue === "okx"
+        ? fail(
+            "UNTRUSTED_OKX_SPENDER",
+            `OKX quote returned untrusted approval target ${quote.approveAddress}. Configure OKX_SPENDER_ALLOWLIST/SAFEHANDS_OKX_SPENDER_ALLOWLIST with a verified approve contract before enabling mainnet token swaps. Current allowlist: ${activeOkxSpenderAllowlist().join(",") || "empty"}`,
+            false,
+            "execute_swap"
+          )
+        : fail(
+            "UNTRUSTED_DODO_SPENDER",
+            `DODO quote returned untrusted approval target ${quote.approveAddress}. Configure DODO_SPENDER_ALLOWLIST/SAFEHANDS_DODO_SPENDER_ALLOWLIST with a verified approve proxy before enabling mainnet token swaps. Current allowlist: ${activeDodoSpenderAllowlist().join(",") || "empty"}`,
+            false,
+            "execute_swap"
+          );
     }
 
     const wallet = createPharosWalletClientFromAccount(signer.account);
@@ -297,6 +322,7 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     return ok({
       txHash,
       explorerUrl: getExplorerUrl(txHash),
+      venue,
       amountOut: quote.amountOut,
       usedFromToken: quote.usedFromToken,
       usedToToken: quote.usedToToken,
@@ -315,6 +341,12 @@ export async function handleExecuteSwap(raw: ExecuteSwapInput) {
     if (reserved) releaseReservation(walletAddress, amountUsd);
     if (err instanceof DodoNotConfiguredError) {
       return fail("SWAP_LIQUIDITY_NOT_CONFIGURED", err.message, false, "dodo_api");
+    }
+    if (err instanceof OkxNotConfiguredError) {
+      return fail("SWAP_LIQUIDITY_NOT_CONFIGURED", err.message, false, "okx_dex_api");
+    }
+    if (err instanceof OkxCredentialsMissingError) {
+      return fail("OKX_API_CREDENTIALS_MISSING", err.message, false, "okx_dex_api");
     }
     return classifyExternalError("pharos_rpc", err);
   }

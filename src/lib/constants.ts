@@ -339,6 +339,62 @@ export const DODO_API_KEY = process.env.DODO_API_KEY;
 export const DODO_DEFAULT_SLIPPAGE = 3;
 export const DODO_ROUTE_ENDPOINT = "/route-service/v2/widget/getdodoroute";
 
+// ─── OKX DEX Aggregator ────────────────────────────────────────────────
+// PROVENANCE: unlike the DODO/FaroSwap allowlists above, both OKX addresses
+// ARE registry-verified (protocol:pacific-mainnet:okx-dex — OKX's own dev-docs
+// Pharos row plus on-chain eth_getCode on 1672, 2026-07-13). The allowlist
+// checks below are still containment only: spender/counterparty trust flows
+// exclusively from addressTrustEvidence(), which recognizes these addresses as
+// verified independently of this list.
+
+export const OKX_DEX_ROUTER_ADDRESS = "0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea" as const;
+export const OKX_DEX_APPROVE_ADDRESS = "0x78466A1488f1883d71cFddd1c621351572dE0a1C" as const;
+
+export function activeOkxSpenderAllowlist(): `0x${string}`[] {
+  return parseAddressCsv(process.env.OKX_SPENDER_ALLOWLIST || process.env.SAFEHANDS_OKX_SPENDER_ALLOWLIST, [OKX_DEX_APPROVE_ADDRESS]);
+}
+
+export function activeOkxRouterAllowlist(): `0x${string}`[] {
+  return parseAddressCsv(process.env.OKX_ROUTER_ALLOWLIST || process.env.SAFEHANDS_OKX_ROUTER_ALLOWLIST, [OKX_DEX_ROUTER_ADDRESS]);
+}
+
+export function isAllowedOkxSpender(address: string): boolean {
+  return activeOkxSpenderAllowlist().some((allowed) => allowed.toLowerCase() === address.toLowerCase());
+}
+
+export function isAllowedOkxRouter(address: string): boolean {
+  return activeOkxRouterAllowlist().some((allowed) => allowed.toLowerCase() === address.toLowerCase());
+}
+
+// ─── OKX DEX API ───────────────────────────────────────────────────────
+// Credentials are resolved at call time (not module-load constants) so tests
+// can pin them per process and operators can rotate them without a rebuild.
+// They are used only to sign outbound requests to the OKX API and must never
+// be logged, echoed into errors, or included in tool responses.
+
+export const OKX_API_BASE = process.env.OKX_API_BASE || "https://web3.okx.com";
+export const OKX_SWAP_ENDPOINT = "/api/v6/dex/aggregator/swap";
+
+export interface OkxApiCredentials {
+  apiKey: string;
+  apiSecret: string;
+  passphrase: string;
+  projectId?: string;
+}
+
+export function okxApiCredentials(): { ok: true; credentials: OkxApiCredentials } | { ok: false; missing: string[] } {
+  const apiKey = process.env.OKX_API_KEY?.trim();
+  const apiSecret = process.env.OKX_API_SECRET?.trim();
+  const passphrase = process.env.OKX_API_PASSPHRASE?.trim();
+  const projectId = process.env.OKX_API_PROJECT_ID?.trim();
+  const missing: string[] = [];
+  if (!apiKey) missing.push("OKX_API_KEY");
+  if (!apiSecret) missing.push("OKX_API_SECRET");
+  if (!passphrase) missing.push("OKX_API_PASSPHRASE");
+  if (missing.length > 0) return { ok: false, missing };
+  return { ok: true, credentials: { apiKey: apiKey as string, apiSecret: apiSecret as string, passphrase: passphrase as string, projectId: projectId || undefined } };
+}
+
 // ─── Risk Engine Thresholds ────────────────────────────────────────────
 
 // Weighted risk-engine block boundary (block when score > 80). NOTE: the hosted
