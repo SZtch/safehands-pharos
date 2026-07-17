@@ -678,7 +678,13 @@ async function analyzeContract(addr) {
   // bytecode is byte-identical to a verified contract's, it is the same code
   // (e.g. a factory-minted copy). Recognition lowers concern; it never grants
   // canonical trust, and an unlimited approval to it still requires confirmation.
-  const codeMatch = knownCodeMatch(p.codeHash);
+  const rawCodeMatch = knownCodeMatch(p.codeHash);
+  const px = await proxyProbe(addr);
+  // Defense in depth: a proxy's OWN bytecode is a generic delegator shared by
+  // every proxy of the same pattern, so a codehash match on a proxy's shell is
+  // NOT identity (it would recognize any unrelated proxy). A proxy is identified
+  // by its implementation (px.implementationCodeMatch), never by its shell.
+  const codeMatch = px.isProxy ? null : rawCodeMatch;
   const t = await erc20Probe(addr);
   const looksToken = t.symbol !== null; // strict: symbol must ABI-decode; fallback junk like 0x0 must not classify as token
   let canonicalVerified = false; // official-registry identity match exempts the missing-threat-intel floor
@@ -701,7 +707,6 @@ async function analyzeContract(addr) {
     score += 25;
   }
   if (p.codeSize < 100) { factors.push(`Suspiciously small bytecode (${p.codeSize} bytes); possible proxy shell or stub`); score += 15; }
-  const px = await proxyProbe(addr);
   if (px.isProxy) {
     if (px.implementation && px.implementationHasCode === false) {
       factors.push(`EIP-1967 proxy whose implementation slot points to ${px.implementation}, an address with NO code: a broken or deceptive proxy that cannot execute its advertised logic`);

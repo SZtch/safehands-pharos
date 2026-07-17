@@ -86,7 +86,15 @@ export function buildKnownCode(): unknown {
     for (const c of item.contracts) {
       if (c.verificationStatus !== "VERIFIED") continue;
       const protocol = item.name;
-      if (c.codeHash) {
+      // A proxy's OWN runtime bytecode is a generic delegator (it reads the
+      // implementation from an EIP-1967 storage slot, not from code), so its
+      // codehash is shared by every proxy of the same pattern and is NOT an
+      // identity. Never put a proxy-shell codehash in the cross-address
+      // recognition map: doing so would recognize any unrelated proxy as this
+      // contract. A proxy (an entry carrying implCodeHash) is recognized by its
+      // implementation hash only; its shell codeHash stays in byAddress for the
+      // address-scoped silent-change guard, never for recognition.
+      if (c.codeHash && !c.implCodeHash) {
         const entry = codehashes[c.codeHash.toLowerCase()] as { label: string; protocol: string; addresses: string[] } | undefined;
         if (entry) entry.addresses.push(c.address.toLowerCase());
         else codehashes[c.codeHash.toLowerCase()] = { label: c.label, protocol, kind: "code", addresses: [c.address.toLowerCase()] };

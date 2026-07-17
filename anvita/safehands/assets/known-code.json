@@ -3,14 +3,6 @@
   "chainId": 1672,
   "note": "keccak256 fingerprints of registry-VERIFIED contract bytecode, recorded at verification time. Matching code at another address means the SAME code, which is recognition (lower concern), NOT canonical trust; an unlimited approval still requires confirmation. A verified address whose live code no longer matches its recorded hash is a silent-change signal.",
   "codehashes": {
-    "0x864cc9ad53b338b82da1f7cab85ab0b3d5c8861acb422b6fec63cf36234f36a6": {
-      "label": "AquaFluxCore",
-      "protocol": "AquaFlux",
-      "kind": "code",
-      "addresses": [
-        "0x0da98a8447b6b4add9733011a812922954d3e127"
-      ]
-    },
     "0x575ddbb741854b357bec819f76e93f557da665cb1809eee3371f7b9b8878743f": {
       "label": "AquaFluxCore (implementation)",
       "protocol": "AquaFlux",

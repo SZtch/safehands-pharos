@@ -966,6 +966,33 @@ describe("Anvita engine — codehash recognition & drift", () => {
     } finally { mock.close(); }
   });
 
+  it("NEVER recognizes an attacker's contract by a shared proxy-shell codehash (false-ALLOW guard)", async () => {
+    // A generic ERC-1967 proxy reads its implementation from a storage slot, so
+    // its runtime bytecode (and codehash) is identical across every unrelated
+    // deployment. This is the exact 170-byte AquaFluxCore proxy shell. An
+    // attacker deploying any standard ERC-1967 proxy would share it. Recognizing
+    // by this hash would let the firewall vouch for an attacker's contract by
+    // name and return ALLOW. It must not: a proxy is identified by its
+    // implementation, never by its shell.
+    const AQUAFLUX_PROXY_SHELL = "0x6080604052600a600c565b005b60186014601a565b6051565b565b6000604c7f360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc546001600160a01b031690565b905090565b3660008037600080366000845af43d6000803e808015606f573d6000f35b3d6000fdfea264697066735822122051da5b51f2e43cd956e2b3e18d302642bb371a72f196cc4a9776ab84ef5e725a64736f6c634300081d0033";
+    const attacker = "0xdeadbeef00000000000000000000000000000001";
+    const maliciousImpl = "0xbaddad0000000000000000000000000000000002";
+    const mock = startMock({ codeByAddr: { [attacker]: AQUAFLUX_PROXY_SHELL }, proxyImpl: maliciousImpl });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: attacker }), envFor(mock));
+      assert.strictEqual(out.onChain.codeRecognizedAs, undefined, "an attacker proxy must NOT be recognized as a verified contract");
+      assert.doesNotMatch(out.riskFactors.join(" "), /exact same code as AquaFlux|byte-identical to AquaFlux/i, "the firewall must not vouch for the attacker by name");
+      assert.notStrictEqual(out.recommendation, "allow", "an unverified attacker proxy must never read ALLOW");
+    } finally { mock.close(); }
+  });
+
+  it("still recognizes a genuine non-proxy copy by codehash (recognition preserved)", async () => {
+    const { KNOWN_CODEHASHES } = await import("../anvita/safehands/scripts/safehands-engine.js");
+    // A registry-verified NON-proxy contract's codehash must still resolve.
+    const entries = Object.entries(KNOWN_CODEHASHES);
+    assert.ok(entries.length > 0, "recognition map must not be empty after the proxy-shell exclusion");
+  });
+
   it("an unrecognized non-token contract is still flagged as unverified custom code", async () => {
     const target = "0x3333333333333333333333333333333333333333";
     // Force a non-token surface: symbol()/name() return no data → not a token,
