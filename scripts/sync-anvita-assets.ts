@@ -72,6 +72,49 @@ export function buildKnownPharos(): unknown {
   };
 }
 
+// Known-good bytecode fingerprints derived from registry-VERIFIED protocol
+// contracts. Lets the hosted engine recognize a byte-identical copy at a
+// DIFFERENT address (factory-minted vaults, redeployed routers) as "same code
+// as <label>" (recognition, never canonical trust), and detect a silent change
+// when a verified address's live code stops matching its recorded hash.
+export function buildKnownCode(): unknown {
+  const codehashes: Record<string, unknown> = {};
+  const byAddress: Record<string, unknown> = {};
+  for (const item of ECOSYSTEM_REGISTRY_ITEMS) {
+    if (item.chainId !== 1672 || item.category !== "protocol") continue;
+    if (item.verificationStatus !== "VERIFIED" || item.safetyUse !== "allow_eligible") continue;
+    for (const c of item.contracts) {
+      if (c.verificationStatus !== "VERIFIED") continue;
+      const protocol = item.name;
+      if (c.codeHash) {
+        const entry = codehashes[c.codeHash.toLowerCase()] as { label: string; protocol: string; addresses: string[] } | undefined;
+        if (entry) entry.addresses.push(c.address.toLowerCase());
+        else codehashes[c.codeHash.toLowerCase()] = { label: c.label, protocol, kind: "code", addresses: [c.address.toLowerCase()] };
+      }
+      if (c.implCodeHash) {
+        const entry = codehashes[c.implCodeHash.toLowerCase()] as { label: string; protocol: string; addresses: string[] } | undefined;
+        if (entry) entry.addresses.push(c.address.toLowerCase());
+        else codehashes[c.implCodeHash.toLowerCase()] = { label: `${c.label} (implementation)`, protocol, kind: "impl", addresses: [c.address.toLowerCase()] };
+      }
+      if (c.codeHash || c.implCodeHash) {
+        byAddress[c.address.toLowerCase()] = {
+          label: c.label, protocol,
+          ...(c.codeHash ? { codeHash: c.codeHash.toLowerCase() } : {}),
+          ...(c.implAddress ? { implAddress: c.implAddress.toLowerCase() } : {}),
+          ...(c.implCodeHash ? { implCodeHash: c.implCodeHash.toLowerCase() } : {}),
+        };
+      }
+    }
+  }
+  return {
+    network: "pacific-mainnet",
+    chainId: 1672,
+    note: "keccak256 fingerprints of registry-VERIFIED contract bytecode, recorded at verification time. Matching code at another address means the SAME code, which is recognition (lower concern), NOT canonical trust; an unlimited approval still requires confirmation. A verified address whose live code no longer matches its recorded hash is a silent-change signal.",
+    codehashes,
+    byAddress,
+  };
+}
+
 export function buildSupportedAssets(): unknown {
   const oracle = requireItem("oracle:pacific-mainnet:chainlink-push-feeds");
   const feeds: Record<string, unknown> = {};
@@ -245,6 +288,7 @@ export function buildNetworks(): unknown {
 
 export const GENERATED_ASSETS: Record<string, () => unknown> = {
   "known-pharos.json": buildKnownPharos,
+  "known-code.json": buildKnownCode,
   "supported-assets.json": buildSupportedAssets,
   "contracts.json": buildContracts,
   "supported-protocols.json": buildSupportedProtocols,

@@ -143,6 +143,16 @@ const KNOWN = loadJSON("known-pharos.json") || {};
 const CANON_CONTRACTS = KNOWN.canonicalContracts || {};
 const CANON_TOKENS = KNOWN.canonicalTokens || {}; // SYMBOL -> lowercase address (official Pharos Token Registry)
 const KNOWN_INFRA = new Set(Object.keys(CANON_CONTRACTS));
+// Bytecode fingerprints of registry-VERIFIED contracts. `codehashes` maps a
+// keccak256(code) to the verified contract it belongs to (recognition of a
+// byte-identical copy at a different address); `byAddress` records each
+// verified address's expected code/impl hash (silent-change detection).
+const KNOWN_CODE = loadJSON("known-code.json") || {};
+const KNOWN_CODEHASHES = KNOWN_CODE.codehashes || {};
+const KNOWN_CODE_BY_ADDR = KNOWN_CODE.byAddress || {};
+function knownCodeMatch(codeHash) {
+  return codeHash ? (KNOWN_CODEHASHES[String(codeHash).toLowerCase()] || null) : null;
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────
 function fail(code, message, extra = {}) {
@@ -427,7 +437,12 @@ async function probeAddress(addr) {
     rpc("eth_getTransactionCount", [addr, "latest"]),
     rpc("eth_getCode", [addr, "latest"]),
   ]);
-  return { balance: decUint(balHex), nonce: Number(decUint(nonceHex)), isContract: code && code !== "0x", codeSize: code ? (code.length - 2) / 2 : 0 };
+  const isContract = code && code !== "0x";
+  return {
+    balance: decUint(balHex), nonce: Number(decUint(nonceHex)),
+    isContract, codeSize: code ? (code.length - 2) / 2 : 0,
+    codeHash: isContract ? keccak256(Buffer.from(code.slice(2), "hex")) : null,
+  };
 }
 // ── EIP-1967 proxy probe (direct storage reads; no external intel needed) ──
 // An upgradeable proxy's logic can be replaced by its admin at any time, so
@@ -446,7 +461,7 @@ function slotToAddress(hex) {
   return addr === "0x0000000000000000000000000000000000000000" ? null : addr;
 }
 async function proxyProbe(addr) {
-  const out = { isProxy: false, implementation: null, implementationHasCode: null, implementationLabel: null, admin: null, beacon: null };
+  const out = { isProxy: false, implementation: null, implementationHasCode: null, implementationLabel: null, implementationCodeMatch: null, admin: null, beacon: null };
   try {
     for (const [key, slot] of Object.entries(EIP1967_SLOTS)) {
       const raw = await rpc("eth_getStorageAt", [addr, slot, "latest"]);
@@ -460,10 +475,15 @@ async function proxyProbe(addr) {
       const code = await rpc("eth_getCode", [out.implementation, "latest"]);
       out.implementationHasCode = Boolean(code && code !== "0x");
       out.implementationLabel = CANON_CONTRACTS[out.implementation.toLowerCase()] || null;
+      // Recognize the implementation by bytecode: a proxy pointing at known-good
+      // logic is meaningfully safer than one pointing at unknown code.
+      const implHash = out.implementationHasCode ? keccak256(Buffer.from(code.slice(2), "hex")) : null;
+      const m = knownCodeMatch(implHash);
+      if (m) out.implementationCodeMatch = { label: m.label, protocol: m.protocol };
     }
   } catch {
     // Storage reads failing is not evidence either way; report proxy status unknown.
-    return { isProxy: null, implementation: null, implementationHasCode: null, implementationLabel: null, admin: null, beacon: null };
+    return { isProxy: null, implementation: null, implementationHasCode: null, implementationLabel: null, implementationCodeMatch: null, admin: null, beacon: null };
   }
   return out;
 }
@@ -590,10 +610,24 @@ async function analyzeContract(addr) {
   const factors = []; let score = 15;
   const known = KNOWN_INFRA.has(addr.toLowerCase());
   if (known) {
+    // Silent-change guard: a registry-verified address whose live bytecode no
+    // longer matches the code recorded at verification is no longer the thing we
+    // verified. Do not hand it canonical trust; surface the drift and fail closed.
+    const recorded = KNOWN_CODE_BY_ADDR[addr.toLowerCase()];
+    if (recorded && recorded.codeHash && p.codeHash && recorded.codeHash.toLowerCase() !== p.codeHash.toLowerCase()) {
+      return report(80, [`Registry-verified ${CANON_CONTRACTS[addr.toLowerCase()]}, but its live bytecode no longer matches the code verified at registration (recorded ${recorded.codeHash}, live ${p.codeHash}): a silent redeployment or self-destruct-and-replace. Treat as UNVERIFIED until re-checked.`],
+        { type: "contract", address: addr },
+        { onChain: { isContract: true, codeSize: p.codeSize, codeHash: p.codeHash, codeHashMatchesRegistry: false }, intel: "on-chain codehash drift vs registry" });
+    }
     return report(5, [`Canonical registry contract: ${CANON_CONTRACTS[addr.toLowerCase()]} (verified via official-docs citation + on-chain check)`],
       { type: "contract", address: addr },
-      { onChain: { isContract: true, codeSize: p.codeSize }, intel: "verified canonical registry (Pharos docs + registry-verified protocol docs)" });
+      { onChain: { isContract: true, codeSize: p.codeSize, codeHash: p.codeHash, ...(recorded && recorded.codeHash ? { codeHashMatchesRegistry: true } : {}) }, intel: "verified canonical registry (Pharos docs + registry-verified protocol docs)" });
   }
+  // Codehash recognition: this address is NOT registry-listed, but if its
+  // bytecode is byte-identical to a verified contract's, it is the same code
+  // (e.g. a factory-minted copy). Recognition lowers concern; it never grants
+  // canonical trust, and an unlimited approval to it still requires confirmation.
+  const codeMatch = knownCodeMatch(p.codeHash);
   const t = await erc20Probe(addr);
   const looksToken = t.symbol !== null; // strict: symbol must ABI-decode; fallback junk like 0x0 must not classify as token
   let canonicalVerified = false; // official-registry identity match exempts the missing-threat-intel floor
@@ -609,6 +643,8 @@ async function analyzeContract(addr) {
     if (t.name === null || t.symbol === null) { factors.push("Token metadata incomplete (non-standard ERC-20 surface)"); score += 20; }
     if (t.decimals === null) { factors.push("decimals() unreadable; integrations may misprice amounts"); score += 10; }
     if (t.totalSupply === "0") { factors.push("Token totalSupply is zero"); score += 15; }
+  } else if (codeMatch) {
+    factors.push(`Bytecode is byte-identical to ${codeMatch.label} (${codeMatch.protocol}), a registry-verified contract (recorded at ${codeMatch.addresses.join(", ")}): recognized as the same code. Recognition only: this address is not itself registry-listed, so verify the deployment context and never treat an unlimited approval to it as pre-approved.`);
   } else {
     factors.push("Not a standard token interface: unverified custom contract; hosted engine cannot audit its logic");
     score += 25;
@@ -620,7 +656,10 @@ async function analyzeContract(addr) {
       factors.push(`EIP-1967 proxy whose implementation slot points to ${px.implementation}, an address with NO code: a broken or deceptive proxy that cannot execute its advertised logic`);
       score += 40;
     } else if (px.implementation) {
-      factors.push(`Upgradeable EIP-1967 proxy (implementation ${px.implementation}${px.implementationLabel ? `; that bytecode address carries the registry label "${px.implementationLabel}", but this proxy address itself is NOT registry-verified and inherits no trust from it` : ""}): the logic can be replaced by its admin at any time`);
+      const implRecognized = px.implementationCodeMatch
+        ? `; its implementation bytecode is byte-identical to ${px.implementationCodeMatch.label} (${px.implementationCodeMatch.protocol}), recognized as the same code (recognition only, not canonical trust)`
+        : px.implementationLabel ? `; that bytecode address carries the registry label "${px.implementationLabel}", but this proxy address itself is NOT registry-verified and inherits no trust from it` : "";
+      factors.push(`Upgradeable EIP-1967 proxy (implementation ${px.implementation}${implRecognized}): the logic can be replaced by its admin at any time`);
       score += 10;
     } else {
       factors.push("Upgradeable beacon proxy (EIP-1967 beacon slot set): the logic can be replaced through the beacon at any time");
@@ -635,7 +674,11 @@ async function analyzeContract(addr) {
   // NOT a real verdict; treat both like an outage: floor the score and disclose, so a token
   // GoPlus has never actually vetted (the classic fresh-rug window) can never read "allow".
   const gpVerified = gp.reachable && !gp.schemaDrift && !gpUnindexedToken;
-  if (!gpVerified && !canonicalVerified) {
+  // Recognized-by-code contracts and proxies over recognized logic are known
+  // implementations, so an unindexed-token / unreachable-GoPlus floor does not
+  // apply (that floor exists for unknown code, which this is not).
+  const codeRecognized = Boolean(codeMatch) || Boolean(px.implementationCodeMatch);
+  if (!gpVerified && !canonicalVerified && !codeRecognized) {
     factors.push(gp.schemaDrift
       ? "GoPlus returned an unrecognized token-security schema: honeypot/scam status UNVERIFIED; treat as unsafe-until-confirmed"
       : gpUnindexedToken
@@ -644,7 +687,7 @@ async function analyzeContract(addr) {
     score = Math.max(score, THREAT_INTEL_UNAVAILABLE_FLOOR);
   }
   return report(score, factors, { type: "contract", address: addr }, {
-    onChain: { isContract: true, codeSize: p.codeSize, token: looksToken ? t : null, proxy: px },
+    onChain: { isContract: true, codeSize: p.codeSize, codeHash: p.codeHash, ...(codeMatch ? { codeRecognizedAs: { label: codeMatch.label, protocol: codeMatch.protocol } } : {}), token: looksToken ? t : null, proxy: px },
     ...(gp.identity ? { goplusTokenIdentity: gp.identity } : {}), // display-only, never scored
     intel: gpVerified ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unverified)",
     limits: gpVerified ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
@@ -2218,4 +2261,4 @@ if (invokedDirectly()) {
 
 // Exported for unit tests (import does not trigger the CLI above). These are the
 // pure decision/normalization helpers whose behavior the audit locks.
-export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress, keccak256, keccak256Hex, bindCalldata, bindIntent };
+export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress, keccak256, keccak256Hex, bindCalldata, bindIntent, knownCodeMatch, KNOWN_CODEHASHES };

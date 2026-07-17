@@ -46,6 +46,7 @@ function startMock(opts = {}) {
     callResults = {},                        // "selector" or "to|selector" → raw eth_call result hex (checked first)
     estimateGas = "success",                 // "success" | "revert"
     emptyCodeAddrs = [],                     // addresses that return no code
+    codeByAddr = {},                         // address (lowercase) → specific bytecode hex (overrides the default CODE)
     txByHash = {}, txReceipt = {},
     getProof = "success",                    // "success" | "unsupported"
   } = opts;
@@ -65,7 +66,7 @@ function startMock(opts = {}) {
         let result = "0x";
         if (method === "eth_getBalance") result = nativeBalance;
         else if (method === "eth_getTransactionCount") result = "0x1";
-        else if (method === "eth_getCode") result = empty.has(String(params?.[0] || "").toLowerCase()) ? "0x" : CODE;
+        else if (method === "eth_getCode") { const a = String(params?.[0] || "").toLowerCase(); result = empty.has(a) ? "0x" : (codeByAddr[a] ?? CODE); }
         else if (method === "eth_chainId") result = chainIdHex;
         else if (method === "eth_blockNumber") result = "0x100";
         else if (method === "eth_gasPrice") result = gasPrice;
@@ -926,6 +927,54 @@ describe("Anvita engine — get_active_approvals (allowance sweep)", () => {
       PHAROS_RPC_URL: "http://127.0.0.1:1", GOPLUS_API_BASE: "http://127.0.0.1:1",
     });
     assert.strictEqual(out.success, false, "an unreachable chain must not read as approval-clean");
+  });
+});
+
+describe("Anvita engine — codehash recognition & drift", () => {
+  const MORPHO_BLUE = "0x18573fa18fd17ddfd790b4a5b5b2977aad3b4efb"; // registry-verified, has a recorded codeHash
+
+  it("known-code lookup matches a recorded hash and rejects an unknown one", async () => {
+    const { knownCodeMatch, KNOWN_CODEHASHES } = await import("../anvita/safehands/scripts/safehands-engine.js");
+    const [recordedHash, entry] = Object.entries(KNOWN_CODEHASHES)[0];
+    const hit = knownCodeMatch(recordedHash);
+    assert.ok(hit, "a recorded codehash must resolve to its verified contract");
+    assert.strictEqual(hit.label, entry.label);
+    assert.strictEqual(knownCodeMatch("0x" + "00".repeat(32)), null, "an unknown codehash must not match");
+    assert.strictEqual(knownCodeMatch(null), null);
+  });
+
+  it("silent-change guard: a verified address whose live code no longer matches the recorded hash fails closed", async () => {
+    // The mock serves generic bytecode for MORPHO_BLUE, whose hash cannot equal
+    // the real recorded Morpho hash, so this exercises the drift branch.
+    const mock = startMock();
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: MORPHO_BLUE }), envFor(mock));
+      assert.strictEqual(out.recommendation, "block");
+      assert.strictEqual(out.onChain.codeHashMatchesRegistry, false);
+      assert.match(out.riskFactors.join(" "), /no longer matches|silent/i);
+    } finally { mock.close(); }
+  });
+
+  it("surfaces a computed codeHash on every contract analysis", async () => {
+    const target = "0x2222222222222222222222222222222222222222";
+    const bytecode = "0x" + "61".repeat(64);
+    const mock = startMock({ symbol: "GOOD", goplusResult: {}, codeByAddr: { [target]: bytecode } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: target }), envFor(mock));
+      const { keccak256 } = await import("../anvita/safehands/scripts/safehands-engine.js");
+      assert.strictEqual(out.onChain.codeHash, keccak256(Buffer.from(bytecode.slice(2), "hex")), "codeHash must be keccak256 of the served bytecode");
+    } finally { mock.close(); }
+  });
+
+  it("an unrecognized non-token contract is still flagged as unverified custom code", async () => {
+    const target = "0x3333333333333333333333333333333333333333";
+    // Force a non-token surface: symbol()/name() return no data → not a token,
+    // and the served bytecode's hash is not in known-code → no recognition.
+    const mock = startMock({ goplusResult: {}, callResults: { [SEL.symbol]: "0x", [SEL.name]: "0x" } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: target }), envFor(mock));
+      assert.match(out.riskFactors.join(" "), /unverified custom contract/i, "no codehash match means no recognition");
+    } finally { mock.close(); }
   });
 });
 

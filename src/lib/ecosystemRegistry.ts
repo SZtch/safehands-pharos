@@ -68,6 +68,16 @@ export interface RegistryContract {
   pair?: string;
   /** Price reads supported, but no token identity/balance claims (e.g. USDT). */
   feedOnly?: boolean;
+  /**
+   * keccak256 of the contract's deployed bytecode at verification time. Lets the
+   * hosted engine recognize a byte-identical copy at a DIFFERENT address (e.g. a
+   * factory-minted vault) and detect a silent change if this address's live code
+   * ever stops matching. Recognition only, never canonical trust.
+   */
+  codeHash?: `0x${string}`;
+  /** For an EIP-1967 proxy: the implementation address and its bytecode hash at verification time. */
+  implAddress?: `0x${string}`;
+  implCodeHash?: `0x${string}`;
   note?: string;
 }
 

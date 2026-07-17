@@ -1,0 +1,136 @@
+{
+  "network": "pacific-mainnet",
+  "chainId": 1672,
+  "note": "keccak256 fingerprints of registry-VERIFIED contract bytecode, recorded at verification time. Matching code at another address means the SAME code, which is recognition (lower concern), NOT canonical trust; an unlimited approval still requires confirmation. A verified address whose live code no longer matches its recorded hash is a silent-change signal.",
+  "codehashes": {
+    "0x864cc9ad53b338b82da1f7cab85ab0b3d5c8861acb422b6fec63cf36234f36a6": {
+      "label": "AquaFluxCore",
+      "protocol": "AquaFlux",
+      "kind": "code",
+      "addresses": [
+        "0x0da98a8447b6b4add9733011a812922954d3e127"
+      ]
+    },
+    "0x575ddbb741854b357bec819f76e93f557da665cb1809eee3371f7b9b8878743f": {
+      "label": "AquaFluxCore (implementation)",
+      "protocol": "AquaFlux",
+      "kind": "impl",
+      "addresses": [
+        "0x0da98a8447b6b4add9733011a812922954d3e127"
+      ]
+    },
+    "0x641e898afa64bff022e8d497edbc2573dc3e51174fed14ee51e0655cb542d1d8": {
+      "label": "AquaFlux TokenFactory",
+      "protocol": "AquaFlux",
+      "kind": "code",
+      "addresses": [
+        "0x1c041b61a6cf43881be7e9394bb198b472ae17a2"
+      ]
+    },
+    "0x2a3ca38ec454db4828aa1dbc489d93a73249ee239f36cf4904caea6a14aed284": {
+      "label": "AquaFlux SwapRouter",
+      "protocol": "AquaFlux",
+      "kind": "code",
+      "addresses": [
+        "0x94eb66e69b158ed58edf2d4150638920205e3c88"
+      ]
+    },
+    "0xa2b74a176b5558d10964ef81d6695b2175758277c72474d8dca2643cbf9f6771": {
+      "label": "AquaFlux LiquidityRouter",
+      "protocol": "AquaFlux",
+      "kind": "code",
+      "addresses": [
+        "0x11625aab301ec4444ff38239f31e67735cae54ee"
+      ]
+    },
+    "0x215d497863f2867960edc6a63731ee01e67b941a44da3b35d65c3be04857cfce": {
+      "label": "OKX DEX Aggregation Router",
+      "protocol": "OKX DEX Aggregator",
+      "kind": "code",
+      "addresses": [
+        "0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea"
+      ]
+    },
+    "0x49c0ff4256375fd93ffdae5a20d0818e8a48df674afc3fac74bf684d1e05c717": {
+      "label": "OKX DEX Token Approve",
+      "protocol": "OKX DEX Aggregator",
+      "kind": "code",
+      "addresses": [
+        "0x78466a1488f1883d71cfddd1c621351572de0a1c"
+      ]
+    },
+    "0xc7e89967df297eebdb2642ade6225f6a9f72a61862c83de181dd707ff2e2c744": {
+      "label": "Morpho Blue",
+      "protocol": "Morpho",
+      "kind": "code",
+      "addresses": [
+        "0x18573fa18fd17ddfd790b4a5b5b2977aad3b4efb"
+      ]
+    },
+    "0xb6c5655b5ca85ed8a977c8b85ecc1c5fdabd5b386766b4fe4e37808ecef0eaff": {
+      "label": "Morpho AdaptiveCurveIRM",
+      "protocol": "Morpho",
+      "kind": "code",
+      "addresses": [
+        "0xd5e02889c13230458506cc842347c4e62f8cdf3a"
+      ]
+    },
+    "0x535cbea6cb733b4afdb01e5c88ed057b16bea4a28c0adc5b4f02de09694ecfd2": {
+      "label": "Morpho ChainlinkOracleV2Factory",
+      "protocol": "Morpho",
+      "kind": "code",
+      "addresses": [
+        "0xb8118256d8aa950ec0b26a0b8be7c6c1a858f6a3"
+      ]
+    }
+  },
+  "byAddress": {
+    "0x0da98a8447b6b4add9733011a812922954d3e127": {
+      "label": "AquaFluxCore",
+      "protocol": "AquaFlux",
+      "codeHash": "0x864cc9ad53b338b82da1f7cab85ab0b3d5c8861acb422b6fec63cf36234f36a6",
+      "implAddress": "0x3a36d537b37f96d3df22e808400b781286200fb3",
+      "implCodeHash": "0x575ddbb741854b357bec819f76e93f557da665cb1809eee3371f7b9b8878743f"
+    },
+    "0x1c041b61a6cf43881be7e9394bb198b472ae17a2": {
+      "label": "AquaFlux TokenFactory",
+      "protocol": "AquaFlux",
+      "codeHash": "0x641e898afa64bff022e8d497edbc2573dc3e51174fed14ee51e0655cb542d1d8"
+    },
+    "0x94eb66e69b158ed58edf2d4150638920205e3c88": {
+      "label": "AquaFlux SwapRouter",
+      "protocol": "AquaFlux",
+      "codeHash": "0x2a3ca38ec454db4828aa1dbc489d93a73249ee239f36cf4904caea6a14aed284"
+    },
+    "0x11625aab301ec4444ff38239f31e67735cae54ee": {
+      "label": "AquaFlux LiquidityRouter",
+      "protocol": "AquaFlux",
+      "codeHash": "0xa2b74a176b5558d10964ef81d6695b2175758277c72474d8dca2643cbf9f6771"
+    },
+    "0x75f21a97bd89a9a5683a9f46b5d5b4a080708dea": {
+      "label": "OKX DEX Aggregation Router",
+      "protocol": "OKX DEX Aggregator",
+      "codeHash": "0x215d497863f2867960edc6a63731ee01e67b941a44da3b35d65c3be04857cfce"
+    },
+    "0x78466a1488f1883d71cfddd1c621351572de0a1c": {
+      "label": "OKX DEX Token Approve",
+      "protocol": "OKX DEX Aggregator",
+      "codeHash": "0x49c0ff4256375fd93ffdae5a20d0818e8a48df674afc3fac74bf684d1e05c717"
+    },
+    "0x18573fa18fd17ddfd790b4a5b5b2977aad3b4efb": {
+      "label": "Morpho Blue",
+      "protocol": "Morpho",
+      "codeHash": "0xc7e89967df297eebdb2642ade6225f6a9f72a61862c83de181dd707ff2e2c744"
+    },
+    "0xd5e02889c13230458506cc842347c4e62f8cdf3a": {
+      "label": "Morpho AdaptiveCurveIRM",
+      "protocol": "Morpho",
+      "codeHash": "0xb6c5655b5ca85ed8a977c8b85ecc1c5fdabd5b386766b4fe4e37808ecef0eaff"
+    },
+    "0xb8118256d8aa950ec0b26a0b8be7c6c1a858f6a3": {
+      "label": "Morpho ChainlinkOracleV2Factory",
+      "protocol": "Morpho",
+      "codeHash": "0x535cbea6cb733b4afdb01e5c88ed057b16bea4a28c0adc5b4f02de09694ecfd2"
+    }
+  }
+}
