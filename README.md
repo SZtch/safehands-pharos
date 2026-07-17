@@ -51,8 +51,8 @@ Building an agent that should call SafeHands before signing? Start at **[docs/AG
 **One command, zero infrastructure**: no config, no wallet, no keys, no transactions:
 
 ```bash
-npx -y github:SZtch/safehands-pharos --demo
-# (after npm publish: npx safehands-pharos --demo · or locally: git clone → npm install → node dist/index.js --demo)
+npx -y safehands-pharos --demo
+# (from source: npx -y github:SZtch/safehands-pharos --demo · or locally: git clone → npm install → node dist/index.js --demo)
 ```
 
 Watch the deterministic policy engine issue real safety decisions (`ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATION`) against Pharos Pacific Mainnet. It runs twelve deterministic safety checks in your terminal (wallet health, policy decisions, token-registry lookups, x402 preflight, SSRF blocking, risk scoring, RWA transfer-compliance and settlement-cap scenarios) and touches nothing on-chain. The full check list and expected outputs are in [docs/REVIEWER_QUICKSTART.md](docs/REVIEWER_QUICKSTART.md).
@@ -197,7 +197,7 @@ To run **self-hosted managed execution** on your own machine, add an `env` block
 ### CLI
 
 ```bash
-npx github:SZtch/safehands-pharos skill safehands_preflight_check \
+npx safehands-pharos skill safehands_preflight_check \
   '{"actionType":"approve_token","chainId":1672,"approvalToken":"USDC","spender":"0x000000000000000000000000000000000000dEaD","approvalAmount":"max"}'
 ```
 

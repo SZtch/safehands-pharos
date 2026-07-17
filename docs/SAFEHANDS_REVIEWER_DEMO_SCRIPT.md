@@ -15,7 +15,7 @@ For the Real-Fi & RWA angle (how the attestation ledger, risk registry, token ve
 The fully-hosted, zero-custody agent is live on [Anvita Flow](https://flow.anvita.xyz/home) as `safehands` (Agent Carnival Phase 2). Any Steward Agent on the marketplace can discover and call it: no server, no keys, no custody. To try the engine on your own machine without cloning:
 
 ```bash
-npx -y github:SZtch/safehands-pharos --demo
+npx -y safehands-pharos --demo
 ```
 
 ### Self-host the HTTP API (read-only; no keys, no tx)
@@ -94,7 +94,7 @@ Both are verifiable on the explorer; the reputation oracle has live attestations
 
 ```bash
 npm ci && npm run build
-npm run demo          # or: npx -y github:SZtch/safehands-pharos --demo
+npm run demo          # or: npx -y safehands-pharos --demo
 ```
 
 ### The firewall reading raw calldata (v2.4.0, 60-second demonstration)
