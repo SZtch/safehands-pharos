@@ -29,10 +29,10 @@ export async function handleGetGasPrice(_raw: GetGasPriceInput) {
 
     if (gasPriceGwei <= 5) {
       trend = "low";
-      recommendation = "Gas is cheap. Good time to execute testnet transactions.";
+      recommendation = "Gas is cheap. Good time to execute transactions.";
     } else if (gasPriceGwei <= 50) {
       trend = "normal";
-      recommendation = "Gas is at normal testnet levels. Proceed with standard transactions.";
+      recommendation = "Gas is at normal levels. Proceed with standard transactions.";
     } else {
       trend = "high";
       recommendation = "Gas is elevated. Consider waiting or reducing transaction complexity.";

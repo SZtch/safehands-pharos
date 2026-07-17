@@ -130,7 +130,7 @@ function usage(): string {
     "Examples:",
     "  npx safehands-pharos skill assess_risk '{\"action\":\"swap\",\"amount\":\"0.01\"}'",
     "  npx safehands-pharos skill get_wallet_balance '{\"walletAddress\":\"0xABC...\"}'",
-    "  npx safehands-pharos skill safehands_preflight_check -i '{\"actionType\":\"approve_token\",\"chainId\":688689,\"amount\":\"1\"}'",
+    "  npx safehands-pharos skill safehands_preflight_check -i '{\"actionType\":\"approve_token\",\"chainId\":1672,\"amount\":\"1\"}'",
   ].join("\n");
 }
 
