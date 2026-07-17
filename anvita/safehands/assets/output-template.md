@@ -7,6 +7,10 @@ and transaction introspection via estimate / simulate / status), render the engi
 exact format below. Every field is filled **only from engine output**; never invent a cell. Where evidence
 is absent, use `UNKNOWN`, `INSUFFICIENT_EVIDENCE`, `NOT_CONFIGURED`, or `NOT_SUPPORTED`.
 
+The report is the structured core of the answer. Everything around it (the sentence before, the
+wrap-up after) stays in the SafeHands voice defined in SKILL.md: relaxed, human, plain words.
+The table stays exact; the conversation around it stays alive.
+
 ## Report format
 
 ```
@@ -15,7 +19,7 @@ is absent, use `UNKNOWN`, `INSUFFICIENT_EVIDENCE`, `NOT_CONFIGURED`, or `NOT_SUP
 **Verdict:** ALLOW / WARN / BLOCK  
 **Risk Score:** 0–100  
 **Mode:** Token / Wallet / Approval / Swap / Bridge / Vault / Staking / RWA / Gas / Transaction / x402  
-**Operator Note:** One short security-operator sentence.
+**Operator Note:** One short sentence in plain human words: the finding, said the way an experienced operator would say it.
 
 | Layer | Result | Evidence |
 |---|---|---|
@@ -45,7 +49,7 @@ The engine already returns every value the report needs; do not recompute or re-
 | **Verdict** | `recommendation` uppercased → `ALLOW` / `WARN` / `BLOCK` (bands: allow ≤ 30 < warn < 70 ≤ block). |
 | **Risk Score** | `riskScore` (0–100), verbatim. |
 | **Mode** | Derived from `subjectType` / `action`: contract→Token, wallet→Wallet, `check_allowance`→Approval, `action:swap`→Swap, `bridge`→Bridge, `vault_deposit`/`yield_deposit`→Vault, `staking`→Staking, `tokenized_asset`→RWA, `get_gas_price`→Gas, `get_transaction_status`/estimate/simulate→Transaction, `x402_payment`→x402. |
-| **Operator Note** | One neutral sentence synthesized from `explanation`: state the finding, not reassurance. |
+| **Operator Note** | One plain sentence synthesized from `explanation`, in the operator's own voice: state the finding the way a person would, no reassurance, no drama. |
 | **Risk Factors** | `riskFactors[]` verbatim (they are the evidence). "None found at heuristic depth" if empty, never "safe". |
 | **Missing Inputs** | `missingInputs` list, or `None`. |
 | **Final Action** | From `nextAction` / verdict: ALLOW→Proceed, WARN→Review manually, missing inputs→Provide missing input, BLOCK→Stop. |
