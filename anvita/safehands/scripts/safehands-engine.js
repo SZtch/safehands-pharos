@@ -666,7 +666,7 @@ async function analyzeContract(addr) {
     // verified. Do not hand it canonical trust; surface the drift and fail closed.
     const recorded = KNOWN_CODE_BY_ADDR[addr.toLowerCase()];
     if (recorded && recorded.codeHash && p.codeHash && recorded.codeHash.toLowerCase() !== p.codeHash.toLowerCase()) {
-      return report(80, [`Registry-verified ${CANON_CONTRACTS[addr.toLowerCase()]}, but its live bytecode no longer matches the code verified at registration (recorded ${recorded.codeHash}, live ${p.codeHash}): a silent redeployment or self-destruct-and-replace. Treat as UNVERIFIED until re-checked.`],
+      return report(80, [`This is the registry's verified address for ${CANON_CONTRACTS[addr.toLowerCase()]}, but the code running there now no longer matches the code that was verified (a silent change: it was redeployed or replaced). Treat it as unverified until it is re-checked. Recorded code fingerprint ${recorded.codeHash}, live ${p.codeHash}.`],
         { type: "contract", address: addr },
         { onChain: { isContract: true, codeSize: p.codeSize, codeHash: p.codeHash, codeHashMatchesRegistry: false }, intel: "on-chain codehash drift vs registry" });
     }
@@ -695,7 +695,7 @@ async function analyzeContract(addr) {
     if (t.decimals === null) { factors.push("decimals() unreadable; integrations may misprice amounts"); score += 10; }
     if (t.totalSupply === "0") { factors.push("Token totalSupply is zero"); score += 15; }
   } else if (codeMatch) {
-    factors.push(`Bytecode is byte-identical to ${codeMatch.label} (${codeMatch.protocol}), a registry-verified contract (recorded at ${codeMatch.addresses.join(", ")}): recognized as the same code. Recognition only: this address is not itself registry-listed, so verify the deployment context and never treat an unlimited approval to it as pre-approved.`);
+    factors.push(`This runs the exact same code as ${codeMatch.label} (${codeMatch.protocol}), a registry-verified contract, just at a different address (recognized by an exact code fingerprint match). The code is known-good, but this specific address is not itself on the registry, so confirm it is the deployment you meant, and still treat any unlimited approval to it as something to confirm.`);
   } else {
     factors.push("Not a standard token interface: unverified custom contract; hosted engine cannot audit its logic");
     score += 25;
@@ -710,7 +710,7 @@ async function analyzeContract(addr) {
       const implRecognized = px.implementationCodeMatch
         ? `; its implementation bytecode is byte-identical to ${px.implementationCodeMatch.label} (${px.implementationCodeMatch.protocol}), recognized as the same code (recognition only, not canonical trust)`
         : px.implementationLabel ? `; that bytecode address carries the registry label "${px.implementationLabel}", but this proxy address itself is NOT registry-verified and inherits no trust from it` : "";
-      factors.push(`Upgradeable EIP-1967 proxy (implementation ${px.implementation}${implRecognized}): the logic can be replaced by its admin at any time`);
+      factors.push(`This contract's code can be swapped out by its admin at any time, so what it does today is not guaranteed tomorrow (upgradeable proxy, EIP-1967; implementation ${px.implementation}${implRecognized})`);
       score += 10;
     } else {
       factors.push("Upgradeable beacon proxy (EIP-1967 beacon slot set): the logic can be replaced through the beacon at any time");
@@ -723,12 +723,12 @@ async function analyzeContract(addr) {
     const perm = await permissionedProbe(addr);
     if (perm.standard === "ERC-3643") {
       permissioned = perm;
-      factors.push(`Permissioned RWA token (ERC-3643): every transfer is gated by an on-chain identity registry${perm.identityRegistry ? ` (${perm.identityRegistry})` : ""} and compliance rules. A transfer to or from an address that is not verified, or that is frozen, will REVERT: this token needs eligibility, not just balance.`);
+      factors.push(`This token only moves between wallets it has verified, so a transfer to or from an address that has not passed the token's verification, or that has been frozen, will fail on-chain (a permissioned RWA token, ERC-3643; identity registry${perm.identityRegistry ? ` ${perm.identityRegistry}` : ""}). It needs eligibility, not just a balance.`);
       score += 10;
-      if (perm.paused === true) { factors.push("This RWA token is currently PAUSED: transfers are blocked right now."); score += 25; }
+      if (perm.paused === true) { factors.push("Right now this token is PAUSED, so transfers are blocked at the token level until it is unpaused."); score += 25; }
     } else if (perm.standard === "ERC-1400" && perm.controllable) {
       permissioned = perm;
-      factors.push("Controllable security token (ERC-1400 isControllable): a designated controller can force-transfer or redeem holdings without the holder's signature. Custody is conditional by design.");
+      factors.push("A designated controller can move or redeem this token out of your wallet without your signature, so holding it is conditional by design (a controllable security token, ERC-1400).");
       score += 12;
     }
   }
@@ -1447,9 +1447,9 @@ async function analyzeIntent(input) {
       if (perm?.standard === "ERC-3643") {
         const elig = await erc3643Eligibility(addr, perm.identityRegistry, input.walletAddress);
         parts[`${label}Eligibility`] = elig;
-        if (elig.verified === false) { factors.push(`Acting wallet is NOT verified in ${label}'s identity registry: this ERC-3643 ${label} leg will revert. Complete the token's KYC/identity step before swapping.`); score = Math.max(score, 70); }
-        if (elig.frozen === true) { factors.push(`Acting wallet is FROZEN for ${label}: transfers of this token are blocked for this address.`); score = Math.max(score, 70); }
-        if (perm.paused === true) { factors.push(`${label} transfers are currently PAUSED at the token level: the swap leg will revert now.`); score = Math.max(score, 70); }
+        if (elig.verified === false) { factors.push(`Your wallet is NOT verified for the ${label} token, so this leg of the swap will fail on-chain. Complete the token's identity/verification step first, then try again.`); score = Math.max(score, 70); }
+        if (elig.frozen === true) { factors.push(`Your wallet is frozen for the ${label} token, so it cannot send or receive it right now.`); score = Math.max(score, 70); }
+        if (perm.paused === true) { factors.push(`The ${label} token is paused right now, so this leg of the swap will fail until it is unpaused.`); score = Math.max(score, 70); }
       }
     }
   }

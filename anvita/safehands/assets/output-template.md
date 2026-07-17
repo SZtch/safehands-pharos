@@ -45,7 +45,7 @@ never dropped in either depth, and the reasons behind a warn/block are never sho
 **Verdict:** ALLOW / WARN / BLOCK  
 **Risk Score:** 0–100  
 **Mode:** Token / Wallet / Approval / Swap / Bridge / Vault / Staking / RWA / Gas / Transaction / x402  
-**Operator Note:** One short sentence in plain human words: the finding, said the way an experienced operator would say it.
+**Operator Note:** One short sentence in plain, professional words: what the finding means for the user, said the way a trusted security advisor would put it (not a jargon restatement).
 
 | Layer | Result | Evidence |
 |---|---|---|
@@ -75,7 +75,7 @@ The engine already returns every value the report needs; do not recompute or re-
 | **Verdict** | `recommendation` uppercased → `ALLOW` / `WARN` / `BLOCK` (bands: allow ≤ 30 < warn < 70 ≤ block). |
 | **Risk Score** | `riskScore` (0–100), verbatim. |
 | **Mode** | Derived from `subjectType` / `action`: contract→Token, wallet→Wallet, `check_allowance`→Approval, `action:swap`→Swap, `bridge`→Bridge, `vault_deposit`/`yield_deposit`→Vault, `staking`→Staking, `tokenized_asset`→RWA, `get_gas_price`→Gas, `get_transaction_status`/estimate/simulate→Transaction, `x402_payment`→x402. |
-| **Operator Note** | One plain sentence synthesized from `explanation`, in the operator's own voice: state the finding the way a person would, no reassurance, no drama. |
+| **Operator Note** | One plain, professional sentence synthesized from `explanation`: what the finding means for the user, in a trusted advisor's voice, no reassurance, no drama, no raw jargon. |
 | **Risk Factors** | `riskFactors[]` verbatim (they are the evidence). "None found at heuristic depth" if empty, never "safe". |
 | **Missing Inputs** | `missingInputs` list, or `None`. |
 | **Final Action** | From `nextAction` / verdict: ALLOW→Proceed, WARN→Review manually, missing inputs→Provide missing input, BLOCK→Stop. |

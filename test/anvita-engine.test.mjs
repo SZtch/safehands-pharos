@@ -591,7 +591,7 @@ describe("Anvita engine — EIP-1967 proxy inspection (direct storage reads)", (
       assert.strictEqual(out.onChain.proxy.isProxy, true);
       assert.strictEqual(out.onChain.proxy.implementation, IMPL);
       assert.strictEqual(out.onChain.proxy.implementationHasCode, true);
-      assert.ok(out.riskFactors.some((f) => /Upgradeable EIP-1967 proxy/.test(f) && f.includes(IMPL)));
+      assert.ok(out.riskFactors.some((f) => /upgradeable proxy, EIP-1967/i.test(f) && f.includes(IMPL)));
     } finally { mock.close(); }
   });
 
@@ -996,7 +996,7 @@ describe("Anvita engine — permissioned RWA / security tokens", () => {
       const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: token }), envFor(mock));
       assert.strictEqual(out.onChain.permissioned.standard, "ERC-3643");
       assert.strictEqual(out.onChain.permissioned.identityRegistry, IR);
-      assert.match(out.riskFactors.join(" "), /Permissioned RWA token \(ERC-3643\)/);
+      assert.match(out.riskFactors.join(" "), /permissioned RWA token, ERC-3643/i);
     } finally { mock.close(); }
   });
 
