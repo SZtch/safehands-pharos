@@ -11,6 +11,24 @@ The report is the structured core of the answer. Everything around it (the sente
 wrap-up after) stays in the SafeHands voice defined in SKILL.md: relaxed, human, plain words.
 The table stays exact; the conversation around it stays alive.
 
+## Report depth: match the length to the finding, not the command
+
+Good news is short; bad news is complete.
+
+**Compact verdict** (use it when the verdict is `allow`, `riskFactors` is empty, and the check is
+NOT a swap/transfer intent):
+
+```
+**Verdict: ALLOW** (risk score N, <Mode>)
+One plain sentence on why it is clean, taken from `explanation`.
+Want the full evidence report? Just ask.
+```
+
+**Full Safety Report** (the format below) whenever ANY of these holds: the verdict is `warn` or
+`block`; the verdict is `allow` but `riskFactors` is non-empty; or the check is a swap/transfer
+intent that someone may act on (those also get the safe execution spec). The score and verdict are
+never dropped in either depth, and the reasons behind a warn/block are never shortened away.
+
 ## Report format
 
 ```
