@@ -2,11 +2,16 @@
 
 Single entrypoint: `node scripts/safehands-engine.js <command> ['<arg>']`. All outputs are one JSON object on stdout.
 
+Cross-command fields:
+- `rpcNote` (any command): present only when the primary RPC failed at transport level and the read was served by the chain-identity-verified fallback endpoint; failover is always disclosed, never silent.
+- `verdictBinding` (intent analyze, estimate_gas, simulate_transaction): `{ boundTo:"calldata"|"intent", digest, algorithm:"keccak256", preimageFormat, issuedAt, expiresAt, note }`. The digest covers exactly what was analyzed (documented UTF-8 preimage `SafeHandsVerdict:v1:…`), so acting on different bytes, or after `expiresAt`, means the verdict no longer applies. Recompute it to detect drift between what was checked and what is being signed.
+
 ## health
 In: none. Out (success):
 ```json
 { "success": true, "ok": true, "service": "safehands", "mode": "fully-hosted",
   "status": "healthy", "chainId": 1672, "blockNumber": 123456, "rpc": "https://rpc.pharos.xyz",
+  "rpcPrimary": "https://rpc.pharos.xyz", "rpcFallbackConfigured": true,
   "registryConfigured": false, "attestationConfigured": false, "timestamp": "…" }
 ```
 
@@ -79,10 +84,16 @@ get_portfolio {address}             → { assets[{symbol,address,balanceRaw,bala
 check_allowance {token,owner,spender}
                                  → { allowanceRaw, allowanceFormatted?, tokenSymbol?, tokenDecimals?,
                                      approvalRisk:"none|scoped|unlimited", approvalRiskHint }
+get_active_approvals {address}   → { summary:{activeApprovals,unlimited,pairsChecked,readFailures},
+                                     approvals[{token,tokenSymbol,spender,spenderLabel,protocol,
+                                     allowanceRaw,allowanceFormatted,unlimited,note}], scope, limits, nextAction }
+                                   (live allowance() sweep: canonical tokens x registry-verified
+                                    protocol contracts; spenders outside the registry are disclosed
+                                    as uncheckable, never assumed clean; all-reads-failed → UNKNOWN)
 get_transaction_status <txhash>  → { status:"pending|success|failed|not_found", blockNumber?, gasUsed?, from?, to?, explorer }
 estimate_gas {from?,to,data?,value?|valueWei?}
-                                 → { estimatedGas, estimatedGasHex, calldata?, broadcast:false }
-simulate_transaction {…tx…}      → { reverted:false, returnData, calldata?, broadcast:false }
+                                 → { estimatedGas, estimatedGasHex, calldata?, verdictBinding, broadcast:false }
+simulate_transaction {…tx…}      → { reverted:false, returnData, calldata?, verdictBinding, broadcast:false }
 get_spv_proof {address,storageKeys?,blockTag?}
                                  → { proof, blockTag, storageKeys }
 query_goldsky_subgraph {query,variables?}   → { provider, endpoint, data }   (gated)

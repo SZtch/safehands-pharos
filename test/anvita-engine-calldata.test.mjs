@@ -95,7 +95,7 @@ function startMock() {
 }
 function runEngine(cmd, arg, env = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [ENGINE, cmd, arg], { env: { ...process.env, ...env } });
+    const child = spawn(process.execPath, [ENGINE, cmd, arg], { env: { ...process.env, PHAROS_RPC_FALLBACK_URL: "", ...env } });
     let out = "", err = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (err += d));

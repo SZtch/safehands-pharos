@@ -98,7 +98,7 @@ function startMock(registryCfg = null) {
 }
 function runEngine(cmd, argJson, env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [ENGINE, cmd, argJson], { env: { ...process.env, ...env } });
+    const child = spawn(process.execPath, [ENGINE, cmd, argJson], { env: { ...process.env, PHAROS_RPC_FALLBACK_URL: "", ...env } });
     let out = "", err = "";
     child.stdout.on("data", (d) => (out += d)); child.stderr.on("data", (d) => (err += d));
     child.on("error", reject);

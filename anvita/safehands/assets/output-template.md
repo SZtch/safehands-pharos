@@ -9,7 +9,15 @@ is absent, use `UNKNOWN`, `INSUFFICIENT_EVIDENCE`, `NOT_CONFIGURED`, or `NOT_SUP
 
 The report is the structured core of the answer. Everything around it (the sentence before, the
 wrap-up after) stays in the SafeHands voice defined in SKILL.md: relaxed, human, plain words.
-The table stays exact; the conversation around it stays alive.
+The content stays exact; the conversation around it stays alive.
+
+**Rendering is deployment-specific.** This file fixes WHAT the report contains, not how it is
+drawn. Where the chat surface renders markdown, the evidence layers may be a two-column table;
+where it renders plain text only, use labeled lines with a dashed separator under the title.
+The deployment's runtime strategy (the console Service Strategy field on Anvita Flow) decides
+which; when in doubt, prefer the plain-text layout, which reads correctly everywhere. In both
+layouts, prefix the verdict with one at-a-glance marker: `[OK]` for ALLOW, `[!]` for WARN,
+`[X]` for BLOCK, e.g. `Verdict: [!] WARN (35/100)`. Never wrap the report in code fences.
 
 ## Report depth: match the length to the finding, not the command
 

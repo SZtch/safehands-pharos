@@ -7,6 +7,7 @@ SafeHands is a **zero-custody, read-only, pre-execution safety gateway**. This f
 | Source | Access | Config |
 |---|---|---|
 | Pharos Pacific Mainnet RPC (chainId 1672) | `eth_call`, `eth_get*`, `eth_gasPrice`, `eth_estimateGas` only | `assets/networks.json`, `PHAROS_RPC_URL` |
+| Fallback Pharos RPC (availability only) | same read-only methods; used ONLY when the primary fails at transport level; every endpoint must pass the eth_chainId 1672 identity check before any read from it is reported, and failover is disclosed via `rpcNote` | built-in `https://pharos.drpc.org`, `PHAROS_RPC_FALLBACK_URL` (empty disables) |
 | Chainlink Push Engine feeds | token prices via `eth_call` (`latestAnswer`/`latestTimestamp`) | `assets/supported-assets.json` |
 | GoPlus public token-security API | keyless honeypot / tax / owner / malicious-address intel | built-in (`GOPLUS_API_BASE`) |
 | Bundled registries | canonical contracts + official Pharos Token Registry; also power `resolve_alias` (name-to-address, exact match, no network call) | `assets/known-pharos.json`, `assets/supported-protocols.json` |

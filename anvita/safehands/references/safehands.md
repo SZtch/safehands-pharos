@@ -147,6 +147,7 @@ node scripts/safehands-engine.js get_token_price '{"symbol":"PHAROS"}'
 node scripts/safehands-engine.js get_token_balance '{"address":"0x…","token":"USDC"}'
 node scripts/safehands-engine.js get_portfolio '{"address":"0x…"}'
 node scripts/safehands-engine.js check_allowance '{"token":"0x…","owner":"0x…","spender":"0x…"}'
+node scripts/safehands-engine.js get_active_approvals '{"address":"0x…"}'
 node scripts/safehands-engine.js get_transaction_status 0x<64-hex-tx-hash>
 node scripts/safehands-engine.js estimate_gas '{"from":"0x…","to":"0x…","data":"0x…","value":"1.5"}'
 node scripts/safehands-engine.js simulate_transaction '{"to":"0x…","data":"0x…"}'
@@ -155,9 +156,11 @@ node scripts/safehands-engine.js get_spv_proof '{"address":"0x…","storageKeys"
 
 **Output Parsing:**
 - `check_allowance` → `{allowanceRaw, allowanceFormatted?, tokenSymbol?, tokenDecimals?, approvalRisk:"none"|"scoped"|"unlimited", approvalRiskHint}`. **unlimited** (≥2²⁵⁵) is high risk: spender controls the whole balance.
+- `get_active_approvals` → `{summary:{activeApprovals,unlimited,pairsChecked,readFailures}, approvals[], scope, limits, nextAction}`. A live allowance() sweep over canonical tokens x registry-verified protocol contracts. Present the `limits` sentence with the result: the sweep is complete only for that set; approvals to spenders outside the registry cannot be enumerated from public RPC, so a clean sweep is evidence, not proof. Unlimited findings lead the answer with the revoke guidance. When the user names a specific spender, use `check_allowance` for the exact pair instead.
 - `get_transaction_status` → `{status:"pending"|"success"|"failed"|"not_found", blockNumber?, gasUsed?, from?, to?, explorer}`.
-- `estimate_gas` → `{estimatedGas, calldata?, broadcast:false}` or `ESTIMATE_FAILED` (`reverted?`, sanitized reason).
-- `simulate_transaction` → `{reverted:false, returnData, calldata?, broadcast:false}` or `SIMULATION_REVERTED` (sanitized reason).
+- `estimate_gas` → `{estimatedGas, calldata?, verdictBinding, broadcast:false}` or `ESTIMATE_FAILED` (`reverted?`, sanitized reason).
+- `simulate_transaction` → `{reverted:false, returnData, calldata?, verdictBinding, broadcast:false}` or `SIMULATION_REVERTED` (sanitized reason).
+- `verdictBinding` (also on intent analyze) → `{boundTo, digest, algorithm:"keccak256", issuedAt, expiresAt}`: the digest covers exactly what was analyzed. When an agent will act on the verdict, pass the binding along: different bytes or an expired verdict = re-check first.
 - `calldata?` (when `data` decodes) is a **label-only** block `{method, category, selector, unlimited, spender?/operator?/recipient?, counterpartyKnown, dangerous, hints[]}`; surface its hints (e.g. "UNLIMITED approve to an UNKNOWN spender") next to the estimate/simulation; scoring stays with §B analyze.
 - `get_spv_proof` → `{proof}` or `NOT_SUPPORTED` when the RPC lacks `eth_getProof`.
 
