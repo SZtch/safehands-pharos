@@ -12,6 +12,7 @@
  *   node safehands-engine.js get_gas_price
  *   node safehands-engine.js get_token_price '<symbol-or-json>'   // Chainlink Push feeds via eth_call
  *   node safehands-engine.js check_allowance '<json>'             // {token,owner,spender}
+ *   node safehands-engine.js get_active_approvals '<json>'        // {address}: canonical tokens x verified spenders, live allowance sweep
  *   node safehands-engine.js get_transaction_status '<txhash>'
  *   node safehands-engine.js estimate_gas '<json>'                // {from?,to,data?,value?|valueWei?}
  *   node safehands-engine.js simulate_transaction '<json>'        // same shape; eth_call only
@@ -67,7 +68,7 @@ const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
 // Engine version: MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
-const ENGINE_VERSION = "2.6.0";
+const ENGINE_VERSION = "2.7.0";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
@@ -165,42 +166,76 @@ function rejectKeyLike(obj, ignore64HexKeys = []) {
   }
   return null;
 }
-async function rpcRaw(method, params = [], timeoutMs = 15000) {
+// RPC endpoint ladder: the primary plus one public keyless fallback. Failover is
+// availability only, never trust: every endpoint must pass the chain-identity
+// check below before any of its reads are reported, and a JSON-RPC application
+// error (a revert, an unknown method) is an ANSWER from the chain, not an outage,
+// so it never triggers failover. Rate-limit shapes are the one JSON-RPC error
+// class that does fail over, because on public RPC they are an availability
+// failure in an application-error costume.
+const RPC_FALLBACK_URL = "PHAROS_RPC_FALLBACK_URL" in process.env ? process.env.PHAROS_RPC_FALLBACK_URL : "https://pharos.drpc.org";
+const RPC_URLS = RPC_FALLBACK_URL && RPC_FALLBACK_URL !== RPC_URL ? [RPC_URL, RPC_FALLBACK_URL] : [RPC_URL];
+let rpcServedBy = RPC_URLS[0];
+let rpcFailoverUsed = false;
+function isRateLimitShape(message) {
+  return /rate.?limit|too many|capacity|exceeded|429/i.test(String(message || ""));
+}
+async function rpcOnce(url, method, params = [], timeoutMs = 15000) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetch(RPC_URL, {
+    const res = await fetch(url, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: ctl.signal,
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const j = await res.json();
-    if (j.error) throw new Error(`RPC ${j.error.code}: ${j.error.message}`);
+    if (j.error) {
+      const err = new Error(`RPC ${j.error.code}: ${j.error.message}`);
+      err.isRpcApplicationError = !isRateLimitShape(j.error.message);
+      throw err;
+    }
     return j.result;
   } finally { clearTimeout(t); }
 }
-// Chain-identity guard: the first RPC use in a run verifies eth_chainId === 1672
-// before any other read is trusted, so the `chainId: 1672` every command stamps
-// is a CHECKED claim, not an assumption (previously only `health` validated).
-// Memoized in-flight so parallel first reads share one eth_chainId call; reset
-// on failure so a transient error can retry.
-let chainIdentityCheck = null;
-function ensureChainIdentity() {
-  if (!chainIdentityCheck) {
-    chainIdentityCheck = rpcRaw("eth_chainId").then((cid) => {
+// Chain-identity guard, per endpoint: the first use of an endpoint in a run
+// verifies eth_chainId === 1672 before any other read from it is trusted, so the
+// `chainId: 1672` every command stamps is a CHECKED claim, not an assumption.
+// An endpoint that reports the wrong chain is excluded, never failed over TO.
+// Memoized in-flight per endpoint; reset on failure so a transient can retry.
+const chainIdentityChecks = new Map();
+function ensureChainIdentity(url) {
+  if (!chainIdentityChecks.has(url)) {
+    const check = rpcOnce(url, "eth_chainId").then((cid) => {
       const n = Number(decUint(cid));
       if (n !== CHAIN_ID) {
-        const err = new Error(`RPC reports chainId ${n}, expected ${CHAIN_ID} (Pharos pacific-mainnet). Refusing to report reads from an unexpected chain.`);
+        const err = new Error(`RPC ${url} reports chainId ${n}, expected ${CHAIN_ID} (Pharos pacific-mainnet). Refusing to report reads from an unexpected chain.`);
         err.safehandsCode = "CHAIN_MISMATCH";
         throw err;
       }
     });
-    chainIdentityCheck.catch(() => { chainIdentityCheck = null; });
+    check.catch(() => { chainIdentityChecks.delete(url); });
+    chainIdentityChecks.set(url, check);
   }
-  return chainIdentityCheck;
+  return chainIdentityChecks.get(url);
+}
+async function rpcRaw(method, params = [], timeoutMs = 15000) {
+  let lastErr;
+  for (const url of RPC_URLS) {
+    try {
+      if (method !== "eth_chainId") await ensureChainIdentity(url);
+      const out = await rpcOnce(url, method, params, timeoutMs);
+      if (url !== RPC_URLS[0]) rpcFailoverUsed = true;
+      rpcServedBy = url;
+      return out;
+    } catch (e) {
+      if (e && e.isRpcApplicationError) throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr;
 }
 async function rpc(method, params = [], timeoutMs = 15000) {
-  if (method !== "eth_chainId") await ensureChainIdentity();
   return rpcRaw(method, params, timeoutMs);
 }
 const pad32 = (hexNo0x) => hexNo0x.toLowerCase().padStart(64, "0");
@@ -216,6 +251,86 @@ function decString(hex) {
     return Buffer.from(raw, "hex").toString("utf8");
   } catch { return null; }
 }
+// ── keccak256, pure JS (zero-dependency) ──────────────────────────────────
+// Keccak-f[1600] over BigInt 64-bit lanes; rate 1088 bits, keccak padding
+// (0x01 … 0x80). Validated against the standard vectors and viem's keccak256
+// in test/anvita-engine-keccak.test.mjs. This exists for verdict hash-binding
+// today and is the prerequisite for the Merkle-inclusion port.
+const K_M64 = (1n << 64n) - 1n;
+const K_RC = [
+  0x0000000000000001n, 0x0000000000008082n, 0x800000000000808an, 0x8000000080008000n,
+  0x000000000000808bn, 0x0000000080000001n, 0x8000000080008081n, 0x8000000000008009n,
+  0x000000000000008an, 0x0000000000000088n, 0x0000000080008009n, 0x000000008000000an,
+  0x000000008000808bn, 0x800000000000008bn, 0x8000000000008089n, 0x8000000000008003n,
+  0x8000000000008002n, 0x8000000000000080n, 0x000000000000800an, 0x800000008000000an,
+  0x8000000080008081n, 0x8000000000008080n, 0x0000000080000001n, 0x8000000080008008n,
+];
+// Rotation offsets, flat index x + 5y.
+const K_RHO = [0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14];
+const kRotl = (v, n) => n === 0 ? v : (((v << BigInt(n)) | (v >> BigInt(64 - n))) & K_M64);
+function keccakF(A) {
+  for (let round = 0; round < 24; round++) {
+    const C = new Array(5), D = new Array(5);
+    for (let x = 0; x < 5; x++) C[x] = A[x] ^ A[x + 5] ^ A[x + 10] ^ A[x + 15] ^ A[x + 20];
+    for (let x = 0; x < 5; x++) {
+      D[x] = C[(x + 4) % 5] ^ kRotl(C[(x + 1) % 5], 1);
+      for (let y = 0; y < 25; y += 5) A[x + y] ^= D[x];
+    }
+    const B = new Array(25);
+    for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) {
+      B[y + 5 * ((2 * x + 3 * y) % 5)] = kRotl(A[x + 5 * y], K_RHO[x + 5 * y]);
+    }
+    for (let y = 0; y < 25; y += 5) for (let x = 0; x < 5; x++) {
+      A[x + y] = B[x + y] ^ ((~B[((x + 1) % 5) + y] & K_M64) & B[((x + 2) % 5) + y]);
+    }
+    A[0] ^= K_RC[round];
+  }
+}
+function keccak256(bytes) {
+  const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+  const rate = 136;
+  const padded = Buffer.alloc(Math.ceil((buf.length + 1) / rate) * rate);
+  buf.copy(padded);
+  padded[buf.length] |= 0x01;
+  padded[padded.length - 1] |= 0x80;
+  const A = new Array(25).fill(0n);
+  for (let off = 0; off < padded.length; off += rate) {
+    for (let i = 0; i < rate / 8; i++) A[i] ^= padded.readBigUInt64LE(off + i * 8);
+    keccakF(A);
+  }
+  const out = Buffer.alloc(32);
+  for (let i = 0; i < 4; i++) out.writeBigUInt64LE(A[i], i * 8);
+  return "0x" + out.toString("hex");
+}
+const keccak256Hex = (hex0x) => keccak256(Buffer.from(String(hex0x || "0x").slice(2), "hex"));
+
+// ── verdict hash-binding ──────────────────────────────────────────────────
+// A verdict is evidence about the chain at issuedAt, bound to exactly what was
+// analyzed. The digest preimage is a documented UTF-8 string, so any agent can
+// recompute it: acting on different bytes under a SafeHands verdict becomes
+// detectable. Expiry is advisory: after it, re-check rather than trust.
+const VERDICT_TTL_SECONDS = 600;
+function verdictBinding(kind, preimage) {
+  const issued = new Date();
+  return {
+    boundTo: kind,
+    digest: keccak256(Buffer.from(preimage, "utf8")),
+    algorithm: "keccak256",
+    preimageFormat: preimage.slice(0, preimage.indexOf(":", 20) + 1) + "...",
+    issuedAt: issued.toISOString(),
+    expiresAt: new Date(issued.getTime() + VERDICT_TTL_SECONDS * 1000).toISOString(),
+    note: `This verdict covers exactly the analyzed ${kind} at issuedAt; different bytes or an expired verdict need a fresh check.`,
+  };
+}
+function bindCalldata(to, valueWeiDec, dataHex) {
+  return verdictBinding("calldata", `SafeHandsVerdict:v1:calldata:${CHAIN_ID}:${String(to || "").toLowerCase()}:${valueWeiDec || "0"}:${String(dataHex || "0x").toLowerCase()}`);
+}
+function bindIntent(input) {
+  const keys = Object.keys(input).sort();
+  const canonical = keys.map((k) => `${k}=${String(input[k]).toLowerCase()}`).join("&");
+  return verdictBinding("intent", `SafeHandsVerdict:v1:intent:${CHAIN_ID}:${canonical}`);
+}
+
 function prosToWei(amountStr) {
   const str = String(amountStr).trim();
   if (!/^\d+(\.\d+)?$/.test(str)) return null; // must be a well-formed positive decimal: "1", "1.5", "0.5"
@@ -441,7 +556,8 @@ async function cmdHealth() {
   if (chainId !== CHAIN_ID) return fail("CHAIN_MISMATCH", `RPC reports chainId ${chainId}, expected ${CHAIN_ID} (Pharos pacific-mainnet).`);
   return {
     success: true, ok: true, service: "safehands", mode: "fully-hosted", status: "healthy",
-    rpc: RPC_URL, chainId, blockNumber: Number(decUint(blk)),
+    rpc: rpcServedBy, rpcPrimary: RPC_URL, rpcFallbackConfigured: RPC_URLS.length > 1,
+    chainId, blockNumber: Number(decUint(blk)),
     registryConfigured: ADDRESS_RE.test(REGISTRY_ADDR), attestationConfigured: ADDRESS_RE.test(ATTEST_ADDR),
     timestamp: new Date().toISOString(),
   };
@@ -1174,6 +1290,7 @@ async function analyzeRealFiIntent(input, action) {
   rep.evidenceUsed = evidenceUsed;
   rep.missingInputs = missingInputs;
   rep.intentNotes = intentNotes;
+  attachIntentBinding(rep, input, action);
   if (vaultProviderData) {
     rep.vaultRiskScore = rep.riskScore; // interaction risk, not APY quality
     rep.vaultProviderData = vaultProviderData;
@@ -1222,7 +1339,19 @@ async function analyzeIntent(input) {
   score = await evaluateCarriedTx(input, score, factors, parts, undefined, undefined, false, false);
   const rep = report(score, factors, { type: "intent", action, walletAddress: input.walletAddress });
   rep.components = parts;
+  attachIntentBinding(rep, input, action);
   return rep;
+}
+
+// Hash-binding for intent verdicts: exact calldata when the intent carries
+// bytes, otherwise a canonical digest of the fields that shaped this verdict.
+function attachIntentBinding(rep, input, action) {
+  const bindKeys = ["action", "tokenIn", "tokenOut", "amount", "toAddress", "walletAddress", "to", "vault", "url", "spender", "token", "tokenAddress", "valueWei", "value"];
+  const bindInput = { action };
+  for (const k of bindKeys) { const v = input[k]; if (v !== undefined && v !== null && v !== "") bindInput[k] = v; }
+  rep.verdictBinding = typeof input.data === "string" && /^0x[0-9a-fA-F]*$/.test(input.data) && input.data.length > 2
+    ? bindCalldata(input.to || input.toAddress, String(input.valueWei ?? "0"), input.data)
+    : bindIntent(bindInput);
 }
 
 async function cmdAnalyze(raw) {
@@ -1486,6 +1615,86 @@ async function cmdCheckAllowance(raw) {
   };
 }
 
+// get_active_approvals: live approval-hygiene sweep. Public Pharos RPC caps
+// eth_getLogs at 1,000 blocks per call (dRPC free tier: 10,000), so approval
+// HISTORY cannot be enumerated here; instead this reads allowance(owner, spender)
+// live for every canonical ERC-20 x every registry-VERIFIED protocol contract.
+// Complete and deterministic over that set; anything outside it is disclosed as
+// uncheckable, never assumed clean. Reads are serialized (public-RPC rate limits).
+async function cmdActiveApprovals(raw) {
+  const j = parseJsonArg(raw) || { address: raw };
+  const keyErr = rejectKeyLike(j); if (keyErr) return fail("KEY_MATERIAL_REJECTED", keyErr);
+  const cg = chainGuard(j); if (cg) return cg;
+  const owner = String(j.address || j.owner || "").toLowerCase();
+  if (!ADDRESS_RE.test(owner)) return fail("VALIDATION_ERROR", "'address' must be a valid 0x EVM wallet address (the approval owner).");
+
+  const spenders = [];
+  for (const [id, proto] of Object.entries(PROTOCOLS_CFG.protocols || {})) {
+    if (proto.verificationStatus !== "verified" || !proto.contracts) continue;
+    for (const [addr, label] of Object.entries(proto.contracts)) {
+      spenders.push({ address: addr.toLowerCase(), label, protocol: proto.name || id });
+    }
+  }
+  const tokens = Object.entries(CANON_TOKENS);
+  if (!spenders.length || !tokens.length) {
+    return fail("NOT_CONFIGURED", "The bundled registry has no verified protocol contracts or canonical tokens to sweep.");
+  }
+
+  const approvals = []; const readFailures = [];
+  let pairsChecked = 0;
+  for (const [symbol, token] of tokens) {
+    let decimals = null;
+    try {
+      const d = Number(decUint(await ethCall(token, SEL.decimals)));
+      if (d >= 0 && d <= 100) decimals = d;
+    } catch { /* formatting only; raw value still reported */ }
+    for (const sp of spenders) {
+      pairsChecked++;
+      try {
+        const res = await ethCall(token, SEL.allowance + encAddr(owner) + encAddr(sp.address));
+        if (res == null || res === "0x") { readFailures.push(`${symbol} -> ${sp.label}: no data`); continue; }
+        const allowance = decUint(res);
+        if (allowance === 0n) continue;
+        const unlimited = allowance >= UNLIMITED_FLOOR;
+        approvals.push({
+          token, tokenSymbol: symbol, spender: sp.address, spenderLabel: sp.label, protocol: sp.protocol,
+          allowanceRaw: allowance.toString(),
+          allowanceFormatted: unlimited ? "unlimited" : (decimals != null ? formatUnits(allowance, decimals) : null),
+          unlimited,
+          note: unlimited
+            ? `UNLIMITED: this spender can move the wallet's entire current and future ${symbol} balance. Revoke it or replace it with a per-use amount.`
+            : "Scoped approval to a registry-verified contract; verification is recognition, not a guarantee.",
+        });
+      } catch (e) {
+        readFailures.push(`${symbol} -> ${sp.label}: ${sanitizeReason(String((e && e.message) || e)).slice(0, 80)}`);
+      }
+    }
+  }
+  if (readFailures.length === pairsChecked) {
+    return fail("PHAROS_RPC_UNAVAILABLE", "Every allowance read in the sweep failed; the approval state is UNKNOWN, not clean.", { retryable: true });
+  }
+  const unlimitedCount = approvals.filter((a) => a.unlimited).length;
+  return {
+    success: true, command: "get_active_approvals", owner,
+    summary: { activeApprovals: approvals.length, unlimited: unlimitedCount, pairsChecked, readFailures: readFailures.length },
+    approvals,
+    ...(readFailures.length ? { readFailuresDetail: readFailures.slice(0, 10) } : {}),
+    scope: {
+      tokens: Object.fromEntries(tokens),
+      spendersChecked: spenders.length,
+      basis: "canonical tokens x registry-verified protocol contracts, allowance() read live at request time",
+    },
+    limits: "Complete only for the checked set. Approvals granted to spenders OUTSIDE the bundled registry cannot be enumerated from public RPC (eth_getLogs is capped at 1,000 blocks per call; full history needs an indexer), so a clean sweep is evidence of hygiene, not proof. To check one specific spender exactly, use check_allowance with its address.",
+    nextAction: unlimitedCount > 0
+      ? "Revoke or reduce the unlimited approvals listed above, then re-approve per use with a limited amount."
+      : approvals.length > 0
+        ? "Review the scoped approvals and revoke any you no longer use."
+        : "No active approvals found in the checked set.",
+    readOnly: "reads allowance() only; this command never grants, changes, or revokes an approval",
+    chainId: CHAIN_ID, timestamp: new Date().toISOString(),
+  };
+}
+
 // get_token_balance: read-only balance lookup. Native PROS via eth_getBalance;
 // ERC-20 via balanceOf eth_call. Token may be a 0x address, a bundled canonical
 // symbol, or "PROS"/"pharos" for native; any other name fails closed (use
@@ -1582,6 +1791,7 @@ async function cmdEstimateGas(raw) {
       success: true, command: "estimate_gas",
       estimatedGas: Number(decUint(hex)), estimatedGasHex: hex,
       ...(cd ? { calldata: cd } : {}),
+      verdictBinding: bindCalldata(tx.to, decUint(tx.value || "0x0").toString(), tx.data),
       broadcast: false, note: "eth_estimateGas is a node-side dry run; nothing was signed or broadcast",
       chainId: CHAIN_ID, timestamp: new Date().toISOString(),
     };
@@ -1608,6 +1818,7 @@ async function cmdSimulateTransaction(raw) {
     return {
       success: true, command: "simulate_transaction", reverted: false, returnData: ret,
       ...(cd ? { calldata: cd } : {}),
+      verdictBinding: bindCalldata(tx.to, decUint(tx.value || "0x0").toString(), tx.data),
       broadcast: false, note: "eth_call simulation only; nothing was signed or broadcast",
       chainId: CHAIN_ID, timestamp: new Date().toISOString(),
     };
@@ -1963,6 +2174,7 @@ function dispatch(cmd, arg) {
     : cmd === "get_gas_price" ? cmdGasPrice()
     : cmd === "get_token_price" ? cmdTokenPrice(arg ?? "")
     : cmd === "check_allowance" ? cmdCheckAllowance(arg ?? "")
+    : cmd === "get_active_approvals" ? cmdActiveApprovals(arg ?? "")
     : cmd === "get_token_balance" ? cmdTokenBalance(arg ?? "")
     : cmd === "get_portfolio" ? cmdPortfolio(arg ?? "")
     : cmd === "get_transaction_status" ? cmdTxStatus(arg ?? "")
@@ -1973,7 +2185,7 @@ function dispatch(cmd, arg) {
     : cmd === "get_execution_history" ? cmdExecutionHistory(arg ?? "")
     : cmd === "get_pool_info" ? cmdPoolInfo(arg ?? "")
     : cmd === "resolve_alias" ? cmdResolveAlias(arg ?? "")
-    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|resolve_alias|get_gas_price|get_token_price|get_token_balance|get_portfolio|check_allowance|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
+    : Promise.resolve(fail("USAGE", "usage: safehands-engine.js <health|analyze|query|resolve_alias|get_gas_price|get_token_price|get_token_balance|get_portfolio|check_allowance|get_active_approvals|get_transaction_status|estimate_gas|simulate_transaction|get_spv_proof|query_goldsky_subgraph|get_execution_history|get_pool_info> ['<json-or-arg>']"));
 }
 
 // Run the CLI ONLY when executed directly (node safehands-engine.js <cmd>), not
@@ -1989,7 +2201,12 @@ function invokedDirectly() {
 if (invokedDirectly()) {
   const [cmd, arg] = process.argv.slice(2);
   dispatch(cmd, arg)
-    .then((r) => { console.log(JSON.stringify(r, null, 2)); process.exit(r.success ? 0 : 1); })
+    .then((r) => {
+      if (rpcFailoverUsed && r && typeof r === "object" && !Array.isArray(r)) {
+        r.rpcNote = `Primary RPC was unavailable for at least one read; served by the fallback endpoint ${rpcServedBy} (chain identity verified before use).`;
+      }
+      console.log(JSON.stringify(r, null, 2)); process.exit(r.success ? 0 : 1);
+    })
     .catch((e) => {
       const msg = String(e && e.message || e);
       const code = e && e.safehandsCode ? e.safehandsCode
@@ -2001,4 +2218,4 @@ if (invokedDirectly()) {
 
 // Exported for unit tests (import does not trigger the CLI above). These are the
 // pure decision/normalization helpers whose behavior the audit locks.
-export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress };
+export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress, keccak256, keccak256Hex, bindCalldata, bindIntent };

@@ -34,6 +34,7 @@ function startMock(opts = {}) {
   const {
     symbol = "GOOD", goplusResult = null, goplusTransientFailures = 0,
     gasPrice = "0x2540be400",               // 10 gwei
+    chainIdHex = "0x688",                    // 1672; override to simulate a wrong-chain endpoint
     feedAnswer = "390000000000000000",       // 0.39 * 1e18
     feedAgeSeconds = 60,                      // fresh (< heartbeat)
     decimalsValue = 18,
@@ -65,7 +66,7 @@ function startMock(opts = {}) {
         if (method === "eth_getBalance") result = nativeBalance;
         else if (method === "eth_getTransactionCount") result = "0x1";
         else if (method === "eth_getCode") result = empty.has(String(params?.[0] || "").toLowerCase()) ? "0x" : CODE;
-        else if (method === "eth_chainId") result = "0x688"; // 1672
+        else if (method === "eth_chainId") result = chainIdHex;
         else if (method === "eth_blockNumber") result = "0x100";
         else if (method === "eth_gasPrice") result = gasPrice;
         else if (method === "eth_estimateGas") {
@@ -118,7 +119,7 @@ function startMock(opts = {}) {
 function runEngine(cmd, arg, env = {}) {
   return new Promise((resolve, reject) => {
     const args = arg === undefined ? [ENGINE, cmd] : [ENGINE, cmd, arg];
-    const child = spawn(process.execPath, args, { env: { ...process.env, ...env } });
+    const child = spawn(process.execPath, args, { env: { ...process.env, PHAROS_RPC_FALLBACK_URL: "", ...env } });
     let out = "", err = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (err += d));
@@ -858,6 +859,7 @@ describe("Anvita engine — read-only invariant", () => {
     await runEngine("get_spv_proof", JSON.stringify({ address: tok }), env);
     await runEngine("get_token_balance", JSON.stringify({ address: "0x1111111111111111111111111111111111111111", token: tok }), env);
     await runEngine("get_portfolio", JSON.stringify({ address: "0x1111111111111111111111111111111111111111" }), env);
+    await runEngine("get_active_approvals", JSON.stringify({ address: "0x1111111111111111111111111111111111111111" }), env);
     await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: tok }), env);
     await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "bridge", walletAddress: "0x1111111111111111111111111111111111111111", token: tok, bridgeContract: "0x3333333333333333333333333333333333333333" }), env);
     const methods = mock.methodsCalled;
@@ -867,5 +869,99 @@ describe("Anvita engine — read-only invariant", () => {
       assert.ok(!WRITE_RE.test(m), `write-shaped RPC method leaked: ${m}`);
       assert.ok(READ_ONLY_ALLOWED.has(m), `unexpected RPC method (not in read-only allowlist): ${m}`);
     }
+  });
+});
+
+describe("Anvita engine — get_active_approvals (allowance sweep)", () => {
+  const OWNER = "0x1111111111111111111111111111111111111111";
+
+  it("clean sweep: zero allowances everywhere reports no approvals, with honest limits", async () => {
+    const mock = startMock({ allowance: "0" });
+    try {
+      const { out } = await runEngine("get_active_approvals", JSON.stringify({ address: OWNER }), envFor(mock));
+      assert.strictEqual(out.success, true);
+      assert.strictEqual(out.summary.activeApprovals, 0);
+      assert.ok(out.summary.pairsChecked >= 36, `expected the full canonical x verified sweep, got ${out.summary.pairsChecked}`);
+      assert.match(out.limits, /outside the bundled registry|indexer/i, "the sweep must disclose what it cannot see");
+      assert.match(out.nextAction, /no active approvals/i);
+    } finally { mock.close(); }
+  });
+
+  it("an unlimited allowance is classified and drives the revoke nextAction", async () => {
+    const unlimited = (2n ** 256n - 1n).toString();
+    const mock = startMock({ allowance: unlimited });
+    try {
+      const { out } = await runEngine("get_active_approvals", JSON.stringify({ address: OWNER }), envFor(mock));
+      assert.strictEqual(out.success, true);
+      assert.ok(out.summary.unlimited > 0, "unlimited approvals must be counted");
+      assert.strictEqual(out.approvals[0].unlimited, true);
+      assert.strictEqual(out.approvals[0].allowanceFormatted, "unlimited");
+      assert.match(out.approvals[0].note, /UNLIMITED/);
+      assert.match(out.nextAction, /revoke/i);
+    } finally { mock.close(); }
+  });
+
+  it("a finite allowance is reported scoped with a formatted amount", async () => {
+    const mock = startMock({ allowance: (5n * 10n ** 18n).toString() });
+    try {
+      const { out } = await runEngine("get_active_approvals", JSON.stringify({ address: OWNER }), envFor(mock));
+      assert.strictEqual(out.success, true);
+      assert.ok(out.approvals.length > 0);
+      assert.strictEqual(out.approvals[0].unlimited, false);
+      assert.strictEqual(out.approvals[0].allowanceFormatted, "5");
+    } finally { mock.close(); }
+  });
+
+  it("rejects a malformed owner address", async () => {
+    const mock = startMock();
+    try {
+      const { out } = await runEngine("get_active_approvals", JSON.stringify({ address: "0x123" }), envFor(mock));
+      assert.strictEqual(out.success, false);
+      assert.strictEqual(out.error.code, "VALIDATION_ERROR");
+    } finally { mock.close(); }
+  });
+
+  it("all reads failing is UNKNOWN, never a clean result", async () => {
+    const { out } = await runEngine("get_active_approvals", JSON.stringify({ address: OWNER }), {
+      PHAROS_RPC_URL: "http://127.0.0.1:1", GOPLUS_API_BASE: "http://127.0.0.1:1",
+    });
+    assert.strictEqual(out.success, false, "an unreachable chain must not read as approval-clean");
+  });
+});
+
+describe("Anvita engine — RPC fallback (availability only, never trust)", () => {
+  it("serves from the fallback when the primary is unreachable, with an honest rpcNote", async () => {
+    const mock = startMock();
+    try {
+      const { out } = await runEngine("health", undefined, {
+        PHAROS_RPC_URL: "http://127.0.0.1:1", PHAROS_RPC_FALLBACK_URL: mock.url, GOPLUS_API_BASE: mock.url,
+      });
+      assert.strictEqual(out.success, true);
+      assert.strictEqual(out.rpc, mock.url, "health must report the endpoint that actually served");
+      assert.match(out.rpcNote ?? "", /fallback/i, "failover must be disclosed, never silent");
+    } finally { mock.close(); }
+  });
+
+  it("refuses a wrong-chain fallback: availability never overrides chain identity", async () => {
+    const wrongChain = startMock({ chainIdHex: "0x1" });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "wallet", address: "0x" + "11".repeat(20) }), {
+        PHAROS_RPC_URL: "http://127.0.0.1:1", PHAROS_RPC_FALLBACK_URL: wrongChain.url, GOPLUS_API_BASE: wrongChain.url,
+      });
+      assert.strictEqual(out.success, false, "reads from a wrong-chain endpoint must never be reported");
+    } finally { wrongChain.close(); }
+  });
+
+  it("does not fail over on a JSON-RPC application error: a revert is an answer, not an outage", async () => {
+    const primary = startMock({ estimateGas: "revert" });
+    const fallback = startMock();
+    try {
+      const { out } = await runEngine("estimate_gas", JSON.stringify({ to: "0x" + "22".repeat(20), data: "0x" }), {
+        PHAROS_RPC_URL: primary.url, PHAROS_RPC_FALLBACK_URL: fallback.url, GOPLUS_API_BASE: primary.url,
+      });
+      assert.match(JSON.stringify(out), /revert/i, "the revert answer must surface");
+      const fallbackEstimates = fallback.methodsCalled.filter((m) => m === "eth_estimateGas");
+      assert.strictEqual(fallbackEstimates.length, 0, "a revert must never be retried on the fallback endpoint");
+    } finally { primary.close(); fallback.close(); }
   });
 });
