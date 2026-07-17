@@ -978,6 +978,95 @@ describe("Anvita engine — codehash recognition & drift", () => {
   });
 });
 
+describe("Anvita engine — permissioned RWA / security tokens", () => {
+  const encAddr32 = (a) => "0x" + a.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+  const IR = "0x1010101010101010101010101010101010101010";
+  const COMPLIANCE = "0x2020202020202020202020202020202020202020";
+  // ERC-3643 selectors (mirror the engine SEL block)
+  const S = { identityRegistry: "0x134e18f4", compliance: "0x6290865d", paused: "0x5c975abb", isFrozen: "0xe5839836", isVerified: "0xb9209e33", isControllable: "0x4c783bf5" };
+
+  it("detects an ERC-3643 permissioned RWA token and discloses the identity gating", async () => {
+    const token = "0x4444444444444444444444444444444444444444";
+    const mock = startMock({ goplusResult: {}, callResults: {
+      [`${token}|${S.identityRegistry}`]: encAddr32(IR),
+      [`${token}|${S.compliance}`]: encAddr32(COMPLIANCE),
+      [`${token}|${S.paused}`]: encUint(0),
+    } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: token }), envFor(mock));
+      assert.strictEqual(out.onChain.permissioned.standard, "ERC-3643");
+      assert.strictEqual(out.onChain.permissioned.identityRegistry, IR);
+      assert.match(out.riskFactors.join(" "), /Permissioned RWA token \(ERC-3643\)/);
+    } finally { mock.close(); }
+  });
+
+  it("a paused ERC-3643 token escalates and says transfers are blocked", async () => {
+    const token = "0x4444444444444444444444444444444444444444";
+    const mock = startMock({ goplusResult: {}, callResults: {
+      [`${token}|${S.identityRegistry}`]: encAddr32(IR),
+      [`${token}|${S.paused}`]: encUint(1),
+    } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: token }), envFor(mock));
+      assert.match(out.riskFactors.join(" "), /PAUSED/);
+    } finally { mock.close(); }
+  });
+
+  it("swap: an unverified wallet against an ERC-3643 leg is flagged as a will-revert (>= warn)", async () => {
+    const tokenOut = "0x5555555555555555555555555555555555555555";
+    const tokenIn = "0x6666666666666666666666666666666666666666";
+    const wallet = "0x1111111111111111111111111111111111111111";
+    const mock = startMock({ goplusResult: {}, callResults: {
+      [`${tokenOut}|${S.identityRegistry}`]: encAddr32(IR),
+      [`${tokenOut}|${S.paused}`]: encUint(0),
+      [`${IR}|${S.isVerified}`]: encUint(0),          // wallet NOT verified
+      [`${tokenOut}|${S.isFrozen}`]: encUint(0),
+    } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "swap", tokenIn, tokenOut, walletAddress: wallet }), envFor(mock));
+      assert.ok(out.riskScore >= 70, `expected escalation to >=70, got ${out.riskScore}`);
+      assert.match(out.riskFactors.join(" "), /NOT verified|will revert/i);
+      assert.strictEqual(out.components.tokenOutEligibility.verified, false);
+    } finally { mock.close(); }
+  });
+
+  it("swap: a verified wallet against an ERC-3643 leg adds no eligibility escalation", async () => {
+    const tokenOut = "0x5555555555555555555555555555555555555555";
+    const tokenIn = "0x6666666666666666666666666666666666666666";
+    const wallet = "0x1111111111111111111111111111111111111111";
+    const mock = startMock({ goplusResult: {}, callResults: {
+      [`${tokenOut}|${S.identityRegistry}`]: encAddr32(IR),
+      [`${tokenOut}|${S.paused}`]: encUint(0),
+      [`${IR}|${S.isVerified}`]: encUint(1),          // wallet verified
+      [`${tokenOut}|${S.isFrozen}`]: encUint(0),
+    } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "intent", action: "swap", tokenIn, tokenOut, walletAddress: wallet }), envFor(mock));
+      assert.strictEqual(out.components.tokenOutEligibility.verified, true);
+      assert.doesNotMatch(out.riskFactors.join(" "), /NOT verified in/i, "a verified wallet must not get the eligibility-revert escalation");
+    } finally { mock.close(); }
+  });
+
+  it("detects an ERC-1400 controllable security token", async () => {
+    const token = "0x7777777777777777777777777777777777777777";
+    const mock = startMock({ goplusResult: {}, callResults: { [`${token}|${S.isControllable}`]: encUint(1) } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: token }), envFor(mock));
+      assert.strictEqual(out.onChain.permissioned.standard, "ERC-1400");
+      assert.match(out.riskFactors.join(" "), /[Cc]ontrollable security token/);
+    } finally { mock.close(); }
+  });
+
+  it("an ordinary ERC-20 is not flagged as permissioned", async () => {
+    const token = "0x8888888888888888888888888888888888888888";
+    const mock = startMock({ symbol: "GOOD", goplusResult: {} });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: token }), envFor(mock));
+      assert.strictEqual(out.onChain.permissioned, undefined, "a plain ERC-20 must carry no permissioned block");
+    } finally { mock.close(); }
+  });
+});
+
 describe("Anvita engine — RPC fallback (availability only, never trust)", () => {
   it("serves from the fallback when the primary is unreachable, with an honest rpcNote", async () => {
     const mock = startMock();

@@ -37,6 +37,7 @@ Out (success):
                "codeHash": "(contract analysis) keccak256 of the deployed bytecode",
                "codeRecognizedAs": "(contract analysis) { label, protocol } when the bytecode is byte-identical to a registry-verified contract at another address: recognition, NOT canonical trust",
                "codeHashMatchesRegistry": "(registry-verified addresses only) false = live code no longer matches the code verified at registration (silent-change guard, fails closed)",
+               "permissioned": "(token analysis) { standard:\"ERC-3643\"|\"ERC-1400\", identityRegistry?, compliance?, paused?, controllable? } when the token gates transfers by identity/compliance or allows controller force-moves; absent for ordinary ERC-20",
                "proxy": "(contract analysis only) { isProxy, implementation?, implementationHasCode?, implementationLabel?, implementationCodeMatch?, admin?, beacon? } from direct EIP-1967 slot reads; implementationCodeMatch names a verified contract when the impl bytecode is recognized; isProxy:null when the storage reads failed" },
   "intel": "on-chain + GoPlus threat intelligence | on-chain only (GoPlus unreachable)",
   "explorer": "https://www.pharosscan.xyz/address/0x…  (verify the subject yourself)",

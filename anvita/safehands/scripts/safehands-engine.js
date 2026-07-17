@@ -101,6 +101,13 @@ const SEL = {
   currentMerkleRoot: "0x9ea97190", currentDataURI: "0x59e99f26",
   isAuthorizedAgent: "0x6bf722ab", isAuthorizedOperator: "0x82d52c1e",
   reputationOf: "0xdb89c044",
+  // permissioned RWA / security-token surface (ERC-3643 T-REX + ERC-1400)
+  identityRegistry: "0x134e18f4",   // ERC-3643 identityRegistry()
+  compliance: "0x6290865d",         // ERC-3643 compliance()
+  pausedFn: "0x5c975abb",           // paused()
+  isFrozen: "0xe5839836",           // ERC-3643 isFrozen(address)
+  isVerified: "0xb9209e33",         // IdentityRegistry isVerified(address)
+  isControllable: "0x4c783bf5",     // ERC-1400 isControllable()
   // action selectors for the offline calldata decode (escalate-only floors)
   approve: "0x095ea7b3",            // approve(address,uint256)
   permit: "0xd505accf",             // ERC-2612 permit(owner,spender,value,deadline,v,r,s)
@@ -488,6 +495,50 @@ async function proxyProbe(addr) {
   return out;
 }
 
+// ── permissioned RWA / security-token probe ───────────────────────────────
+// Pharos is an RWA-first chain; many tokenized assets are PERMISSIONED: an
+// ERC-3643 (T-REX) token gates every transfer through an on-chain identity
+// registry + compliance rules, and an ERC-1400 security token can be
+// controller-forced. A naive agent will sign a transfer that simply reverts,
+// or hold a token a controller can move. This probe is read-only and never
+// asserts the token is safe; it discloses the restriction so the caller knows
+// a transfer needs eligibility, not just balance.
+async function permissionedProbe(addr) {
+  const out = { standard: null, identityRegistry: null, compliance: null, paused: null, controllable: null };
+  try {
+    const [ir, comp] = await Promise.all([
+      ethCall(addr, SEL.identityRegistry).catch(() => null),
+      ethCall(addr, SEL.compliance).catch(() => null),
+    ]);
+    const irAddr = slotToAddress(ir);
+    const compAddr = slotToAddress(comp);
+    if (irAddr || compAddr) {
+      out.standard = "ERC-3643";
+      out.identityRegistry = irAddr;
+      out.compliance = compAddr;
+      try { const p = await ethCall(addr, SEL.pausedFn); out.paused = decUint(p) === 1n; } catch { /* paused unknown */ }
+      return out;
+    }
+    // Not ERC-3643: check the ERC-1400 controllable signal.
+    try {
+      const c = await ethCall(addr, SEL.isControllable);
+      if (c && c !== "0x") { const v = decUint(c); if (v === 1n) { out.standard = "ERC-1400"; out.controllable = true; } }
+    } catch { /* not ERC-1400 */ }
+  } catch { /* not permissioned or reads failed; disclosed as null, never assumed open */ }
+  return out;
+}
+// Would an ERC-3643 transfer to/from `holder` be allowed right now? Reads only:
+// isVerified(holder) on the identity registry + isFrozen(holder) on the token.
+async function erc3643Eligibility(tokenAddr, identityRegistry, holder) {
+  const out = { verified: null, frozen: null };
+  if (!ADDRESS_RE.test(String(holder || ""))) return out;
+  if (identityRegistry) {
+    try { const v = await ethCall(identityRegistry, SEL.isVerified + encAddr(holder)); if (v && v !== "0x") out.verified = decUint(v) === 1n; } catch { /* unknown */ }
+  }
+  try { const f = await ethCall(tokenAddr, SEL.isFrozen + encAddr(holder)); if (f && f !== "0x") out.frozen = decUint(f) === 1n; } catch { /* unknown */ }
+  return out;
+}
+
 async function erc20Probe(addr) {
   const out = {};
   const tryCall = async (key, sel, dec) => { try { const r = await ethCall(addr, sel); out[key] = dec(r); } catch { out[key] = null; } };
@@ -666,6 +717,21 @@ async function analyzeContract(addr) {
       score += 10;
     }
   }
+  // Permissioned RWA / security-token disclosure (only meaningful for tokens).
+  let permissioned = null;
+  if (looksToken) {
+    const perm = await permissionedProbe(addr);
+    if (perm.standard === "ERC-3643") {
+      permissioned = perm;
+      factors.push(`Permissioned RWA token (ERC-3643): every transfer is gated by an on-chain identity registry${perm.identityRegistry ? ` (${perm.identityRegistry})` : ""} and compliance rules. A transfer to or from an address that is not verified, or that is frozen, will REVERT: this token needs eligibility, not just balance.`);
+      score += 10;
+      if (perm.paused === true) { factors.push("This RWA token is currently PAUSED: transfers are blocked right now."); score += 25; }
+    } else if (perm.standard === "ERC-1400" && perm.controllable) {
+      permissioned = perm;
+      factors.push("Controllable security token (ERC-1400 isControllable): a designated controller can force-transfer or redeem holdings without the holder's signature. Custody is conditional by design.");
+      score += 12;
+    }
+  }
   const gp = await goplusToken(addr);
   const gpUnindexedToken = gp.reachable && !gp.data && !gp.schemaDrift && looksToken; // GoPlus answered but has never vetted THIS token
   if (gp.data && gp.factors.length) { factors.push(...gp.factors); score += gp.add; }
@@ -687,7 +753,7 @@ async function analyzeContract(addr) {
     score = Math.max(score, THREAT_INTEL_UNAVAILABLE_FLOOR);
   }
   return report(score, factors, { type: "contract", address: addr }, {
-    onChain: { isContract: true, codeSize: p.codeSize, codeHash: p.codeHash, ...(codeMatch ? { codeRecognizedAs: { label: codeMatch.label, protocol: codeMatch.protocol } } : {}), token: looksToken ? t : null, proxy: px },
+    onChain: { isContract: true, codeSize: p.codeSize, codeHash: p.codeHash, ...(codeMatch ? { codeRecognizedAs: { label: codeMatch.label, protocol: codeMatch.protocol } } : {}), token: looksToken ? t : null, proxy: px, ...(permissioned ? { permissioned } : {}) },
     ...(gp.identity ? { goplusTokenIdentity: gp.identity } : {}), // display-only, never scored
     intel: gpVerified ? "on-chain + GoPlus threat intelligence" : "on-chain only (GoPlus unverified)",
     limits: gpVerified ? "GoPlus flags included; bespoke sell-simulation and source-level audit are not performed."
@@ -1372,6 +1438,19 @@ async function analyzeIntent(input) {
     parts.tokenIn = ti; parts.tokenOut = to;
     for (const [label, r] of [["tokenIn", ti], ["tokenOut", to]]) {
       score = composeComponent(score, r, label, factors, 40);
+    }
+    // Permissioned RWA eligibility: if a leg is an ERC-3643 token, the acting
+    // wallet must be verified (and not frozen) or this swap leg reverts. Catch
+    // the doomed transfer before signing, not after.
+    for (const [label, addr, r] of [["tokenIn", input.tokenIn, ti], ["tokenOut", input.tokenOut, to]]) {
+      const perm = r?.onChain?.permissioned;
+      if (perm?.standard === "ERC-3643") {
+        const elig = await erc3643Eligibility(addr, perm.identityRegistry, input.walletAddress);
+        parts[`${label}Eligibility`] = elig;
+        if (elig.verified === false) { factors.push(`Acting wallet is NOT verified in ${label}'s identity registry: this ERC-3643 ${label} leg will revert. Complete the token's KYC/identity step before swapping.`); score = Math.max(score, 70); }
+        if (elig.frozen === true) { factors.push(`Acting wallet is FROZEN for ${label}: transfers of this token are blocked for this address.`); score = Math.max(score, 70); }
+        if (perm.paused === true) { factors.push(`${label} transfers are currently PAUSED at the token level: the swap leg will revert now.`); score = Math.max(score, 70); }
+      }
     }
   }
   score += await holdingsExposureFactor(input, action, wallet, factors);
