@@ -37,9 +37,19 @@ Then here is the exact calldata to verify: 0x38ed1739...
 
 The hosted agent resolves names from the registry itself, uses wallet context for read-only lookups, and answers with the structured Safety Report (verdict, score, evidence, final action). It signs and broadcasts nothing.
 
-## Self-hosted: HTTP or MCP
+## Self-hosted: SDK, HTTP, or MCP
 
-Run the read-only backend next to your agent (no keys needed):
+**Tightest: the SDK, in your own code.** Import the deterministic policy engine and call it right before you sign, no server and no network:
+
+```ts
+import { evaluateActionPolicy } from "safehands-pharos";
+const verdict = evaluateActionPolicy(action); // ALLOW / BLOCK / REQUIRE_*
+if (!verdict.safeToExecute) return; // do not auto-sign
+```
+
+A complete, runnable starter (an agent that consults SafeHands before three actions and signs only what clears) is in [`examples/agent-starter/`](../examples/agent-starter/): `npm install safehands-pharos && npx tsx safe-agent.ts`, or from this repo `npm run agent:starter`.
+
+**HTTP or MCP** run the read-only backend next to your agent (no keys needed):
 
 ```bash
 npm install && npm run build && node dist/api/server.js   # http://localhost:4022
