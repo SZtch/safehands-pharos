@@ -3,6 +3,7 @@
 Single entrypoint: `node scripts/safehands-engine.js <command> ['<arg>']`. All outputs are one JSON object on stdout.
 
 Cross-command fields:
+- `chatSummary` (every meaningful verdict): a ready-to-show, plain-text rendering of the report (verdict marker `[OK]`/`[!]`/`[X]`, score, every risk factor, and the action) with no hex and no JSON. Complete by construction (never drops a finding), adaptive (a clean zero-finding allow is 3 lines; a warn/block or an actionable intent is the full list). Show it verbatim; the deeper structure stays in the other fields for callers that want it.
 - `rpcNote` (any command): present only when the primary RPC failed at transport level and the read was served by the chain-identity-verified fallback endpoint; failover is always disclosed, never silent.
 - `verdictBinding` (intent analyze, estimate_gas, simulate_transaction): `{ boundTo:"calldata"|"intent", digest, algorithm:"keccak256", preimageFormat, issuedAt, expiresAt, note }`. The digest covers exactly what was analyzed (documented UTF-8 preimage `SafeHandsVerdict:v1:…`), so acting on different bytes, or after `expiresAt`, means the verdict no longer applies. Recompute it to detect drift between what was checked and what is being signed.
 

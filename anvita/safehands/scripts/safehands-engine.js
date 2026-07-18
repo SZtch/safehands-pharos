@@ -411,6 +411,60 @@ function buildTxObject(input) {
 }
 function scoreToRec(score) { return score <= 30 ? "allow" : score < 70 ? "warn" : "block"; }
 function scoreToLevel(score) { return score <= 30 ? "low" : score <= 60 ? "medium" : score <= 85 ? "high" : "critical"; }
+// ── chatSummary: a ready-to-show, plain-text rendering of a verdict ────────
+// Anvita's chat renders plain text only, and the raw verdict JSON is large
+// (nested components, verdict-binding digests, on-chain plumbing). chatSummary
+// is the human-facing report the agent should show verbatim: verdict + score +
+// EVERY risk factor that drives it + the action, in ASCII plain text with no
+// hex, no nested JSON, no internal field names. It is complete by construction
+// (never drops a finding) and adaptive (a clean allow with nothing to report is
+// three lines; a warn/block or an actionable intent is the full list). The deep
+// evidence stays in the JSON for callers that want it.
+function verdictMark(rec) { return rec === "allow" ? "[OK]" : rec === "warn" ? "[!]" : "[X]"; }
+function chatMode(subject) {
+  if (!subject) return "Check";
+  if (subject.type === "intent") {
+    const m = { transfer: "Transfer", swap: "Swap", bridge: "Bridge", yield_deposit: "Vault deposit", vault_deposit: "Vault deposit", staking: "Staking", tokenized_asset: "RWA", fiat_ramp: "Fiat ramp", reward_campaign: "Campaign", x402_payment: "x402 payment" };
+    return m[subject.action] || "Intent";
+  }
+  return { wallet: "Wallet", contract: "Contract", vault: "Vault", pool: "Pool" }[subject.type] || "Check";
+}
+function buildChatSummary(r) {
+  const rec = r.recommendation;
+  const mark = verdictMark(rec);
+  const word = String(rec || "").toUpperCase();
+  const mode = chatMode(r.subject);
+  const factors = Array.isArray(r.riskFactors) ? r.riskFactors : [];
+  const isIntent = r.subject && r.subject.type === "intent";
+  const missing = Array.isArray(r.missingInputs) ? r.missingInputs.filter(Boolean) : [];
+  // Compact: a clean allow with nothing to report and nothing to sign.
+  if (rec === "allow" && factors.length === 0 && !isIntent) {
+    return [
+      `${mark} ${word} (risk ${r.riskScore}/100, ${mode})`,
+      `No adverse signals at the current heuristic depth.`,
+      `Ask if you want the full evidence breakdown.`,
+    ].join("\n");
+  }
+  // Full: every finding that drives the verdict, plain text, no plumbing.
+  const lines = [
+    `SafeHands Safety Report`,
+    `----------------------------------------`,
+    `Verdict: ${mark} ${word} (risk ${r.riskScore}/100)`,
+    `Mode: ${mode}`,
+    ``,
+  ];
+  if (factors.length) {
+    lines.push(`What I found:`);
+    for (const f of factors) lines.push(`- ${f}`);
+  } else {
+    lines.push(`What I found: no adverse signals at the current heuristic depth.`);
+  }
+  if (missing.length) { lines.push(``); lines.push(`Missing inputs: ${missing.join("; ")}`); }
+  lines.push(``);
+  lines.push(`What to do: ${r.nextAction || (rec === "allow" ? "Proceed with normal caution." : rec === "warn" ? "Confirm explicitly before proceeding." : "Do not proceed.")}`);
+  return lines.join("\n");
+}
+
 function report(score, factors, subject, extra = {}) {
   score = Math.max(0, Math.min(100, Math.round(score)));
   const recommendation = scoreToRec(score);
@@ -2351,6 +2405,10 @@ if (invokedDirectly()) {
       if (rpcFailoverUsed && r && typeof r === "object" && !Array.isArray(r)) {
         r.rpcNote = `Primary RPC was unavailable for at least one read; the fallback endpoint ${rpcFailoverEndpoint} served it (chain identity verified before use).`;
       }
+      // Attach the ready-to-show plain-text report to every verdict output.
+      if (r && typeof r === "object" && r.success === true && typeof r.recommendation === "string" && Array.isArray(r.riskFactors)) {
+        r.chatSummary = buildChatSummary(r);
+      }
       console.log(JSON.stringify(r, null, 2)); process.exit(r.success ? 0 : 1);
     })
     .catch((e) => {
@@ -2364,4 +2422,4 @@ if (invokedDirectly()) {
 
 // Exported for unit tests (import does not trigger the CLI above). These are the
 // pure decision/normalization helpers whose behavior the audit locks.
-export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress, keccak256, keccak256Hex, bindCalldata, bindIntent, knownCodeMatch, KNOWN_CODEHASHES };
+export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress, keccak256, keccak256Hex, bindCalldata, bindIntent, knownCodeMatch, KNOWN_CODEHASHES, buildChatSummary };

@@ -1108,6 +1108,51 @@ describe("Anvita engine — permissioned RWA / security tokens", () => {
   });
 });
 
+describe("Anvita engine — chatSummary (ready-to-show plain-text report)", () => {
+  it("is attached to a verdict, is plain text with no hex or JSON plumbing, and keeps every finding", async () => {
+    const { buildChatSummary } = await import("../anvita/safehands/scripts/safehands-engine.js");
+    const r = {
+      recommendation: "warn", riskScore: 45, riskFactors: ["First finding here", "Second finding here"],
+      nextAction: "Ask the user to confirm.", subject: { type: "contract", address: "0x" + "11".repeat(20) },
+    };
+    const cs = buildChatSummary(r);
+    assert.match(cs, /\[!\] WARN \(risk 45\/100\)/);
+    assert.match(cs, /First finding here/);
+    assert.match(cs, /Second finding here/, "EVERY risk factor must appear; a summary must never drop a finding");
+    assert.doesNotMatch(cs, /0x[0-9a-f]{40,}/i, "no hex digests / addresses plumbing");
+    assert.doesNotMatch(cs, /[{}]/, "no raw JSON");
+  });
+
+  it("uses the block marker and stop guidance for a block verdict", async () => {
+    const { buildChatSummary } = await import("../anvita/safehands/scripts/safehands-engine.js");
+    const cs = buildChatSummary({ recommendation: "block", riskScore: 95, riskFactors: ["Unlimited approval to an unknown spender"], nextAction: "Do not proceed.", subject: { type: "contract" } });
+    assert.match(cs, /\[X\] BLOCK/);
+    assert.match(cs, /Unlimited approval to an unknown spender/);
+    assert.match(cs, /Do not proceed/i);
+  });
+
+  it("compact form only for a clean allow with zero findings and nothing to sign", async () => {
+    const { buildChatSummary } = await import("../anvita/safehands/scripts/safehands-engine.js");
+    const compact = buildChatSummary({ recommendation: "allow", riskScore: 8, riskFactors: [], subject: { type: "wallet" } });
+    assert.match(compact, /\[OK\] ALLOW \(risk 8\/100, Wallet\)/);
+    assert.doesNotMatch(compact, /SafeHands Safety Report/, "a clean zero-finding allow is the 3-line compact form");
+    // An intent, even a clean allow, always gets the full form (someone may act on it).
+    const intent = buildChatSummary({ recommendation: "allow", riskScore: 10, riskFactors: [], subject: { type: "intent", action: "swap" } });
+    assert.match(intent, /SafeHands Safety Report/);
+    assert.match(intent, /Mode: Swap/);
+  });
+
+  it("the engine attaches chatSummary to a real analyze output", async () => {
+    const mock = startMock({ symbol: "GOOD", goplusResult: {} });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "wallet", address: "0x1111111111111111111111111111111111111111" }), envFor(mock));
+      assert.strictEqual(typeof out.chatSummary, "string");
+      assert.ok(out.chatSummary.length > 0);
+      assert.doesNotMatch(out.chatSummary, /[{}]/);
+    } finally { mock.close(); }
+  });
+});
+
 describe("Anvita engine — RPC fallback (availability only, never trust)", () => {
   it("serves from the fallback when the primary is unreachable, with an honest rpcNote", async () => {
     const mock = startMock();
