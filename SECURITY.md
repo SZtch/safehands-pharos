@@ -67,7 +67,7 @@ If you optionally self-host the reference backend on a public host, run it under
 - **Not formally audited.** The safety architecture is production-inspired but has
   **not** undergone a formal external security audit.
 
-See [`docs/deployment/ARCHITECTURE_DECISION.md`](docs/deployment/ARCHITECTURE_DECISION.md).
+See [`docs/PRODUCTION_BACKEND.md`](docs/PRODUCTION_BACKEND.md) for the self-hosted backend profile and its single-instance, single-state-domain deployment posture.
 
 ## SafeHandsRiskRegistry
 

@@ -27,8 +27,7 @@ New here? Read the **Start here** docs, then dip into the rest as needed.
 |-----|----------------|
 | [AGENT_INTEGRATION.md](./AGENT_INTEGRATION.md) | Integrate SafeHands into your agent: the 4-call core loop, agent autonomy levels (SafeHands makes Level 2-3 safe), hosted and self-hosted copy-paste examples. Start here if you are building an agent. |
 | [TOOLS.md](./TOOLS.md) | The 33 MCP/HTTP/CLI tools, grouped by surface (safety preflight, risk, market/chain, gated execution, policy, managed wallet). |
-| [SAFEHANDS_GUARDIAN_AGENT.md](./SAFEHANDS_GUARDIAN_AGENT.md) | The read-only SafeHands Agent surface. |
-| [AGENT_TO_AGENT.md](./AGENT_TO_AGENT.md) | A2A check flow + obligations. |
+| [examples/agent-starter/](../examples/agent-starter/) | Runnable starter: an agent that consults SafeHands via the npm SDK before it signs. |
 | [examples/agent-arena/](../examples/agent-arena/) | Example agents that consult SafeHands before acting (payment, DeFi, treasury, user scenarios). |
 | [ANVITA_FLOW.md](./ANVITA_FLOW.md) | Assembling the SafeHands Agent in Anvita Flow. |
 
@@ -62,20 +61,7 @@ broadcasts. Not needed for the reviewer path above.
 | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) | Scoped API keys, tiered quota, rate-limit headers. |
 | [POLICY_PROFILES.md](./POLICY_PROFILES.md) | Policy presets (tighten-only), policy version metadata. |
 | [OBSERVABILITY_AND_ACTIVITY.md](./OBSERVABILITY_AND_ACTIVITY.md) | Sanitized activity feed, public metrics, request IDs, structured logging. |
-| [deployment/ARCHITECTURE_DECISION.md](./deployment/ARCHITECTURE_DECISION.md) | ADR for the optional self-hosted reference backend (single-instance profile). |
-| [deployment/FULL_SERVICE_DESIGN.md](./deployment/FULL_SERVICE_DESIGN.md) | Layout for running every endpoint/service self-hosted (API + x402 + worker). |
 | [indexing/GOLDSKY_ATTESTATION_INDEXING.md](./indexing/GOLDSKY_ATTESTATION_INDEXING.md) | Goldsky indexing design; mainnet contracts stay the source of truth. |
-
-## Archive (historical snapshots, superseded, kept for provenance)
-
-Planning-era documents whose status labels no longer reflect the product. Each carries
-a supersession banner; **do not cite them for current capabilities.**
-
-| Doc | Era |
-|-----|-----|
-| [archive/PHAROS_OFFICIAL_ALIGNMENT.md](./archive/PHAROS_OFFICIAL_ALIGNMENT.md) · [archive/PHAROS_ECOSYSTEM_ALIGNMENT.md](./archive/PHAROS_ECOSYSTEM_ALIGNMENT.md) | Early planning |
-| [archive/PHAROS_IMPLEMENTATION_MAP.md](./archive/PHAROS_IMPLEMENTATION_MAP.md) · [archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md](./archive/PHAROS_IMPLEMENTED_VS_ROADMAP.md) | Later planning snapshots (CLI/SDK, live Chainlink reads, and SPV verification have since shipped) |
-| [archive/POST_HACKATHON_NOTES.md](./archive/POST_HACKATHON_NOTES.md) | Post-hackathon hardening notes |
 
 ---
 

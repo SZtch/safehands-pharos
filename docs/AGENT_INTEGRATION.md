@@ -66,6 +66,10 @@ curl -s -X POST http://localhost:4022/guardian/check \
 
 Verdict-gated, wallet-ready handoff (Level 2): `POST /wallet/prepare` returns an unsigned `walletRequest` plus a `preparedTransactionHash` binding the verdict to those exact bytes, and produces NO request on a BLOCK; the user's own wallet signs and `POST /broadcast/signed` completes the trail. See [PREPARE_AND_HANDOFF.md](./PREPARE_AND_HANDOFF.md). MCP integrators get the same policy engine as tools (`safehands_preflight_check`, `analyze_transaction`, `check_token_security`, ...) via `node dist/index.js`; the full catalog is in [TOOLS.md](./TOOLS.md).
 
+## The agent-to-agent contract
+
+SafeHands advises; it never executes. When another agent calls it, SafeHands returns one of four public decisions (`ALLOW` / `BLOCK` / `REQUIRE_CONFIRMATION` / `PREPARE_ONLY`) and the **calling agent is solely responsible for honoring it**: stop on `BLOCK`, get explicit human/operator confirmation on `REQUIRE_CONFIRMATION`, and never treat a verdict as a signature. A verdict binds to exactly what was analyzed (see the `verdictBinding` digest and its expiry); acting on different bytes, or after expiry, means the verdict no longer applies.
+
 ## What SafeHands never does
 
 No custody, no signing, no broadcasting on the hosted surface; write paths exist only self-hosted, off by default, behind explicit operator gates. No prices except live Chainlink reads (a stale feed is reported, never quoted). No trust from anywhere but the registry's first-party evidence. If your integration ever sees SafeHands claim otherwise, treat it as an impersonation and verify you are talking to the real deployment.
