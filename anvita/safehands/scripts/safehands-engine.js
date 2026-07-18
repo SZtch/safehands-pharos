@@ -194,6 +194,7 @@ const RPC_FALLBACK_URL = "PHAROS_RPC_FALLBACK_URL" in process.env ? process.env.
 const RPC_URLS = RPC_FALLBACK_URL && RPC_FALLBACK_URL !== RPC_URL ? [RPC_URL, RPC_FALLBACK_URL] : [RPC_URL];
 let rpcServedBy = RPC_URLS[0];
 let rpcFailoverUsed = false;
+let rpcFailoverEndpoint = null; // the fallback endpoint that actually served a failed-over read
 function isRateLimitShape(message) {
   return /rate.?limit|too many|capacity|exceeded|429/i.test(String(message || ""));
 }
@@ -242,7 +243,7 @@ async function rpcRaw(method, params = [], timeoutMs = 15000) {
     try {
       if (method !== "eth_chainId") await ensureChainIdentity(url);
       const out = await rpcOnce(url, method, params, timeoutMs);
-      if (url !== RPC_URLS[0]) rpcFailoverUsed = true;
+      if (url !== RPC_URLS[0]) { rpcFailoverUsed = true; rpcFailoverEndpoint = url; }
       rpcServedBy = url;
       return out;
     } catch (e) {
@@ -344,7 +345,10 @@ function bindCalldata(to, valueWeiDec, dataHex) {
 }
 function bindIntent(input) {
   const keys = Object.keys(input).sort();
-  const canonical = keys.map((k) => `${k}=${String(input[k]).toLowerCase()}`).join("&");
+  // Percent-encode key and value so a value containing "&" or "=" (e.g. a URL
+  // query string in a url-bearing intent) can never break the delimiter
+  // structure and let two different intents collide onto the same digest.
+  const canonical = keys.map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(String(input[k]).toLowerCase())}`).join("&");
   return verdictBinding("intent", `SafeHandsVerdict:v1:intent:${CHAIN_ID}:${canonical}`);
 }
 
@@ -504,7 +508,7 @@ async function proxyProbe(addr) {
 // asserts the token is safe; it discloses the restriction so the caller knows
 // a transfer needs eligibility, not just balance.
 async function permissionedProbe(addr) {
-  const out = { standard: null, identityRegistry: null, compliance: null, paused: null, controllable: null };
+  const out = { standard: null, identityRegistry: null, compliance: null, paused: null, controllable: null, partial: false };
   try {
     const [ir, comp] = await Promise.all([
       ethCall(addr, SEL.identityRegistry).catch(() => null),
@@ -512,14 +516,26 @@ async function permissionedProbe(addr) {
     ]);
     const irAddr = slotToAddress(ir);
     const compAddr = slotToAddress(comp);
-    if (irAddr || compAddr) {
+    // The ERC-3643 (T-REX) IToken interface mandates BOTH identityRegistry() and
+    // compliance(). Requiring both to resolve avoids a false-positive from a
+    // contract that coincidentally answers one selector with a clean address.
+    if (irAddr && compAddr) {
       out.standard = "ERC-3643";
       out.identityRegistry = irAddr;
       out.compliance = compAddr;
       try { const p = await ethCall(addr, SEL.pausedFn); out.paused = decUint(p) === 1n; } catch { /* paused unknown */ }
       return out;
     }
-    // Not ERC-3643: check the ERC-1400 controllable signal.
+    // Exactly one marker present: not a confident ERC-3643 claim, but not nothing
+    // either. Surface it (never silently drop the signal) as "possibly
+    // permissioned, verify" rather than asserting the token is open.
+    if (irAddr || compAddr) {
+      out.partial = true;
+      out.identityRegistry = irAddr;
+      out.compliance = compAddr;
+      return out;
+    }
+    // Neither ERC-3643 marker: check the ERC-1400 controllable signal.
     try {
       const c = await ethCall(addr, SEL.isControllable);
       if (c && c !== "0x") { const v = decUint(c); if (v === 1n) { out.standard = "ERC-1400"; out.controllable = true; } }
@@ -735,6 +751,9 @@ async function analyzeContract(addr) {
       permissioned = perm;
       factors.push("A designated controller can move or redeem this token out of your wallet without your signature, so holding it is conditional by design (a controllable security token, ERC-1400).");
       score += 12;
+    } else if (perm.partial) {
+      factors.push("This token exposes one permissioned-RWA marker (part of the ERC-3643 identity-gating interface) but not the full set: it MAY restrict transfers to verified wallets. Verify its transfer/eligibility rules before sending, and do not assume it moves freely.");
+      score += 5;
     }
   }
   const gp = await goplusToken(addr);
@@ -2330,7 +2349,7 @@ if (invokedDirectly()) {
   dispatch(cmd, arg)
     .then((r) => {
       if (rpcFailoverUsed && r && typeof r === "object" && !Array.isArray(r)) {
-        r.rpcNote = `Primary RPC was unavailable for at least one read; served by the fallback endpoint ${rpcServedBy} (chain identity verified before use).`;
+        r.rpcNote = `Primary RPC was unavailable for at least one read; the fallback endpoint ${rpcFailoverEndpoint} served it (chain identity verified before use).`;
       }
       console.log(JSON.stringify(r, null, 2)); process.exit(r.success ? 0 : 1);
     })

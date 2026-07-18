@@ -56,6 +56,13 @@ describe("verdict hash-binding", () => {
     assert.strictEqual(x.digest, y.digest, "key order and address case must not change the digest");
     assert.notStrictEqual(x.digest, z.digest, "a different amount must change the digest");
   });
+  it("a value containing the delimiter chars cannot collide two different intents onto one digest", () => {
+    // Before encoding, {a:"x&b=y"} and {a:"x", b:"y"} both canonicalize to
+    // "a=x&b=y". Percent-encoding the values keeps them distinct.
+    const a = bindIntent({ a: "x&b=y" });
+    const b = bindIntent({ a: "x", b: "y" });
+    assert.notStrictEqual(a.digest, b.digest, "delimiter chars in a value must not forge a colliding binding");
+  });
   it("carries an advisory expiry after issuedAt", () => {
     const v = bindCalldata("0x" + "22".repeat(20), "0", "0x");
     assert.ok(new Date(v.expiresAt) > new Date(v.issuedAt), "expiresAt must be after issuedAt");

@@ -1031,11 +1031,23 @@ describe("Anvita engine — permissioned RWA / security tokens", () => {
     const token = "0x4444444444444444444444444444444444444444";
     const mock = startMock({ goplusResult: {}, callResults: {
       [`${token}|${S.identityRegistry}`]: encAddr32(IR),
+      [`${token}|${S.compliance}`]: encAddr32(COMPLIANCE),
       [`${token}|${S.paused}`]: encUint(1),
     } });
     try {
       const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: token }), envFor(mock));
       assert.match(out.riskFactors.join(" "), /PAUSED/);
+    } finally { mock.close(); }
+  });
+
+  it("requires BOTH ERC-3643 markers: a single coincidental marker is only a soft 'possibly permissioned' note, never a confident claim", async () => {
+    const token = "0x9999999999999999999999999999999999999999";
+    // Only identityRegistry() answers with a clean address; compliance() does not.
+    const mock = startMock({ goplusResult: {}, callResults: { [`${token}|${S.identityRegistry}`]: encAddr32(IR) } });
+    try {
+      const { out } = await runEngine("analyze", JSON.stringify({ subjectType: "contract", address: token }), envFor(mock));
+      assert.strictEqual(out.onChain.permissioned, undefined, "one marker must NOT produce a confident ERC-3643 claim");
+      assert.match(out.riskFactors.join(" "), /one permissioned-RWA marker|possibly permissioned|MAY restrict/i, "the partial signal must still be surfaced, never silently dropped");
     } finally { mock.close(); }
   });
 
@@ -1045,6 +1057,7 @@ describe("Anvita engine — permissioned RWA / security tokens", () => {
     const wallet = "0x1111111111111111111111111111111111111111";
     const mock = startMock({ goplusResult: {}, callResults: {
       [`${tokenOut}|${S.identityRegistry}`]: encAddr32(IR),
+      [`${tokenOut}|${S.compliance}`]: encAddr32(COMPLIANCE),
       [`${tokenOut}|${S.paused}`]: encUint(0),
       [`${IR}|${S.isVerified}`]: encUint(0),          // wallet NOT verified
       [`${tokenOut}|${S.isFrozen}`]: encUint(0),
@@ -1063,6 +1076,7 @@ describe("Anvita engine — permissioned RWA / security tokens", () => {
     const wallet = "0x1111111111111111111111111111111111111111";
     const mock = startMock({ goplusResult: {}, callResults: {
       [`${tokenOut}|${S.identityRegistry}`]: encAddr32(IR),
+      [`${tokenOut}|${S.compliance}`]: encAddr32(COMPLIANCE),
       [`${tokenOut}|${S.paused}`]: encUint(0),
       [`${IR}|${S.isVerified}`]: encUint(1),          // wallet verified
       [`${tokenOut}|${S.isFrozen}`]: encUint(0),
