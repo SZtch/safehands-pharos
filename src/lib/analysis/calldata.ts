@@ -19,6 +19,7 @@ import { analyzeApproval, APPROVE_SELECTOR } from "./approval.js";
 import { canonicalContractEvidence, type CanonicalContractEvidence } from "./contractIntel.js";
 import { tokenRegistryEvidence, type TokenRegistryEvidence } from "./pharosTokens.js";
 import { makeResult, type AnalyzerResult } from "./types.js";
+import { addressAtWord, calldataBody, calldataWordCount, hasExactWords } from "./abiWords.js";
 
 // ── Selector constants ─────────────────────────────────────────────────
 export const PERMIT_SELECTOR = "0xd505accf"; // ERC-2612 permit(owner,spender,value,deadline,v,r,s)
@@ -90,6 +91,26 @@ const ABIS = {
   [UPGRADE_TO_AND_CALL_SELECTOR]: [{ name: "upgradeToAndCall", type: "function", stateMutability: "payable", inputs: [{ name: "newImplementation", type: "address" }, { name: "data", type: "bytes" }], outputs: [] }],
   [CHANGE_ADMIN_SELECTOR]: [{ name: "changeAdmin", type: "function", stateMutability: "nonpayable", inputs: [{ name: "newAdmin", type: "address" }], outputs: [] }],
 } as const;
+
+/**
+ * Exact payload shape per selector, mirroring the hosted engine's per-method
+ * word-count checks. `words: null` marks a dynamic payload (upgradeToAndCall
+ * carries `bytes`), where only a minimum head is required.
+ */
+const CALLDATA_SHAPE: Record<string, { words: number | null }> = {
+  [PERMIT_SELECTOR]: { words: 7 },
+  [PERMIT2_APPROVE_SELECTOR]: { words: 4 },
+  [SET_APPROVAL_FOR_ALL_SELECTOR]: { words: 2 },
+  [TRANSFER_FROM_SELECTOR]: { words: 3 },
+  [TRANSFER_SELECTOR]: { words: 2 },
+  [INCREASE_ALLOWANCE_SELECTOR]: { words: 2 },
+  [DECREASE_ALLOWANCE_SELECTOR]: { words: 2 },
+  [TRANSFER_OWNERSHIP_SELECTOR]: { words: 1 },
+  [RENOUNCE_OWNERSHIP_SELECTOR]: { words: 0 },
+  [UPGRADE_TO_SELECTOR]: { words: 1 },
+  [CHANGE_ADMIN_SELECTOR]: { words: 1 },
+  [UPGRADE_TO_AND_CALL_SELECTOR]: { words: null },
+};
 
 const DANGEROUS_LABELS: Record<string, string> = {
   [TRANSFER_OWNERSHIP_SELECTOR]: "transfers contract ownership",
@@ -228,25 +249,63 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
     });
   }
 
+  const malformedPayload = () => result({
+    decision: "REQUIRE_CONFIRMATION", risk: "MEDIUM",
+    reasons: ["Calldata matched a known selector but could not be decoded: malformed payload."],
+    warnings: ["Malformed calldata for the recognized selector."],
+    status: "partial", details: { ...EMPTY_DETAILS, selector },
+  });
+
+  // Validate the payload shape before decoding. viem mirrors what the EVM will
+  // accept (it masks dirty address padding and tolerates trailing bytes), which
+  // would report a clean spender for calldata solc's own decoder reverts on.
+  // The hosted engine refuses those payloads, so this side must too.
+  const body = calldataBody(hex);
+  const shape = CALLDATA_SHAPE[selector];
+  // `body` is "" for a zero-argument selector such as renounceOwnership, which
+  // is a valid payload: test for null, never for falsiness.
+  if (body === null || !shape) return malformedPayload();
+  if (shape.words === null ? calldataWordCount(body) < 3 : !hasExactWords(body, shape.words)) {
+    return malformedPayload();
+  }
+
   let args: readonly unknown[];
   try {
     const decoded = decodeFunctionData({ abi: ABIS[selector as keyof typeof ABIS], data: hex as `0x${string}` });
-    args = decoded.args as readonly unknown[];
+    args = (decoded.args ?? []) as readonly unknown[];
   } catch {
-    return result({
-      decision: "REQUIRE_CONFIRMATION", risk: "MEDIUM",
-      reasons: ["Calldata matched a known selector but could not be decoded: malformed payload."],
-      warnings: ["Malformed calldata for the recognized selector."],
-      status: "partial", details: { ...EMPTY_DETAILS, selector },
-    });
+    return malformedPayload();
   }
 
   const base: CalldataAnalysisDetails = { ...EMPTY_DETAILS, selector, token: token ?? null, tokenRegistryEvidence: tokenEvidence };
 
+  /** Address at `index`, or null when the word is not cleanly padded. */
+  const strictAddress = (index: number) => addressAtWord(body, index);
+  /**
+   * A dirty address word is a hard stop, but everything the payload *does*
+   * encode cleanly is still reported: only the untrustworthy address is
+   * withheld, never the amount or the method.
+   */
+  const deceptiveWord = (field: string, known: Partial<CalldataAnalysisDetails>) => result({
+    decision: "BLOCK", risk: "CRITICAL",
+    reasons: [`${field} word is not a clean address: malformed or deceptive calldata.`],
+    warnings: ["The address word carries dirty upper padding. Standard decoders revert on this; it is never a normal call."],
+    status: "ok", details: { ...base, ...known },
+  });
+  /** Amount word read directly, so it survives a rejected address word. */
+  const amountAtWord = (index: number) => BigInt(`0x${body.slice(index * 64, (index + 1) * 64) || "0"}`);
+
   switch (selector) {
     case PERMIT_SELECTOR: {
-      const spender = getAddress(args[1] as string);
-      const value = args[2] as bigint;
+      const spenderWord = strictAddress(1);
+      const value = amountAtWord(2);
+      if (!spenderWord) {
+        return deceptiveWord("permit spender", {
+          method: "permit", category: "approval", amountRaw: value.toString(),
+          unlimited: isUnlimitedApprovalAmount(value.toString()), isRevoke: value === 0n,
+        });
+      }
+      const spender = getAddress(spenderWord);
       const unlimited = isUnlimitedApprovalAmount(value.toString());
       const isRevoke = value === 0n;
       const { known, label, canonical } = classifyKnown(spender);
@@ -259,9 +318,22 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       });
     }
     case PERMIT2_APPROVE_SELECTOR: {
-      const permitToken = getAddress(args[0] as string);
-      const spender = getAddress(args[1] as string);
-      const amount = args[2] as bigint;
+      // Only the spender word gates the verdict: a dirty token word grants no
+      // authority to anyone (the call reverts), which is why the hosted engine
+      // floors on the spender alone.
+      const tokenWord = strictAddress(0);
+      const spenderWord = strictAddress(1);
+      const amount = amountAtWord(2);
+      if (!spenderWord) {
+        return deceptiveWord("Permit2 approval spender", {
+          method: "permit2_approve", category: "approval", token: tokenWord ?? (token ?? null),
+          amountRaw: amount.toString(), unlimited: amount >= PERMIT2_MAX_AMOUNT, isRevoke: amount === 0n,
+        });
+      }
+      // A dirty token word falls back to the caller-supplied token, matching the
+      // hosted engine's `c.token = wordToAddress(...) || c.token`.
+      const permitToken = tokenWord ? getAddress(tokenWord) : (token ?? null);
+      const spender = getAddress(spenderWord);
       const expiration = String(args[3]); // uint48 — viem decodes as number
       const unlimited = amount >= PERMIT2_MAX_AMOUNT;
       const isRevoke = amount === 0n;
@@ -272,12 +344,16 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
         reasons: [r.reason, `Permit2 approval for token ${permitToken}${expiration !== "0" ? ` (expiration ${expiration})` : ""}.`],
         warnings: ["Permit2 approval: authorizes the spender to move the token via Permit2 (signature-driven). Deep PermitSingle/PermitBatch/permitTransferFrom decode is out of scope."],
         status: "ok", experimental: true,
-        details: { ...base, method: "permit2_approve", category: "approval", token: permitToken, spender, amountRaw: amount.toString(), unlimited, isRevoke, counterpartyKnown: known, counterpartyLabel: label, canonicalContractEvidence: canonical, tokenRegistryEvidence: tokenRegistryEvidence(permitToken) },
+        details: { ...base, method: "permit2_approve", category: "approval", token: permitToken, spender, amountRaw: amount.toString(), unlimited, isRevoke, counterpartyKnown: known, counterpartyLabel: label, canonicalContractEvidence: canonical, tokenRegistryEvidence: permitToken ? tokenRegistryEvidence(permitToken) : tokenEvidence },
       });
     }
     case SET_APPROVAL_FOR_ALL_SELECTOR: {
-      const operator = getAddress(args[0] as string);
+      const operatorWord = strictAddress(0);
       const approved = args[1] as boolean;
+      if (!operatorWord) {
+        return deceptiveWord("setApprovalForAll operator", { method: "setApprovalForAll", category: "approval", approved });
+      }
+      const operator = getAddress(operatorWord);
       const { known, label, canonical } = classifyKnown(operator);
       let decision: InternalDecision; let risk: RiskLevel; let reason: string;
       if (!isAddress(operator)) { decision = "BLOCK"; risk = "CRITICAL"; reason = "Operator address is invalid."; }
@@ -292,19 +368,31 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       });
     }
     case TRANSFER_FROM_SELECTOR: {
-      const from = getAddress(args[0] as string);
-      const to = getAddress(args[1] as string);
-      const amount = (args[2] as bigint).toString();
-      return transferResult({ ...base, method: "transferFrom", from, recipient: to, amountRaw: amount }, to);
+      const fromWord = strictAddress(0);
+      const toWord = strictAddress(1);
+      const amount = amountAtWord(2).toString();
+      const known = { method: "transferFrom", category: "transfer" as const, from: fromWord, amountRaw: amount };
+      if (!fromWord) return deceptiveWord("transferFrom source", known);
+      if (!toWord) return deceptiveWord("transferFrom recipient", known);
+      return transferResult({ ...base, method: "transferFrom", from: getAddress(fromWord), recipient: getAddress(toWord), amountRaw: amount }, getAddress(toWord));
     }
     case TRANSFER_SELECTOR: {
-      const to = getAddress(args[0] as string);
-      const amount = (args[1] as bigint).toString();
+      const toWord = strictAddress(0);
+      const amount = amountAtWord(1).toString();
+      if (!toWord) return deceptiveWord("transfer recipient", { method: "transfer", category: "transfer", amountRaw: amount });
+      const to = getAddress(toWord);
       return transferResult({ ...base, method: "transfer", recipient: to, amountRaw: amount }, to);
     }
     case INCREASE_ALLOWANCE_SELECTOR: {
-      const spender = getAddress(args[0] as string);
-      const added = args[1] as bigint;
+      const spenderWord = strictAddress(0);
+      const added = amountAtWord(1);
+      if (!spenderWord) {
+        return deceptiveWord("increaseAllowance spender", {
+          method: "increaseAllowance", category: "approval", amountRaw: added.toString(),
+          unlimited: isUnlimitedApprovalAmount(added.toString()), isRevoke: added === 0n,
+        });
+      }
+      const spender = getAddress(spenderWord);
       const unlimited = isUnlimitedApprovalAmount(added.toString());
       const isRevoke = added === 0n;
       const { known, label, canonical } = classifyKnown(spender);
@@ -316,8 +404,21 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       });
     }
     case DECREASE_ALLOWANCE_SELECTOR: {
-      const spender = getAddress(args[0] as string);
-      const subtracted = (args[1] as bigint).toString();
+      const spenderWord = strictAddress(0);
+      const subtractedRaw = (args[1] as bigint).toString();
+      // Lowering an allowance creates no new exposure, so a dirty spender word
+      // is held for review rather than blocked (the hosted engine floors at 45,
+      // not 90). The decoded spender is still withheld: it was never clean.
+      if (!spenderWord) {
+        return result({
+          decision: "REQUIRE_CONFIRMATION", risk: "MEDIUM",
+          reasons: ["decreaseAllowance spender word is not a clean address: malformed calldata, held for review."],
+          warnings: [], status: "partial",
+          details: { ...base, method: "decreaseAllowance", category: "approval", amountRaw: subtractedRaw },
+        });
+      }
+      const spender = getAddress(spenderWord);
+      const subtracted = subtractedRaw;
       const { known, label, canonical } = classifyKnown(spender);
       return result({
         decision: "ALLOW", risk: "LOW", reasons: [`decreaseAllowance: lowering the allowance for ${spender}${label ? ` (${label})` : ""}.`],
@@ -326,7 +427,9 @@ export function analyzeCalldata(data: string, token?: string): AnalyzerResult<Ca
       });
     }
     default:
-      return dangerousAdmin(selector, args, base);
+      // A dirty target word yields no target at all rather than a masked one;
+      // the verdict stays REQUIRE_CONFIRMATION either way (hosted floor 61).
+      return dangerousAdmin(selector, shape.words === 0 ? null : strictAddress(0), base);
   }
 }
 
@@ -355,9 +458,15 @@ function transferResult(details: CalldataAnalysisDetails, recipient: string): An
 }
 
 /** Non-exhaustive dangerous-admin dictionary — recognition/label only, always REQUIRE_CONFIRMATION. */
-function dangerousAdmin(selector: string, args: readonly unknown[], base: CalldataAnalysisDetails): AnalyzerResult<CalldataAnalysisDetails> {
+function dangerousAdmin(selector: string, target: string | null, base: CalldataAnalysisDetails): AnalyzerResult<CalldataAnalysisDetails> {
   const label = DANGEROUS_LABELS[selector] ?? "performs a privileged/admin action";
-  const targetArg = args.length > 0 && isAddress(args[0] as string) ? getAddress(args[0] as string) : null;
+  const targetArg = target && isAddress(target) ? getAddress(target) : null;
+  // Recognition of the incoming owner/implementation is reported the same way
+  // the hosted engine reports it. It labels the target; it never relaxes the
+  // verdict, which stays REQUIRE_CONFIRMATION for every admin call.
+  const { known, label: targetLabel, canonical } = targetArg
+    ? classifyKnown(targetArg)
+    : { known: false, label: null, canonical: null };
   const method = ({
     [TRANSFER_OWNERSHIP_SELECTOR]: "transferOwnership", [RENOUNCE_OWNERSHIP_SELECTOR]: "renounceOwnership",
     [UPGRADE_TO_SELECTOR]: "upgradeTo", [UPGRADE_TO_AND_CALL_SELECTOR]: "upgradeToAndCall", [CHANGE_ADMIN_SELECTOR]: "changeAdmin",
@@ -367,6 +476,12 @@ function dangerousAdmin(selector: string, args: readonly unknown[], base: Callda
     reasons: [`Dangerous/admin call: this transaction ${label}${targetArg ? ` (target ${targetArg})` : ""}; confirm this is intended.`],
     warnings: ["Recognized as a privileged/admin function. This dangerous-selector list is NOT exhaustive; absence of a warning is not proof of safety."],
     status: "ok",
-    details: { ...base, method, category: "admin", dangerous: true, spender: targetArg, recipient: targetArg },
+    // The target is the call's subject, not a recipient: an ownership or
+    // implementation target receives nothing, so it is reported as `spender`
+    // only, matching the hosted engine.
+    details: {
+      ...base, method, category: "admin", dangerous: true, spender: targetArg,
+      counterpartyKnown: known, counterpartyLabel: targetLabel, canonicalContractEvidence: canonical,
+    },
   });
 }

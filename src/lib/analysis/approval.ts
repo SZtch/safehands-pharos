@@ -11,6 +11,7 @@ import { addressTrustEvidence, type AddressTrustEvidence } from "../ecosystemReg
 import { canonicalContractEvidence, type CanonicalContractEvidence } from "./contractIntel.js";
 import { tokenRegistryEvidence, type TokenRegistryEvidence } from "./pharosTokens.js";
 import { makeResult, type AnalyzerResult } from "./types.js";
+import { addressAtWord, calldataBody, hasExactWords } from "./abiWords.js";
 
 export const APPROVE_SELECTOR = "0x095ea7b3";
 const PERMIT2_ADDRESS = "0x000000000022d473030f116ddee9f6b43ac78ba3";
@@ -104,11 +105,35 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
     return notApproval(`Calldata is not an ERC-20 approve (selector ${selector ?? "n/a"}).`);
   }
 
+  // Shape is validated before decoding: viem masks a dirty address word and
+  // tolerates trailing bytes, which would report a clean spender for calldata
+  // solc itself reverts on. Matches the hosted engine's per-method word count
+  // and clean-padding checks.
+  const body = calldataBody(hex);
+  const spenderWord = body && hasExactWords(body, 2) ? addressAtWord(body, 0) : null;
+
+  if (body && hasExactWords(body, 2) && !spenderWord) {
+    // The amount word is still clean, so it is still reported: only the
+    // untrustworthy spender is withheld.
+    const dirtyAmount = BigInt(`0x${body.slice(64, 128) || "0"}`);
+    return makeResult<ApprovalAnalysisDetails>({
+      analyzer: "approval",
+      decision: "BLOCK",
+      internalDecision: "BLOCK",
+      riskLevel: "CRITICAL",
+      reasons: ["approve() spender word is not a clean address: malformed or deceptive calldata."],
+      warnings: ["The spender word carries dirty upper padding. Standard decoders revert on this; it is never a normal approval."],
+      analyzerStatus: "ok",
+      details: { isApproval: true, selector, token: token ?? null, spender: null, spenderKnown: false, spenderLabel: null, isPermit2Spender: false, amountRaw: dirtyAmount.toString(), unlimited: isUnlimitedApprovalAmount(dirtyAmount.toString()), isRevoke: dirtyAmount === 0n, canonicalContractEvidence: null, tokenRegistryEvidence: tokenEvidence, spenderRegistryRecognition: null },
+    });
+  }
+
   let spender: string;
   let amount: bigint;
   try {
+    if (!spenderWord) throw new Error("approve payload is not exactly two ABI words");
     const decoded = decodeFunctionData({ abi: APPROVE_ABI, data: hex as `0x${string}` });
-    spender = getAddress(decoded.args[0] as string);
+    spender = getAddress(spenderWord);
     amount = decoded.args[1] as bigint;
   } catch {
     return makeResult<ApprovalAnalysisDetails>({
