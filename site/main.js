@@ -14,6 +14,25 @@
     root.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
   });
 
+  // Hamburger: a plain button toggling the nav panel, with aria-expanded kept
+  // truthful. It closes when a link is chosen, on Escape, and when the viewport
+  // grows back to the desktop nav so state never leaks between layouts.
+  var burger = document.getElementById("burger");
+  var nav = document.getElementById("nav");
+  function setMenu(open) {
+    nav.classList.toggle("open", open);
+    burger.setAttribute("aria-expanded", open ? "true" : "false");
+    burger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  }
+  burger.addEventListener("click", function () {
+    setMenu(burger.getAttribute("aria-expanded") !== "true");
+  });
+  nav.addEventListener("click", function (e) { if (e.target.tagName === "A") setMenu(false); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && burger.getAttribute("aria-expanded") === "true") { setMenu(false); burger.focus(); }
+  });
+  matchMedia("(min-width: 841px)").addEventListener("change", function (e) { if (e.matches) setMenu(false); });
+
   /* Tick strip, drawn rather than hand-written: majors every 10, labels every 20. */
   var ticks = document.getElementById("ticks");
   for (var v = 0; v <= 100; v += 5) {
@@ -135,14 +154,18 @@
   if (reduce) paint("block");
   else setTimeout(function () { paint("block"); }, 260);
 
+  // Each tab shows its setup step first, then a short example as context. The
+  // copy button never copies the example: it copies the install or integration
+  // artifact only (COPY, below), so a paste always does something and never
+  // drops a comment or a sample prompt into a terminal.
   var SNIPPETS = {
     skill:
-'<span class="c"># the whole thing, as an agent skill</span>\n' +
+'<span class="c"># install it as an agent skill</span>\n' +
 'npx skills add <span class="m">SZtch/safehands-pharos</span>\n\n' +
-'<span class="c"># then ask your agent in its own words:</span>\n' +
+'<span class="c"># then, in your agent, in plain words:</span>\n' +
 '<span class="s">"Run a SafeHands preflight before I sign this approval."</span>',
     mcp:
-'<span class="c">// claude_desktop_config.json, or any MCP client</span>\n' +
+'<span class="c">// paste into claude_desktop_config.json, or any MCP client</span>\n' +
 '{\n' +
 '  <span class="k">"mcpServers"</span>: {\n' +
 '    <span class="k">"safehands"</span>: {\n' +
@@ -150,21 +173,29 @@
 '      <span class="k">"args"</span>: [<span class="s">"-y"</span>, <span class="s">"github:SZtch/safehands-pharos"</span>]\n' +
 '    }\n' +
 '  }\n' +
-'}\n\n' +
-'<span class="c">// read-only by default: no key, no wallet, no setup</span>',
+'}',
     sdk:
-'<span class="c">// tightest: the deterministic engine, inside your own code</span>\n' +
-'<span class="k">import</span> { evaluateActionPolicy } <span class="k">from</span> <span class="s">"safehands-pharos"</span>;\n\n' +
+'<span class="c"># install the package</span>\n' +
+'npm install <span class="m">safehands-pharos</span>\n\n' +
+'<span class="c">// then, inside your own code:</span>\n' +
+'<span class="k">import</span> { evaluateActionPolicy } <span class="k">from</span> <span class="s">"safehands-pharos"</span>;\n' +
 '<span class="k">const</span> verdict = <span class="m">evaluateActionPolicy</span>(action);\n' +
 '<span class="k">if</span> (!verdict.safeToExecute) <span class="k">return</span>;   <span class="x">// do not auto-sign</span>',
     cli:
-'<span class="c"># one verdict, straight from the terminal</span>\n' +
-'npx safehands-pharos skill <span class="m">safehands_preflight_check</span> \\\n' +
-'  <span class="s">\'{"actionType":"approve_token","chainId":1672,\n' +
-'     "approvalToken":"USDC","approvalAmount":"max",\n' +
-'     "spender":"0x0000\u20260000dEaD"}\'</span>\n\n' +
-'<span class="c"># -> { "success": true, "data": { "decision": "BLOCK",</span>\n' +
-'<span class="c">#      "reasons": ["Unlimited approval requested."] } }</span>'
+'<span class="c"># install the command</span>\n' +
+'npm install -g <span class="m">safehands-pharos</span>\n\n' +
+'<span class="c"># then check any action from the terminal:</span>\n' +
+'safehands skill <span class="m">safehands_preflight_check</span> <span class="s">\'{\u2026}\'</span>\n' +
+'<span class="c"># -> { "decision": "BLOCK", "reasons": [...] }</span>'
+  };
+
+  // What the copy button puts on the clipboard: the setup command, or for MCP
+  // the config to paste. Plain text, valid on its own, never the example.
+  var COPY = {
+    skill: "npx skills add SZtch/safehands-pharos",
+    mcp: '{\n  "mcpServers": {\n    "safehands": {\n      "command": "npx",\n      "args": ["-y", "github:SZtch/safehands-pharos"]\n    }\n  }\n}',
+    sdk: "npm install safehands-pharos",
+    cli: "npm install -g safehands-pharos"
   };
   var elCode = document.getElementById("code");
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
@@ -179,12 +210,6 @@
   copyBtn.setAttribute("aria-label", "Copy code");
   var copyReset = null;
 
-  function plain(html) {
-    var d = document.createElement("div");
-    d.innerHTML = html;
-    return d.textContent;
-  }
-
   function showTab(name) {
     tabs.forEach(function (q) { q.setAttribute("aria-selected", q.dataset.tab === name ? "true" : "false"); });
     elCode.innerHTML = "<pre>" + SNIPPETS[name] + "</pre>";
@@ -193,7 +218,7 @@
   }
 
   copyBtn.addEventListener("click", function () {
-    var text = plain(SNIPPETS[document.querySelector('.tab[aria-selected="true"]').dataset.tab]);
+    var text = COPY[document.querySelector('.tab[aria-selected="true"]').dataset.tab];
     var done = function () {
       copyBtn.textContent = "Copied";
       if (copyReset) clearTimeout(copyReset);

@@ -124,7 +124,37 @@ header {
   width: 32px; height: 32px; cursor: pointer; display: grid; place-items: center;
 }
 .theme:hover { border-color: var(--ink); color: var(--ink); }
-@media (max-width: 840px) { .hbar nav { display: none; } }
+/* Hamburger, mobile only. The burger stays hidden on desktop where the inline
+   nav shows; below 840px the nav collapses into a panel the burger opens. */
+.burger { display: none; }
+@media (max-width: 840px) {
+  .hbar nav {
+    position: absolute; top: 58px; left: 0; right: 0;
+    flex-direction: column; gap: 0; padding: 6px 0;
+    background: var(--ground); border-bottom: 1px solid var(--rule);
+    box-shadow: 0 24px 40px -28px var(--shadow);
+    transform: translateY(-8px); opacity: 0; pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .hbar nav.open { transform: none; opacity: 1; pointer-events: auto; }
+  .hbar nav a { padding: 13px 28px; font-size: 1rem; }
+  .hbar nav a:active { background: var(--panel-2); }
+  .burger {
+    display: flex; flex-direction: column; gap: 5px; justify-content: center;
+    width: 34px; height: 32px; padding: 0 5px; margin-left: 4px;
+    background: none; border: 0; cursor: pointer;
+  }
+  .burger span {
+    display: block; height: 2px; width: 100%; background: var(--ink);
+    transition: transform .22s ease, opacity .22s ease;
+  }
+  .burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+  .burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hbar nav, .burger span { transition: none; }
+}
 
 /* ── the calibration rail: sections hang off a measured edge ────────── */
 main { border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); max-width: var(--maxw); margin: 0 auto; }
@@ -159,7 +189,7 @@ h1 em { font-style: normal; color: var(--brand); }
 /* ── the instrument ────────────────────────────────────────────────── */
 .inst {
   margin-top: 46px; border: 1px solid var(--rule-2); background: var(--panel);
-  box-shadow: 0 0 0 1px var(--rule) inset, 0 24px 70px -30px #000, 0 0 90px -40px var(--glow);
+  box-shadow: 0 0 0 1px var(--rule) inset, 0 24px 70px -30px var(--shadow), 0 0 90px -40px var(--glow);
 }
 .inst-top {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -247,6 +277,8 @@ h1 em { font-style: normal; color: var(--brand); }
    long install command gets its own full-width button rather than
    overflowing the viewport. */
 @media (max-width: 620px) {
+    .inst-top { flex-wrap: wrap; gap: 6px 12px; }
+    .inst-top .who { margin-left: 0; }
   section { padding: 72px 20px; }
   .hero { padding-top: 40px; }
   footer { padding: 26px 20px 36px; }
@@ -263,13 +295,10 @@ h1 em { font-style: normal; color: var(--brand); }
 
   .gauge-head { flex-wrap: wrap; gap: 6px 12px; }
   .verdict-word, .read .score { font-size: 1.35rem; }
-  .inspect-head { font-size: .72rem; }
-  .inspect-head .who { margin-left: 0; flex-basis: 100%; }
 
   .ticks span.n { font-size: .58rem; }
   .zone span { font-size: .55rem; left: 5px; }
   .st { padding: 16px 15px; }
-  .pledge { padding: 18px; }
 }
 /* Very small handsets: the tick strip is the first thing to crowd. */
 @media (max-width: 380px) {
@@ -284,8 +313,7 @@ h1 em { font-style: normal; color: var(--brand); }
   }
 
 /* ── the problem ───────────────────────────────────────────────────── */
-.thesis { font-size: clamp(1.75rem, 5vw, 3rem); font-weight: 690; letter-spacing: -.042em; line-height: 1.14; max-width: 19ch; }
-.thesis .bad { color: var(--block); }
+.lead .bad { color: var(--block); font-weight: 500; }
 
 /* ── sequence: the only numbered thing on the page, because it is the
      only real sequence ─────────────────────────────────────────────── */
@@ -322,16 +350,6 @@ h1 em { font-style: normal; color: var(--brand); }
 .code .x { color: var(--block); }
 
 /* ── boundary ──────────────────────────────────────────────────────── */
-.never { display: grid; grid-template-columns: 1.2fr 1fr; gap: 44px; margin-top: 26px; }
-@media (max-width: 860px) { .never { grid-template-columns: 1fr; gap: 28px; } }
-.nl { display: flex; flex-direction: column; }
-.nl div { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 13px 0; border-top: 1px solid var(--rule); }
-.nl div:first-child { border-top: 0; }
-.nl .x { font-family: var(--mono); font-size: .78rem; color: var(--block); }
-.nl p { color: var(--ink-2); font-size: .91rem; }
-.pledge { background: var(--panel); border: 1px solid var(--rule); padding: 22px; align-self: start; }
-.pledge p { color: var(--ink-2); font-size: .91rem; }
-.pledge .sig { margin-top: 14px; }
 
 /* ── get started ───────────────────────────────────────────────────── */
 .eco { display: grid; grid-template-columns: 1fr 360px; gap: 44px; align-items: start; }
@@ -379,8 +397,10 @@ footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border
   letter-spacing: -.025em; color: var(--ink);
 }
 .nl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; margin-top: 14px; }
+.nl div { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 13px 0; }
+.nl .x { font-family: var(--mono); font-size: .78rem; color: var(--vc); }
+.nl p { color: var(--ink-2); font-size: .91rem; }
 @media (max-width: 760px) { .nl { grid-template-columns: 1fr; } }
-
 
 /* Copy button on the code panel: the one thing a developer reaches for that
    the page did not have. Neutral until pressed, then it confirms. */
