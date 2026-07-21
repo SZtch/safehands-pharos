@@ -2,67 +2,71 @@
    The page is built as a measuring instrument: the risk scale carries the
    product's real decision bands (0-30 allow, 31-69 warn, 70+ block) and the
    block threshold from docs/DECISION_CONTRACT.md, so the verdict is shown
-   rather than asserted. Square corners throughout, monospace reserved for
-   machine-exact content, and no build step: edit this file directly. */
+   rather than asserted. No build step: edit this file directly.
 
-/* ── instrument tokens ─────────────────────────────────────────────────
-   Ground is a cool instrument charcoal, not black: a lit panel, not a void.
-   The blue is lifted from the logomark and used as illumination. Verdict
-   colours are the instrument's READINGS, so they carry meaning and are never
-   spent on decoration. */
+   Palette is aligned to Pharos (the chain SafeHands runs on): a near-black
+   ground, a cyan structural accent, and a spreading blue glow. The verdict
+   colours (allow green / warn amber / block red) are kept for one job only,
+   the instrument's live reading, so the page reads as part of the ecosystem
+   while its one piece of real colour still carries meaning. */
+
+/* Geist, SIL Open Font License, in the same class as Pharos's own PP Neue
+   Montreal. Self-hosted under site/fonts (licence at Geist-OFL.txt), never the
+   licensed Pharos font. */
+@font-face { font-family: "Geist"; font-weight: 400; font-display: swap; src: url("fonts/Geist-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 500; font-display: swap; src: url("fonts/Geist-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 600; font-display: swap; src: url("fonts/Geist-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 700; font-display: swap; src: url("fonts/Geist-Bold.woff2") format("woff2"); }
+
 :root {
-  --ground:  #0B0E13;
-  --panel:   #12161F;
-  --panel-2: #171C27;
-  --ink:     #E7EBF3;
-  --ink-2:   #99A2B6;
-  --ink-3:   #626B80;
-  --rule:    #222836;
-  --shadow:  rgb(0 0 0 / .55);
-  --rule-2:  #333B4D;
-  --vc:      #FF5A6E;   /* set by main.js from the live verdict */
-  --edge: #000000;
-  --on-vc: #0B0E13;
+  --ground:  #0B0B0B;
+  --panel:   #131317;
+  --panel-2: #1A1A1F;
+  --ink:     #F2F4F5;
+  --ink-2:   #B5B8BF;
+  --ink-3:   #6B7280;
+  --rule:    #232327;
+  --rule-2:  #33333B;
+  --shadow:  rgb(0 0 0 / .6);
+  --brand:   #6CD4FF;                    /* Pharos cyan: structural accent */
+  --glow:    rgb(0 151 255 / .28);       /* Pharos blue glow */
+  --vc:      #FF5A6E;                     /* set by main.js from the live verdict */
+  --on-vc:   #0B0B0B;
   --allow:   #34D399;
   --warn:    #F0A93B;
   --block:   #FF5A6E;
 
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
   --maxw: 1120px;
   --mark: url("safehands.jpg");
 }
-/* Daylight: the same instrument as a printed calibration sheet. */
+/* Daylight: Pharos also ships a light surface. */
 @media (prefers-color-scheme: light) {
   :root {
-    --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA;
-    --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
-    --rule: #D3D7E0; --rule-2: #B4BAC8;
-    --shadow: rgb(15 23 42 / .16);
-    --vc: #C2192C; --edge: #0A0D14; --on-vc: #FFFFFF;
-    --allow: #07845A; --warn: #96570B; --block: #C2192C;
-  }
-}
-    --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA;
-    --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
-    --rule: #D3D7E0; --rule-2: #B4BAC8;
-    --shadow: rgb(15 23 42 / .16);
-    --vc: #C2192C; --edge: #0A0D14; --on-vc: #FFFFFF;
+    --ground: #F2F4F5; --panel: #FFFFFF; --panel-2: #F7F8FA;
+    --ink: #0B0B0B; --ink-2: #4B5563; --ink-3: #6B7280;
+    --rule: #E3E6EA; --rule-2: #CBD0D8;
+    --shadow: rgb(15 23 42 / .14);
+    --brand: #0050BD; --glow: rgb(0 80 189 / .16);
+    --vc: #C2192C; --on-vc: #FFFFFF;
     --allow: #07845A; --warn: #96570B; --block: #C2192C;
   }
 }
 :root[data-theme="dark"] {
-  --ground: #0B0E13; --panel: #12161F; --panel-2: #171C27; --shadow: rgb(0 0 0 / .55);
-  --ink: #E7EBF3; --ink-2: #99A2B6; --ink-3: #626B80;
-  --rule: #222836; --rule-2: #333B4D;
-  --vc: #FF5A6E; --edge: #000000; --on-vc: #0B0E13;
+  --ground: #0B0B0B; --panel: #131317; --panel-2: #1A1A1F; --shadow: rgb(0 0 0 / .6);
+  --ink: #F2F4F5; --ink-2: #B5B8BF; --ink-3: #6B7280;
+  --rule: #232327; --rule-2: #33333B;
+  --brand: #6CD4FF; --glow: rgb(0 151 255 / .28);
+  --vc: #FF5A6E; --on-vc: #0B0B0B;
   --allow: #34D399; --warn: #F0A93B; --block: #FF5A6E;
 }
 :root[data-theme="light"] {
-  --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA; --shadow: rgb(15 23 42 / .16);
-  --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
-  --rule: #D3D7E0; --rule-2: #B4BAC8;
-  --vc: #C2192C; --edge: #0A0D14; --on-vc: #FFFFFF;
+  --ground: #F2F4F5; --panel: #FFFFFF; --panel-2: #F7F8FA; --shadow: rgb(15 23 42 / .14);
+  --ink: #0B0B0B; --ink-2: #4B5563; --ink-3: #6B7280;
+  --rule: #E3E6EA; --rule-2: #CBD0D8;
+  --brand: #0050BD; --glow: rgb(0 80 189 / .16);
+  --vc: #C2192C; --on-vc: #FFFFFF;
   --allow: #07845A; --warn: #96570B; --block: #C2192C;
 }
 
@@ -70,9 +74,10 @@
 /* The instrument itself stays square, because a measuring face is square.
    Everything a hand touches gets a small radius: that is the difference
    between a product and a specification sheet. */
-.btn, .pill, .tab, .theme, .side a, .inst, .code, ..pills, .tabs { border-radius: 8px; overflow: hidden; }
-.tabs { border-radius: 8px 8px 0 0; }
-.code { border-radius: 0 8px 8px 8px; }
+.btn, .pill, .tab, .theme, .side a, .code { border-radius: 6px; }
+.inst, .tabs, .pills, .side { border-radius: 12px; overflow: hidden; }
+.tabs { border-radius: 12px 12px 0 0; }
+.code { border-radius: 0 12px 12px 12px; position: relative; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
@@ -85,8 +90,8 @@ body {
   -webkit-font-smoothing: antialiased; overflow-x: hidden;
 }
 a { color: inherit; text-decoration: none; }
-::selection { background: var(--vc); color: #fff; }
-:focus-visible { outline: 2px solid var(--vc); outline-offset: 2px; }
+::selection { background: var(--brand); color: var(--on-vc); }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
 p { margin: 0; }
 
@@ -128,7 +133,7 @@ section::before {
   content: ""; position: absolute; left: 0; top: 0; width: 9px; height: 1px; background: var(--rule-2);
 }
 .eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-.eyebrow .idx { color: var(--vc); }
+.eyebrow .idx { color: var(--brand); }
 h2 { font-size: clamp(1.85rem, 4.2vw, 2.75rem); font-weight: 680; letter-spacing: -.038em; line-height: 1.12; max-width: 20ch; }
 .sub { color: var(--ink-2); max-width: 66ch; margin-top: 14px; }
 
@@ -139,12 +144,13 @@ h1 {
   font-size: clamp(2rem, 5.2vw, 3.35rem); font-weight: 700;
   letter-spacing: -.045em; line-height: 1.04; max-width: 20ch;
 }
-h1 em { font-style: normal; color: var(--vc); }
+h1 em { font-style: normal; color: var(--brand); }
 .lead { color: var(--ink-2); font-size: 1.05rem; max-width: 58ch; margin-top: 18px; }
 .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
 .btn { display: inline-flex; align-items: center; padding: 11px 18px; font-size: .93rem; font-weight: 560; border: 1px solid transparent; }
 .btn.p {
-  background: var(--vc); color: var(--on-vc);
+  background: var(--brand); color: var(--on-vc);
+  box-shadow: 0 0 44px -8px var(--glow);
 }
 .btn.p:hover { filter: brightness(1.1); }
 .btn.g { border-color: var(--rule-2); font-family: var(--mono); font-size: .85rem; }
@@ -153,7 +159,7 @@ h1 em { font-style: normal; color: var(--vc); }
 /* ── the instrument ────────────────────────────────────────────────── */
 .inst {
   margin-top: 46px; border: 1px solid var(--rule-2); background: var(--panel);
-  box-shadow: 6px 6px 0 var(--edge);
+  box-shadow: 0 0 0 1px var(--rule) inset, 0 24px 70px -30px #000, 0 0 90px -40px var(--glow);
 }
 .inst-top {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -205,7 +211,7 @@ h1 em { font-style: normal; color: var(--vc); }
 .zone.b span { color: var(--block); }
 
 /* Overshoot then settle: an analog needle does not stop dead on the value. */
-.fill { position: absolute; left: 1px; top: 1px; bottom: 1px; width: 0; background: var(--vc); opacity: .92; transition: width .62s cubic-bezier(.31,1.28,.42,1); }
+.fill { position: absolute; left: 1px; top: 1px; bottom: 1px; width: 0; background: var(--vc); box-shadow: 0 0 24px -2px var(--vc); opacity: .95; transition: width .62s cubic-bezier(.31,1.28,.42,1); }
 @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
 .needle { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); transition: left .62s cubic-bezier(.31,1.28,.42,1); }
 @media (prefers-reduced-motion: reduce) { .needle { transition: none; } }
@@ -274,17 +280,8 @@ h1 em { font-style: normal; color: var(--vc); }
 /* A deliberately sparse band between two dense ones. Every name here is a
    VERIFIED entry in the ecosystem registry, so it is evidence, not a logo
    wall: recognition on this page means the same thing it means in a verdict. */
-.verified { padding: 44px 28px; border-bottom: 1px solid var(--rule); background: var(--panel); }
-.verified .names {
-  display: flex; flex-wrap: wrap; gap: 12px 34px; margin-top: 16px;
-  font-family: var(--mono); font-size: .92rem; color: var(--ink);
-}
-.verified .names span { display: inline-flex; align-items: center; gap: 9px; }
-.verified .names span::before { content: ""; width: 5px; height: 5px; background: var(--allow); flex: none; }
 @media (max-width: 620px) {
-  .verified { padding: 34px 20px; }
-  .verified .names { gap: 10px 20px; font-size: .84rem; }
-}
+  }
 
 /* ── the problem ───────────────────────────────────────────────────── */
 .thesis { font-size: clamp(1.75rem, 5vw, 3rem); font-weight: 690; letter-spacing: -.042em; line-height: 1.14; max-width: 19ch; }
@@ -299,7 +296,7 @@ h1 em { font-style: normal; color: var(--vc); }
 .st:last-child { border-right: 0; }
 .st .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .72rem; letter-spacing: .1em; color: var(--ink-3); }
 .st.key { background: var(--panel); }
-.st.key .n { color: var(--vc); }
+.st.key .n { color: var(--brand); }
 .st h3 { font-size: 1rem; font-weight: 630; letter-spacing: -.018em; }
 .st p { font-size: .87rem; color: var(--ink-2); }
 .note { margin-top: 28px; color: var(--ink-2); max-width: 66ch; font-size: 1.02rem; }
@@ -312,7 +309,7 @@ h1 em { font-style: normal; color: var(--vc); }
 .row p { color: var(--ink-2); font-size: .92rem; }
 
 /* ── table ─────────────────────────────────────────────────────────── */
-..tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; }
+.tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; }
 .tab:last-child { border-right: 0; }
 .tab:hover { color: var(--ink); }
 .tab[aria-selected="true"] { background: var(--panel); color: var(--ink); }
@@ -340,7 +337,7 @@ h1 em { font-style: normal; color: var(--vc); }
 .eco { display: grid; grid-template-columns: 1fr 360px; gap: 44px; align-items: start; }
 @media (max-width: 860px) { .eco { grid-template-columns: 1fr; gap: 26px; } }
 .eco p { color: var(--ink-2); margin-top: 12px; max-width: 46ch; }
-.eco code { font-family: var(--mono); color: var(--vc); }
+.eco code { font-family: var(--mono); color: var(--brand); }
 .side { border: 1px solid var(--rule-2); }
 .side a { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--rule); font-size: .91rem; }
 .side a:last-child { border-bottom: 0; }
@@ -370,7 +367,7 @@ footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border
   font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700;
   letter-spacing: -.045em; line-height: 1; color: var(--ink);
 }
-.fig b em { font-style: normal; color: var(--vc); }
+.fig b em { font-style: normal; color: var(--brand); }
 .fig span { font-size: .87rem; color: var(--ink-2); }
 @media (max-width: 900px) { .figures { grid-template-columns: repeat(2, 1fr); gap: 28px 24px; } }
 @media (max-width: 620px) { .figures { padding: 40px 20px; } }
@@ -384,6 +381,14 @@ footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border
 .nl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; margin-top: 14px; }
 @media (max-width: 760px) { .nl { grid-template-columns: 1fr; } }
 
-/* Figures and the verified names are one proof band, divided by a rule
-   rather than by a section break. */
-.vrow { grid-column: 1 / -1; margin-top: 12px; padding-top: 26px; border-top: 1px solid var(--rule); }
+
+/* Copy button on the code panel: the one thing a developer reaches for that
+   the page did not have. Neutral until pressed, then it confirms. */
+.copy {
+  position: absolute; top: 10px; right: 10px;
+  font: inherit; font-size: .72rem; letter-spacing: .04em;
+  padding: 5px 11px; border: 1px solid var(--rule-2); border-radius: 6px;
+  background: var(--panel-2); color: var(--ink-2); cursor: pointer;
+}
+.copy:hover { border-color: var(--ink-3); color: var(--ink); }
+.copy:active { transform: translateY(1px); }

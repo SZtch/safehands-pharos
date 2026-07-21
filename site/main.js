@@ -168,11 +168,50 @@
   };
   var elCode = document.getElementById("code");
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
-  tabs.forEach(function (t) {
-    t.addEventListener("click", function () {
-      tabs.forEach(function (q) { q.setAttribute("aria-selected", q === t ? "true" : "false"); });
-      elCode.innerHTML = "<pre>" + SNIPPETS[t.dataset.tab] + "</pre>";
-    });
+
+  // The syntax highlighting is <span>s, so the copy button strips them and
+  // un-escapes the entities to hand over exactly what a terminal or config file
+  // expects: no markup, no &amp; or &lt; leaking through.
+  var copyBtn = document.createElement("button");
+  copyBtn.className = "copy";
+  copyBtn.type = "button";
+  copyBtn.textContent = "Copy";
+  copyBtn.setAttribute("aria-label", "Copy code");
+  var copyReset = null;
+
+  function plain(html) {
+    var d = document.createElement("div");
+    d.innerHTML = html;
+    return d.textContent;
+  }
+
+  function showTab(name) {
+    tabs.forEach(function (q) { q.setAttribute("aria-selected", q.dataset.tab === name ? "true" : "false"); });
+    elCode.innerHTML = "<pre>" + SNIPPETS[name] + "</pre>";
+    elCode.appendChild(copyBtn);
+    copyBtn.textContent = "Copy";
+  }
+
+  copyBtn.addEventListener("click", function () {
+    var text = plain(SNIPPETS[document.querySelector('.tab[aria-selected="true"]').dataset.tab]);
+    var done = function () {
+      copyBtn.textContent = "Copied";
+      if (copyReset) clearTimeout(copyReset);
+      copyReset = setTimeout(function () { copyBtn.textContent = "Copy"; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, done);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) { /* clipboard unavailable */ }
+      document.body.removeChild(ta); done();
+    }
   });
-  elCode.innerHTML = "<pre>" + SNIPPETS.skill + "</pre>";
+
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () { showTab(t.dataset.tab); });
+  });
+  showTab("skill");
 })();
