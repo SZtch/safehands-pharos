@@ -1,0 +1,341 @@
+/* SafeHands landing page.
+   The page is built as a measuring instrument: the risk scale carries the
+   product's real decision bands (0-30 allow, 31-69 warn, 70+ block) and the
+   block threshold from docs/DECISION_CONTRACT.md, so the verdict is shown
+   rather than asserted. Square corners throughout, monospace reserved for
+   machine-exact content, and no build step: edit this file directly. */
+
+/* ── instrument tokens ─────────────────────────────────────────────────
+   Ground is a cool instrument charcoal, not black: a lit panel, not a void.
+   The blue is lifted from the logomark and used as illumination. Verdict
+   colours are the instrument's READINGS, so they carry meaning and are never
+   spent on decoration. */
+:root {
+  --ground:  #0B0E13;
+  --panel:   #12161F;
+  --panel-2: #171C27;
+  --ink:     #E7EBF3;
+  --ink-2:   #99A2B6;
+  --ink-3:   #626B80;
+  --rule:    #222836;
+  --rule-2:  #333B4D;
+  --brand:   #6F80FF;
+  --allow:   #34D399;
+  --warn:    #F0A93B;
+  --block:   #FF5A6E;
+
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --maxw: 1120px;
+  --mark: url("safehands.jpg");
+}
+/* Daylight: the same instrument as a printed calibration sheet. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA;
+    --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
+    --rule: #D3D7E0; --rule-2: #B4BAC8;
+    --brand: #2E2AF0;
+    --allow: #07845A; --warn: #96570B; --block: #C2192C;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0B0E13; --panel: #12161F; --panel-2: #171C27;
+  --ink: #E7EBF3; --ink-2: #99A2B6; --ink-3: #626B80;
+  --rule: #222836; --rule-2: #333B4D;
+  --brand: #6F80FF;
+  --allow: #34D399; --warn: #F0A93B; --block: #FF5A6E;
+}
+:root[data-theme="light"] {
+  --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA;
+  --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
+  --rule: #D3D7E0; --rule-2: #B4BAC8;
+  --brand: #2E2AF0;
+  --allow: #07845A; --warn: #96570B; --block: #C2192C;
+}
+
+* { box-sizing: border-box; border-radius: 0; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font-family: var(--sans); font-size: 16px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--brand); color: #fff; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; }
+
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; }
+
+/* Device labels are uppercase because that is what is silkscreened onto an
+   instrument. Prose never is. */
+.lab {
+  font-family: var(--mono); font-size: .68rem; text-transform: uppercase;
+  letter-spacing: .16em; color: var(--ink-3);
+}
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+/* Announced to assistive tech, never shown: the scale itself is pure geometry. */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ── device header ─────────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 30; background: var(--ground);
+  border-bottom: 1px solid var(--rule);
+}
+.hbar { display: flex; align-items: center; gap: 26px; height: 58px; }
+.brand { display: flex; align-items: center; gap: 11px; font-weight: 640; letter-spacing: -.01em; }
+.mark { background-image: var(--mark); background-size: cover; background-position: center; flex: none; }
+.brand .mark { width: 26px; height: 26px; }
+.hbar nav { display: flex; gap: 24px; margin-left: auto; }
+.hbar nav a { font-size: .9rem; color: var(--ink-2); }
+.hbar nav a:hover { color: var(--ink); }
+.theme {
+  font: inherit; background: none; border: 1px solid var(--rule-2); color: var(--ink-2);
+  width: 32px; height: 32px; cursor: pointer; display: grid; place-items: center;
+}
+.theme:hover { border-color: var(--brand); color: var(--brand); }
+@media (max-width: 840px) { .hbar nav { display: none; } }
+
+/* ── the calibration rail: sections hang off a measured edge ────────── */
+main { border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); max-width: var(--maxw); margin: 0 auto; }
+section { padding: 104px 28px; border-bottom: 1px solid var(--rule); position: relative; }
+section::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 9px; height: 1px; background: var(--rule-2);
+}
+.eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.eyebrow .idx { color: var(--brand); }
+h2 { font-size: clamp(1.85rem, 4.2vw, 2.75rem); font-weight: 680; letter-spacing: -.038em; line-height: 1.12; max-width: 20ch; }
+.sub { color: var(--ink-2); max-width: 66ch; margin-top: 14px; }
+
+/* ── hero ──────────────────────────────────────────────────────────── */
+.hero { padding-top: 56px; padding-bottom: 88px; }
+.idline { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 26px; }
+h1 {
+  font-size: clamp(2rem, 5.2vw, 3.35rem); font-weight: 700;
+  letter-spacing: -.045em; line-height: 1.04; max-width: 20ch;
+}
+h1 em { font-style: normal; color: var(--brand); }
+.lead { color: var(--ink-2); font-size: 1.05rem; max-width: 58ch; margin-top: 18px; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.btn { display: inline-flex; align-items: center; padding: 11px 18px; font-size: .93rem; font-weight: 560; border: 1px solid transparent; }
+.btn.p { background: var(--brand); color: #fff; }
+.btn.p:hover { filter: brightness(1.1); }
+.btn.g { border-color: var(--rule-2); font-family: var(--mono); font-size: .85rem; }
+.btn.g:hover { border-color: var(--brand); color: var(--brand); }
+
+/* ── the instrument ────────────────────────────────────────────────── */
+.inst { margin-top: 46px; border: 1px solid var(--rule-2); background: var(--panel); }
+.inst-top {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 11px 18px; border-bottom: 1px solid var(--rule); background: var(--panel-2);
+}
+.inst-top .who { margin-left: auto; }
+
+.specimen { padding: 18px; border-bottom: 1px solid var(--rule); display: flex; flex-direction: column; gap: 13px; }
+.pills { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--rule-2); width: fit-content; }
+.pill {
+  font: inherit; font-size: .85rem; padding: 8px 14px; background: none;
+  color: var(--ink-2); cursor: pointer; border: 0; border-right: 1px solid var(--rule-2);
+}
+.pill:last-child { border-right: 0; }
+.pill:hover { color: var(--ink); background: var(--panel-2); }
+.pill[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.req {
+  font-family: var(--mono); font-size: .81rem; line-height: 1.9; color: var(--ink-2);
+  background: var(--ground); border: 1px solid var(--rule); padding: 13px 15px;
+  overflow-x: auto; white-space: pre;
+}
+.req b { color: var(--ink); font-weight: 500; }
+.req u { text-decoration: none; color: var(--vc, var(--block)); }
+
+/* ── the calibrated scale: the product's real decision contract ─────── */
+.gauge { padding: 22px 18px 18px; }
+.gauge-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+.gauge-head .read { margin-left: auto; text-align: right; }
+.verdict-word {
+  font-family: var(--mono); font-size: 1.55rem; font-weight: 700;
+  letter-spacing: -.01em; color: var(--vc); line-height: 1;
+}
+.read .score { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1.55rem; font-weight: 700; color: var(--vc); line-height: 1; }
+.read .of { color: var(--ink-3); font-size: .95rem; }
+
+.scale { position: relative; }
+/* Zone bands ARE the documented verdict bands, not decoration. */
+.zones { display: flex; height: 30px; border: 1px solid var(--rule-2); }
+.zone { position: relative; }
+.zone.a { flex: 0 0 31%; background: color-mix(in srgb, var(--allow) 11%, transparent); }
+.zone.w { flex: 0 0 39%; background: color-mix(in srgb, var(--warn) 11%, transparent); border-left: 1px solid var(--rule-2); }
+.zone.b { flex: 1 1 auto; background: color-mix(in srgb, var(--block) 11%, transparent); border-left: 1px solid var(--rule-2); }
+.zone span {
+  position: absolute; top: 50%; transform: translateY(-50%); left: 8px;
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+}
+.zone.a span { color: var(--allow); }
+.zone.w span { color: var(--warn); }
+.zone.b span { color: var(--block); }
+
+/* Overshoot then settle: an analog needle does not stop dead on the value. */
+.fill { position: absolute; left: 1px; top: 1px; bottom: 1px; width: 0; background: var(--vc); opacity: .92; transition: width .62s cubic-bezier(.31,1.28,.42,1); }
+@media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+.needle { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); transition: left .62s cubic-bezier(.31,1.28,.42,1); }
+@media (prefers-reduced-motion: reduce) { .needle { transition: none; } }
+
+/* Tick strip: major ticks every 10, the threshold at 70 called out. */
+.ticks { position: relative; height: 26px; margin-top: 2px; }
+.ticks span.t { position: absolute; top: 0; width: 1px; height: 5px; background: var(--rule-2); }
+.ticks span.t.maj { height: 8px; background: var(--ink-3); }
+.ticks span.n { position: absolute; top: 10px; transform: translateX(-50%); font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .64rem; font-weight: 400; color: var(--ink-3); }
+.thr { position: absolute; left: 70%; top: -36px; bottom: 0; width: 1px; background: var(--ink-2); }
+.thr::after {
+  content: "THRESHOLD 70"; position: absolute; top: -16px; left: 6px;
+  font-family: var(--mono); font-size: .6rem; letter-spacing: .13em; color: var(--ink-2); white-space: nowrap;
+}
+@media (max-width: 560px) { .thr::after { content: "70"; } }
+
+.findings { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.findings li { font-size: .89rem; color: var(--ink-2); padding-left: 18px; position: relative; }
+.findings li.arriving { opacity: 0; transform: translateY(3px); }
+.findings li.settled { opacity: 1; transform: none; transition: opacity .32s ease, transform .32s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .findings li.arriving { opacity: 1; transform: none; }
+  .findings li.settled { transition: none; }
+}
+.findings li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 1px; background: var(--vc); }
+.act { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: .89rem; color: var(--ink-2); }
+.act b { color: var(--ink); font-weight: 620; }
+
+/* ── narrow screens ────────────────────────────────────────────────
+   Segmented controls are the weak point: their dividers are border-right,
+   so once they wrap the rule falls in the wrong place. Below the phone
+   breakpoint they become stacked rows with bottom rules instead, and the
+   long install command gets its own full-width button rather than
+   overflowing the viewport. */
+@media (max-width: 620px) {
+  section { padding: 72px 20px; }
+  .hero { padding-top: 40px; }
+  footer { padding: 26px 20px 36px; }
+  .wrap { padding: 0 20px; }
+
+  .cta { flex-direction: column; align-items: stretch; }
+  .btn { justify-content: center; text-align: center; }
+  .btn.g { font-size: .78rem; padding: 11px 10px; }
+
+  .pills, .tabs { width: 100%; flex-wrap: wrap; }
+  .pill { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--rule-2); text-align: left; }
+  .pill:last-child { border-bottom: 0; }
+  .tab { flex: 1 1 auto; text-align: center; }
+
+  .gauge-head { flex-wrap: wrap; gap: 6px 12px; }
+  .verdict-word, .read .score { font-size: 1.35rem; }
+  .inspect-head { font-size: .72rem; }
+  .inspect-head .who { margin-left: 0; flex-basis: 100%; }
+
+  .ticks span.n { font-size: .58rem; }
+  .zone span { font-size: .55rem; left: 5px; }
+  .st { padding: 16px 15px; }
+  .pledge { padding: 18px; }
+}
+/* Very small handsets: the tick strip is the first thing to crowd. */
+@media (max-width: 380px) {
+  .ticks span.n[data-v="20"], .ticks span.n[data-v="60"] { display: none; }
+  .zone.a span, .zone.w span { display: none; }
+}
+
+/* A deliberately sparse band between two dense ones. Every name here is a
+   VERIFIED entry in the ecosystem registry, so it is evidence, not a logo
+   wall: recognition on this page means the same thing it means in a verdict. */
+.verified { padding: 44px 28px; border-bottom: 1px solid var(--rule); background: var(--panel); }
+.verified .names {
+  display: flex; flex-wrap: wrap; gap: 12px 34px; margin-top: 16px;
+  font-family: var(--mono); font-size: .92rem; color: var(--ink);
+}
+.verified .names span { display: inline-flex; align-items: center; gap: 9px; }
+.verified .names span::before { content: ""; width: 5px; height: 5px; background: var(--allow); flex: none; }
+@media (max-width: 620px) {
+  .verified { padding: 34px 20px; }
+  .verified .names { gap: 10px 20px; font-size: .84rem; }
+}
+
+/* ── the problem ───────────────────────────────────────────────────── */
+.thesis { font-size: clamp(1.75rem, 5vw, 3rem); font-weight: 690; letter-spacing: -.042em; line-height: 1.14; max-width: 19ch; }
+.thesis .bad { color: var(--block); }
+
+/* ── sequence: the only numbered thing on the page, because it is the
+     only real sequence ─────────────────────────────────────────────── */
+.seq { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rule); border-bottom: 0; margin-top: 28px; }
+@media (max-width: 900px) { .seq { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px) { .seq { grid-template-columns: 1fr; } }
+.st { padding: 20px 18px; border-bottom: 1px solid var(--rule); border-right: 1px solid var(--rule); display: flex; flex-direction: column; gap: 8px; }
+.st:last-child { border-right: 0; }
+.st .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .72rem; letter-spacing: .1em; color: var(--ink-3); }
+.st.key { background: var(--panel); }
+.st.key .n { color: var(--brand); }
+.st h3 { font-size: 1rem; font-weight: 630; letter-spacing: -.018em; }
+.st p { font-size: .87rem; color: var(--ink-2); }
+.note { margin-top: 28px; color: var(--ink-2); max-width: 66ch; font-size: 1.02rem; }
+
+/* ── spec rows ─────────────────────────────────────────────────────── */
+.rows { margin-top: 26px; border-top: 1px solid var(--rule); }
+.row { display: grid; grid-template-columns: 190px 1fr; gap: 26px; padding: 18px 0; border-bottom: 1px solid var(--rule); }
+@media (max-width: 760px) { .row { grid-template-columns: 1fr; gap: 6px; } }
+.row h3 { font-size: .98rem; font-weight: 630; letter-spacing: -.018em; }
+.row p { color: var(--ink-2); font-size: .92rem; }
+
+/* ── table ─────────────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; margin-top: 26px; border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; min-width: 660px; }
+th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--rule); font-size: .89rem; vertical-align: top; color: var(--ink-2); }
+th { font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-3); background: var(--panel-2); }
+tr:last-child td { border-bottom: 0; }
+td.lv { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; white-space: nowrap; }
+tr.fit { background: var(--panel); }
+tr.fit td.lv { color: var(--brand); }
+
+/* ── code ──────────────────────────────────────────────────────────── */
+.tabs { display: flex; margin-top: 26px; border: 1px solid var(--rule-2); border-bottom: 0; width: fit-content; }
+.tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; }
+.tab:last-child { border-right: 0; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--panel); color: var(--ink); }
+.code { border: 1px solid var(--rule-2); background: var(--panel); overflow-x: auto; }
+.code pre { margin: 0; padding: 18px; font-family: var(--mono); font-size: .83rem; line-height: 1.75; color: var(--ink); }
+.code .c { color: var(--ink-3); }
+.code .k { color: var(--brand); }
+.code .s { color: var(--allow); }
+.code .m { color: var(--ink); font-weight: 600; }
+.code .x { color: var(--block); }
+
+/* ── boundary ──────────────────────────────────────────────────────── */
+.never { display: grid; grid-template-columns: 1.2fr 1fr; gap: 44px; margin-top: 26px; }
+@media (max-width: 860px) { .never { grid-template-columns: 1fr; gap: 28px; } }
+.nl { display: flex; flex-direction: column; }
+.nl div { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 13px 0; border-top: 1px solid var(--rule); }
+.nl div:first-child { border-top: 0; }
+.nl .x { font-family: var(--mono); font-size: .78rem; color: var(--block); }
+.nl p { color: var(--ink-2); font-size: .91rem; }
+.pledge { background: var(--panel); border: 1px solid var(--rule); padding: 22px; align-self: start; }
+.pledge p { color: var(--ink-2); font-size: .91rem; }
+.pledge .sig { margin-top: 14px; }
+
+/* ── get started ───────────────────────────────────────────────────── */
+.eco { display: grid; grid-template-columns: 1fr 360px; gap: 44px; align-items: start; }
+@media (max-width: 860px) { .eco { grid-template-columns: 1fr; gap: 26px; } }
+.eco p { color: var(--ink-2); margin-top: 12px; max-width: 46ch; }
+.eco code { font-family: var(--mono); color: var(--brand); }
+.side { border: 1px solid var(--rule-2); }
+.side a { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--rule); font-size: .91rem; }
+.side a:last-child { border-bottom: 0; }
+.side a:hover { background: var(--panel); color: var(--brand); }
+.side a .arw { color: var(--ink-3); }
+.side a:hover .arw { color: var(--brand); }
+
+/* ── footer ────────────────────────────────────────────────────────── */
+footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+.foot .mark { width: 22px; height: 22px; }
+.fl { display: flex; flex-wrap: wrap; gap: 18px; margin-left: auto; font-size: .89rem; color: var(--ink-2); }
+.fl a:hover { color: var(--brand); }
+.disc { flex-basis: 100%; color: var(--ink-3); font-size: .83rem; max-width: 80ch; }
