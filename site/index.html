@@ -194,9 +194,10 @@
   .zone.w span { color: var(--warn); }
   .zone.b span { color: var(--block); }
 
-  .fill { position: absolute; left: 1px; top: 1px; bottom: 1px; width: 0; background: var(--vc); opacity: .92; transition: width .5s cubic-bezier(.2,.75,.3,1); }
+  /* Overshoot then settle: an analog needle does not stop dead on the value. */
+  .fill { position: absolute; left: 1px; top: 1px; bottom: 1px; width: 0; background: var(--vc); opacity: .92; transition: width .62s cubic-bezier(.31,1.28,.42,1); }
   @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
-  .needle { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); transition: left .5s cubic-bezier(.2,.75,.3,1); }
+  .needle { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); transition: left .62s cubic-bezier(.31,1.28,.42,1); }
   @media (prefers-reduced-motion: reduce) { .needle { transition: none; } }
 
   /* Tick strip: major ticks every 10, the threshold at 70 called out. */
@@ -213,6 +214,12 @@
 
   .findings { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
   .findings li { font-size: .89rem; color: var(--ink-2); padding-left: 18px; position: relative; }
+  .findings li.arriving { opacity: 0; transform: translateY(3px); }
+  .findings li.settled { opacity: 1; transform: none; transition: opacity .32s ease, transform .32s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    .findings li.arriving { opacity: 1; transform: none; }
+    .findings li.settled { transition: none; }
+  }
   .findings li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 1px; background: var(--vc); }
   .act { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: .89rem; color: var(--ink-2); }
   .act b { color: var(--ink); font-weight: 620; }
@@ -329,7 +336,7 @@
     <p class="lead">SafeHands is a deterministic firewall for AI agents that move funds. It reads the intent and the exact bytes, then returns one verdict on a published scale: allow, warn, or block, with named reasons.</p>
     <div class="cta">
       <a class="btn p" href="#demo">Watch it block a drainer</a>
-      <a class="btn g" href="#integrate">npm install safehands-pharos</a>
+      <a class="btn g" href="#integrate">npx skills add SZtch/safehands-pharos</a>
     </div>
 
     <div class="inst" id="demo">
@@ -452,10 +459,11 @@
     <div class="eco">
       <div>
         <h2>Put a firewall in front of your agent.</h2>
-        <p>Call the hosted <code>safehands</code> agent on Anvita Flow, or self-host the read-only backend next to your own. Both answer the same question before anything gets signed.</p>
+        <p>Install it as a skill, wire it into MCP, or import the engine: those run on your own machine and cost nothing. The hosted <code>safehands</code> agent on Anvita Flow needs no install at all and is billed by the platform per call. Same question, same verdict, either way.</p>
       </div>
       <div class="side">
-        <a href="https://flow.anvita.xyz/home"><span>Hosted agent &middot; Anvita Flow</span><span class="arw">&rarr;</span></a>
+        <a href="#integrate"><span>Install as a skill &middot; one command</span><span class="arw">&rarr;</span></a>
+        <a href="https://flow.anvita.xyz/home"><span>Hosted agent &middot; no install</span><span class="arw">&rarr;</span></a>
         <a href="https://www.npmjs.com/package/safehands-pharos"><span>npm &middot; safehands-pharos</span><span class="arw">&rarr;</span></a>
         <a href="https://github.com/SZtch/safehands-pharos"><span>Source &middot; GitHub</span><span class="arw">&rarr;</span></a>
         <a href="https://www.pharos.xyz/agent-center"><span>Pharos Agent Center</span><span class="arw">&rarr;</span></a>
@@ -553,18 +561,37 @@
   var elAct = document.getElementById("act");
   var pills = Array.prototype.slice.call(document.querySelectorAll(".pill"));
 
+  /* The score travels with the needle rather than snapping to its final value. */
+  var counter = null;
+  function countTo(target) {
+    if (counter) cancelAnimationFrame(counter);
+    if (reduce) { elScore.textContent = target; return; }
+    var from = parseInt(elScore.textContent, 10) || 0;
+    var t0 = performance.now(), ms = 620;
+    (function step(now) {
+      var k = Math.min(1, (now - t0) / ms);
+      var eased = 1 - Math.pow(1 - k, 3);
+      elScore.textContent = Math.round(from + (target - from) * eased);
+      if (k < 1) counter = requestAnimationFrame(step);
+    })(t0);
+  }
+
   function paint(key) {
     var s = SAMPLES[key];
     elGauge.style.setProperty("--vc", "var(--" + s.v + ")");
     elReq.innerHTML = s.req;
     elWord.textContent = s.word;
-    elScore.textContent = s.score;
     elFind.innerHTML = "";
-    s.findings.forEach(function (f) {
+    s.findings.forEach(function (f, i) {
       var li = document.createElement("li");
       li.textContent = f;
+      if (!reduce) {
+        li.className = "arriving";
+        setTimeout(function () { li.className = "arriving settled"; }, 260 + i * 90);
+      }
       elFind.appendChild(li);
     });
+    countTo(s.score);
     document.getElementById("sr").textContent =
       s.word + ". Risk score " + s.score + " out of 100, block threshold 70. " + s.findings[0];
     function set() {
@@ -582,7 +609,9 @@
       paint(p.dataset.k);
     });
   });
-  paint("block");
+  elScore.textContent = "0";
+  if (reduce) paint("block");
+  else setTimeout(function () { paint("block"); }, 260);
 
   var SNIPPETS = {
     skill:
