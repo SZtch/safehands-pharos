@@ -76,6 +76,7 @@
   var elNeedle = document.getElementById("needle");
   var elFind = document.getElementById("findings");
   var elAct = document.getElementById("act");
+  var elSr = document.getElementById("sr");
   var pills = Array.prototype.slice.call(document.querySelectorAll(".pill"));
 
   /* The score travels with the needle rather than snapping to its final value. */
@@ -109,7 +110,8 @@
       elFind.appendChild(li);
     });
     countTo(s.score);
-    document.getElementById("sr").textContent =
+    elAct.innerHTML = s.act;
+    elSr.textContent =
       s.word + ". Risk score " + s.score + " out of 100, block threshold 70. " + s.findings[0];
     function set() {
       elFill.style.width = "calc(" + s.score + "% - 2px)";

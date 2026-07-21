@@ -46,4 +46,22 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // The landing page ships to a browser, not to Node, so it gets browser
+    // globals instead. Keeping it linted is the point: it is how the missing
+    // action line in the specimen inspector was caught.
+    files: ["site/**/*.js"],
+    languageOptions: {
+      globals: {
+        document: "readonly",
+        window: "readonly",
+        matchMedia: "readonly",
+        performance: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+      },
+    },
+  },
 );
