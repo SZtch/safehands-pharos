@@ -1,6 +1,6 @@
 {
   "name": "safehands-pharos",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Open-source reusable Pharos Skill, the transaction firewall for AI agent finance on Pharos Pacific Mainnet: deterministic safety verdicts before any wallet signs. Read-only by default; write tools optional, gated, off by default.",
   "type": "module",
   "main": "dist/sdk.js",
@@ -42,7 +42,7 @@
     "agent:defi": "tsx examples/agent-arena/defi-agent-approval.ts",
     "agent:starter": "tsx examples/agent-starter/safe-agent.ts",
     "demo": "tsx src/index.ts --demo",
-    "test": "tsx --test test/policy-suite.test.ts test/action-policy.test.ts test/calldata-decoder.test.ts test/risk-inclusion.test.ts test/risk-engine.test.ts test/http-ssrf.test.ts test/x402-gate.test.ts test/x402-daily-cap.test.ts test/write-auth.test.ts test/write-path-gates.test.ts test/write-tools-risk-gate.test.ts test/attestation-publisher.test.ts test/spv-verifier.test.ts test/agent-policy-guard.test.ts test/sdk-exports.test.ts test/wallet-crypto.test.ts test/execution-hardening.test.ts test/input-hardening.test.ts test/token-security-failclosed.test.ts test/token-registry-metadata.test.ts test/price-resolver.test.ts test/price-tools.test.ts test/ecosystem-registry.test.ts test/registry-defaults.test.ts test/truth-model.test.ts test/ecosystem-registry-schema.test.ts test/anvita-asset-sync.test.ts test/registry-failclosed.test.ts test/okx-dex-api.test.ts test/anvita-engine.test.mjs test/anvita-engine-calldata.test.mjs test/anvita-engine-composition.test.mjs test/anvita-engine-alias.test.mjs test/anvita-engine-keccak.test.mjs",
+    "test": "tsx --test test/policy-suite.test.ts test/action-policy.test.ts test/calldata-decoder.test.ts test/risk-inclusion.test.ts test/risk-engine.test.ts test/http-ssrf.test.ts test/x402-gate.test.ts test/x402-daily-cap.test.ts test/write-auth.test.ts test/write-path-gates.test.ts test/write-tools-risk-gate.test.ts test/attestation-publisher.test.ts test/spv-verifier.test.ts test/agent-policy-guard.test.ts test/sdk-exports.test.ts test/wallet-crypto.test.ts test/execution-hardening.test.ts test/input-hardening.test.ts test/token-security-failclosed.test.ts test/token-registry-metadata.test.ts test/price-resolver.test.ts test/price-tools.test.ts test/ecosystem-registry.test.ts test/registry-defaults.test.ts test/truth-model.test.ts test/ecosystem-registry-schema.test.ts test/anvita-asset-sync.test.ts test/registry-failclosed.test.ts test/okx-dex-api.test.ts test/anvita-engine.test.mjs test/anvita-engine-calldata.test.mjs test/anvita-engine-composition.test.mjs test/anvita-engine-alias.test.mjs test/anvita-engine-keccak.test.mjs test/engine-differential.test.mjs test/engine-invariants.test.mjs test/engine-merkle-inclusion.test.mjs",
     "test:live": "tsx --test test/live-smoke.test.ts",
     "typecheck:test": "tsc -p tsconfig.test.json",
     "lint": "eslint .",
