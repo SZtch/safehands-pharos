@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="SafeHands is a deterministic transaction firewall for AI agents on Pharos Pacific Mainnet. It reads the intent and the exact bytes, then returns one reading on a published scale: allow, warn, or block, with named reasons. Read-only and zero-custody.">
+<meta name="description" content="SafeHands is a deterministic transaction firewall for AI agents on Pharos Pacific Mainnet. It reads the intent and the exact bytes, then returns one verdict on a published scale: allow, warn, or block, with named reasons. Read-only and zero-custody.">
 <meta name="theme-color" content="#2E2AF0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B0E13" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="safehands.jpg">
@@ -326,7 +326,7 @@
       <span>Native PROS</span>
     </div>
     <h1>Every transaction an agent proposes is <em>measured</em> before it is signed.</h1>
-    <p class="lead">SafeHands is a deterministic firewall for AI agents that move funds. It reads the intent and the exact bytes, then returns one reading on a published scale: allow, warn, or block, with named reasons.</p>
+    <p class="lead">SafeHands is a deterministic firewall for AI agents that move funds. It reads the intent and the exact bytes, then returns one verdict on a published scale: allow, warn, or block, with named reasons.</p>
     <div class="cta">
       <a class="btn p" href="#demo">Watch it block a drainer</a>
       <a class="btn g" href="#integrate">npm install safehands-pharos</a>
@@ -383,7 +383,7 @@
     <div class="seq">
       <div class="st"><span class="n">STEP 01</span><h3>The agent plans</h3><p>Your model finds the opportunity and builds the transaction. It holds the intent, never a key.</p></div>
       <div class="st key"><span class="n">STEP 02</span><h3>The engine reads</h3><p>SafeHands checks the intent, then the exact calldata, against the on-chain registry and live evidence.</p></div>
-      <div class="st key"><span class="n">STEP 03</span><h3>A reading, not a vibe</h3><p>One score on a published scale, with named reasons. Same bytes in, same reading out.</p></div>
+      <div class="st key"><span class="n">STEP 03</span><h3>A verdict, not a vibe</h3><p>One score on a published scale, with named reasons. Same bytes in, same verdict out.</p></div>
       <div class="st"><span class="n">STEP 04</span><h3>Your wallet acts</h3><p>Only what cleared reaches a signature. SafeHands never touches a key.</p></div>
     </div>
     <p class="note">A firewall that cannot move funds is one nobody has to trust with funds. That is the whole design: safety you can put in front of an agent without handing anything over.</p>
@@ -393,9 +393,9 @@
     <div class="eyebrow"><span class="lab idx">03</span><span class="lab">Why trust it</span></div>
     <h2>Five properties, each one checkable.</h2>
     <div class="rows">
-      <div class="row"><h3>Deterministic</h3><p>Every reading is computed by code and traces to a named check. Run it twice on the same bytes and you get the same answer, with the same reasons.</p></div>
+      <div class="row"><h3>Deterministic</h3><p>Every verdict is computed by code and traces to a named check. Run it twice on the same bytes and you get the same answer, with the same reasons.</p></div>
       <div class="row"><h3>Registry-backed trust</h3><p>Recognition comes only from first-party, on-chain registry evidence. Being listed somewhere is not trust, and a contract recognized by name is still not a contract approved to spend.</p></div>
-      <div class="row"><h3>Fail-closed</h3><p>Missing evidence is reported as unknown and pushes the reading up. Aggregation can only raise severity. A block is never downgraded by anything downstream.</p></div>
+      <div class="row"><h3>Fail-closed</h3><p>Missing evidence is reported as unknown and pushes the verdict up. Aggregation can only raise severity. A block is never downgraded by anything downstream.</p></div>
       <div class="row"><h3>Zero-custody</h3><p>Read-only by design. No keys, no signing, no broadcasting on the hosted surface. Write paths exist for self-hosting, off by default behind explicit gates.</p></div>
       <div class="row"><h3>Live on mainnet</h3><p>Running against Pharos Pacific Mainnet, chain 1672, with live Chainlink prices and risk records committed on-chain and proven against the published Merkle root.</p></div>
     </div>
@@ -410,7 +410,7 @@
         <tbody>
           <tr><td class="lv">L0-L1</td><td>Informs and recommends; a human does everything</td><td>Optional: verified facts instead of guessed ones</td><td>Useful</td></tr>
           <tr class="fit"><td class="lv">L2</td><td>Prepares the transaction; a human signs</td><td>Verdict-gated prepare: a block never reaches the wallet</td><td>Designed for this</td></tr>
-          <tr class="fit"><td class="lv">L3</td><td>Executes on its own, within limits</td><td>The limit is the reading: autonomy bounded by a check it cannot talk its way past</td><td>Designed for this</td></tr>
+          <tr class="fit"><td class="lv">L3</td><td>Executes on its own, within limits</td><td>The limit is the verdict: autonomy bounded by a check it cannot talk its way past</td><td>Designed for this</td></tr>
           <tr><td class="lv">L4</td><td>Manages a portfolio with full autonomy</td><td>Discouraged: nothing makes an unbounded agent safe</td><td>Not recommended</td></tr>
         </tbody>
       </table>
@@ -420,11 +420,12 @@
   <section id="integrate">
     <div class="eyebrow"><span class="lab idx">05</span><span class="lab">Integrate</span></div>
     <h2>One call before you sign.</h2>
-    <p class="sub">The loop is the same on every surface: resolve names from the registry, inspect the intent, inspect the exact bytes, then act only on what cleared.</p>
+    <p class="sub">The loop is the same on every surface: resolve names from the registry, inspect the intent, inspect the exact bytes, then act only on what cleared. None of these need a server of your own, and the hosted agent on Anvita Flow needs no install at all.</p>
     <div class="tabs" role="tablist" aria-label="Integration methods">
-      <button class="tab" role="tab" aria-selected="true" data-tab="sdk">SDK</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="hosted">Hosted agent</button>
-      <button class="tab" role="tab" aria-selected="false" data-tab="mcp">MCP and HTTP</button>
+      <button class="tab" role="tab" aria-selected="true" data-tab="skill">Skill</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="mcp">MCP</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="sdk">SDK</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="cli">CLI</button>
     </div>
     <div class="code" id="code"></div>
   </section>
@@ -440,7 +441,7 @@
         <div><span class="x">[X]</span><p>Never downgrades a block. Aggregation can only raise severity, never lower it.</p></div>
       </div>
       <div class="pledge">
-        <p>A reading binds to exactly what was inspected. Act on different bytes, or after it expires, and it no longer applies. The calling agent is expected to check that binding, not to assume it.</p>
+        <p>A verdict binds to exactly what was inspected. Act on different bytes, or after it expires, and it no longer applies. The calling agent is expected to check that binding, not to assume it.</p>
         <p class="sig lab">The agent-to-agent contract</p>
       </div>
     </div>
@@ -473,7 +474,7 @@
       <a href="https://github.com/SZtch/safehands-pharos">GitHub</a>
       <a href="https://flow.anvita.xyz/home">Anvita Flow</a>
     </div>
-    <p class="disc">SafeHands is read-only and zero-custody: it renders a safety reading and never signs or broadcasts. Write and execution paths exist for self-hosting only, off by default behind explicit gates. Not a formally audited custody system.</p>
+    <p class="disc">SafeHands is read-only and zero-custody: it renders a safety verdict and never signs or broadcasts. Write and execution paths exist for self-hosting only, off by default behind explicit gates. Not a formally audited custody system.</p>
   </div>
 </footer>
 
@@ -527,7 +528,7 @@
         "Router and token-approve contract are registry-verified on chain 1672, by code hash.",
         "Exact-amount approval and a live price inside the expected band. Nothing unbounded."
       ],
-      act: "<b>Safe to sign.</b> The reading is bound to these exact bytes for 10 minutes; sign different bytes and it no longer applies."
+      act: "<b>Safe to sign.</b> The verdict is bound to these exact bytes for 10 minutes; sign different bytes and it no longer applies."
     },
     warn: {
       req: 'action   <b>transfer 0.2 PROS</b>\n' +
@@ -565,7 +566,7 @@
       elFind.appendChild(li);
     });
     document.getElementById("sr").textContent =
-      s.word + ". Risk reading " + s.score + " out of 100, block threshold 70. " + s.findings[0];
+      s.word + ". Risk score " + s.score + " out of 100, block threshold 70. " + s.findings[0];
     function set() {
       elFill.style.width = "calc(" + s.score + "% - 2px)";
       elNeedle.style.left = s.score + "%";
@@ -584,24 +585,35 @@
   paint("block");
 
   var SNIPPETS = {
+    skill:
+'<span class="c"># the whole thing, as an agent skill</span>\n' +
+'npx skills add <span class="m">SZtch/safehands-pharos</span>\n\n' +
+'<span class="c"># then ask your agent in its own words:</span>\n' +
+'<span class="s">"Run a SafeHands preflight before I sign this approval."</span>',
+    mcp:
+'<span class="c">// claude_desktop_config.json, or any MCP client</span>\n' +
+'{\n' +
+'  <span class="k">"mcpServers"</span>: {\n' +
+'    <span class="k">"safehands"</span>: {\n' +
+'      <span class="k">"command"</span>: <span class="s">"npx"</span>,\n' +
+'      <span class="k">"args"</span>: [<span class="s">"-y"</span>, <span class="s">"github:SZtch/safehands-pharos"</span>]\n' +
+'    }\n' +
+'  }\n' +
+'}\n\n' +
+'<span class="c">// read-only by default: no key, no wallet, no setup</span>',
     sdk:
-'<span class="c">// tightest: the deterministic engine, in your own code</span>\n' +
+'<span class="c">// tightest: the deterministic engine, inside your own code</span>\n' +
 '<span class="k">import</span> { evaluateActionPolicy } <span class="k">from</span> <span class="s">"safehands-pharos"</span>;\n\n' +
 '<span class="k">const</span> verdict = <span class="m">evaluateActionPolicy</span>(action);\n' +
 '<span class="k">if</span> (!verdict.safeToExecute) <span class="k">return</span>;   <span class="x">// do not auto-sign</span>',
-    hosted:
-'<span class="c"># call the hosted `safehands` agent on Anvita Flow</span>\n' +
-'<span class="c"># it resolves names from the registry and signs nothing</span>\n\n' +
-'Before I sign: check this swap for <span class="m">0xYourUserWallet</span> on Pharos.\n' +
-'tokenIn <span class="s">USDC</span>, tokenOut <span class="s">PROS</span>, amount <span class="m">100</span>, venue <span class="s">okx</span>.\n' +
-'Then here is the exact calldata to verify: <span class="m">0x38ed1739\u2026</span>',
-    mcp:
-'<span class="c"># self-host the read-only backend next to your agent</span>\n' +
-'npx safehands-pharos\n\n' +
-'<span class="c"># a reading on the exact bytes your agent built</span>\n' +
-'curl -s -X POST localhost:4022<span class="m">/guardian/check</span> \\\n' +
-'  -d <span class="s">\'{"to":"0x75f2\u20268dea","data":"0x\u2026","chainId":1672}\'</span>\n\n' +
-'<span class="c">// -> { "decision": "ALLOW", "reasons": [...] }</span>'
+    cli:
+'<span class="c"># one verdict, straight from the terminal</span>\n' +
+'npx safehands-pharos skill <span class="m">safehands_preflight_check</span> \\\n' +
+'  <span class="s">\'{"actionType":"approve_token","chainId":1672,\n' +
+'     "approvalToken":"USDC","approvalAmount":"max",\n' +
+'     "spender":"0x0000\u20260000dEaD"}\'</span>\n\n' +
+'<span class="c"># -> { "success": true, "data": { "decision": "BLOCK",</span>\n' +
+'<span class="c">#      "reasons": ["Unlimited approval requested."] } }</span>'
   };
   var elCode = document.getElementById("code");
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
@@ -611,7 +623,7 @@
       elCode.innerHTML = "<pre>" + SNIPPETS[t.dataset.tab] + "</pre>";
     });
   });
-  elCode.innerHTML = "<pre>" + SNIPPETS.sdk + "</pre>";
+  elCode.innerHTML = "<pre>" + SNIPPETS.skill + "</pre>";
 })();
 </script>
 </body>
