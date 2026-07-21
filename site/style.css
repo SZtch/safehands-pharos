@@ -76,7 +76,11 @@
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
-  margin: 0; background: var(--ground); color: var(--ink);
+  margin: 0; color: var(--ink);
+  /* The faintest trace of the verdict, 2.5%: enough that the page feels like it
+     is in a state, not enough to read as a coloured page. */
+  background: color-mix(in srgb, var(--vc) 2.5%, var(--ground));
+  transition: background .5s ease;
   font-family: var(--sans); font-size: 16px; line-height: 1.6;
   -webkit-font-smoothing: antialiased; overflow-x: hidden;
 }
