@@ -197,7 +197,7 @@ function scoreSlippage(input: RiskInput, quote: DodoQuote | null, notConfigured:
   return { score: clamp(impact * 16), reasons };
 }
 
-async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Promise<{ score: number; reasons: string[] }> {
+async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Promise<{ score: number; reasons: string[]; degraded?: boolean }> {
   const reasons: string[] = [];
 
   if (input.action === "swap") {
@@ -250,6 +250,11 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
     return { score: 50, reasons };
   }
 
+  // Both probes below are the ONLY evidence behind a clean recipient verdict.
+  // If either RPC read fails the recipient is unexamined, not safe, so the
+  // failure is surfaced as degraded rather than swallowed into "looks valid".
+  let probeFailed = false;
+
   // Check if address has code (is a contract)
   try {
     const code = await publicClient.getCode({ address: to as `0x${string}` });
@@ -258,7 +263,7 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
       return { score: 40, reasons };
     }
   } catch {
-    // RPC error, non-critical
+    probeFailed = true;
   }
 
   // Check if address has any transaction history (has balance)
@@ -269,7 +274,12 @@ async function scoreCounterparty(input: RiskInput, quote: DodoQuote | null): Pro
       return { score: 30, reasons };
     }
   } catch {
-    // Non-critical
+    probeFailed = true;
+  }
+
+  if (probeFailed) {
+    reasons.push("Recipient could not be examined: RPC unavailable, so no clean-recipient claim is made.");
+    return { score: 50, reasons, degraded: true };
   }
 
   reasons.push("Recipient address looks valid");
@@ -420,6 +430,9 @@ export async function assessRisk(input: RiskInput): Promise<RiskAssessment> {
   }
   if (balance.degraded) {
     degradedReasons.push("Wallet balance could not be verified; RPC unavailable.");
+  }
+  if (counterparty.degraded) {
+    degradedReasons.push("Recipient could not be examined; RPC unavailable.");
   }
   const degraded = degradedReasons.length > 0;
   if (degraded && recommendation === "proceed") {

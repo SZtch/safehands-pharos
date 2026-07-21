@@ -34,6 +34,8 @@ const realFetch = globalThis.fetch;
 const state = {
   balances: new Map<string, bigint>(),
   defaultBalance: parseEther("1000"),
+  /** JSON-RPC methods the mock should fail, for degraded-evidence tests. */
+  failMethods: new Set<string>(),
 };
 
 function rpcResult(method: string, params: unknown[]): unknown {
@@ -62,7 +64,10 @@ function rpcResult(method: string, params: unknown[]): unknown {
 before(() => {
   globalThis.fetch = (async (_input: any, init?: any) => {
     const body = JSON.parse(String(init?.body ?? "{}"));
-    const handle = (r: any) => ({ jsonrpc: "2.0", id: r.id, result: rpcResult(r.method, r.params || []) });
+    const handle = (r: any) =>
+      state.failMethods.has(r.method)
+        ? { jsonrpc: "2.0", id: r.id, error: { code: -32000, message: `mock RPC failure for ${r.method}` } }
+        : { jsonrpc: "2.0", id: r.id, result: rpcResult(r.method, r.params || []) };
     const payload = Array.isArray(body) ? body.map(handle) : handle(body);
     return new Response(JSON.stringify(payload), { status: 200, headers: { "content-type": "application/json" } });
   }) as typeof fetch;
@@ -80,6 +85,7 @@ beforeEach(() => {
 });
 
 const WALLET = "0x1111111111111111111111111111111111111111";
+const RECIPIENT = "0x2222222222222222222222222222222222222222";
 
 describe("assessRisk · swap on Pacific Mainnet (DODO route API not configured for 1672)", () => {
   it("surfaces swapProviderNotConfigured + degraded and never scores 'proceed'", async () => {
@@ -134,6 +140,28 @@ describe("assessRisk · transfer counterparty guards", () => {
     const res = await assessRisk({ action: "transfer", amount: "1", toAddress: "0xnot-an-address", walletAddress: WALLET });
     assert.strictEqual(res.recommendation, "block");
     assert.strictEqual(res.breakdown.counterpartyRisk, 100);
+  });
+
+  it("an unexaminable recipient degrades instead of reading as clean", async () => {
+    // eth_getCode is the only recipient probe that can fail here (the wallet
+    // balance check uses eth_getBalance, which stays healthy), so this isolates
+    // the counterparty dimension. Before this was fixed the RPC error was
+    // swallowed and the recipient scored 10 / "looks valid": an outage produced
+    // a clean verdict, which invariant #1 forbids.
+    state.failMethods.add("eth_getCode");
+    try {
+      const res = await assessRisk({ action: "transfer", amount: "1", toAddress: RECIPIENT, walletAddress: WALLET });
+      assert.strictEqual(res.degraded, true, "a failed recipient probe must mark the assessment degraded");
+      assert.notStrictEqual(res.breakdown.counterpartyRisk, 10, "unexamined recipient must not score as clean");
+      assert.ok(
+        res.degradedReasons.some((r) => /recipient could not be examined/i.test(r)),
+        `degraded reasons must name the recipient probe, got: ${JSON.stringify(res.degradedReasons)}`
+      );
+      assert.ok(!res.reasons.some((r) => /looks valid/i.test(r)), "must not claim the recipient looks valid");
+      assert.notStrictEqual(res.recommendation, "proceed", "degraded evidence can never recommend proceed");
+    } finally {
+      state.failMethods.delete("eth_getCode");
+    }
   });
 });
 
