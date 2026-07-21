@@ -74,7 +74,9 @@ Out (success):
 ```
 If `assets/contracts.json` addresses are empty, `registry.configured`/`reputation.configured` are false and a top-level `note` explains; analysis features are unaffected.
 
-`recordsVerifiedAgainstRoot` is true only when the engine rebuilt every leaf of the fetched batch, recomputed the tree and matched the on-chain `currentMerkleRoot`. Anything else withholds the records: `dataURI-root-mismatch` means the committed pointer's content no longer matches the commitment (stale or altered), and `dataURI-unverifiable-<reason>` covers an empty batch, an unencodable record, or no committed root. Records are never shown unproven.
+`recordsVerifiedAgainstRoot` is true only when the engine rebuilt every leaf of the fetched batch, recomputed the tree and matched the on-chain `currentMerkleRoot`. Anything else withholds the records: `dataURI-root-mismatch` means the committed pointer's content no longer matches the commitment (stale or altered), and `dataURI-unverifiable-<reason>` covers an empty batch, an unencodable record, no committed root, or `batch-too-large`. Records are never shown unproven.
+
+Rebuilding the tree is linear in the batch size, so batches above 2,000 records are refused rather than rebuilt inside a hosted call: `verify_risk_inclusion` on the full backend proves a single record with an inclusion proof and does not need the whole tree.
 
 ## Market & network read commands
 ```text

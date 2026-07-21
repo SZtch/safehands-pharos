@@ -109,13 +109,16 @@ export function analyzeApproval(data: string, token?: string): AnalyzerResult<Ap
   // tolerates trailing bytes, which would report a clean spender for calldata
   // solc itself reverts on. Matches the hosted engine's per-method word count
   // and clean-padding checks.
+  // `body` is "" for a zero-argument payload, which is falsy but not absent:
+  // test for null, never for falsiness (the same rule analyzeCalldata follows).
   const body = calldataBody(hex);
-  const spenderWord = body && hasExactWords(body, 2) ? addressAtWord(body, 0) : null;
+  const shapeOk = body !== null && hasExactWords(body, 2);
+  const spenderWord = shapeOk ? addressAtWord(body as string, 0) : null;
 
-  if (body && hasExactWords(body, 2) && !spenderWord) {
+  if (shapeOk && !spenderWord) {
     // The amount word is still clean, so it is still reported: only the
     // untrustworthy spender is withheld.
-    const dirtyAmount = BigInt(`0x${body.slice(64, 128) || "0"}`);
+    const dirtyAmount = BigInt(`0x${(body as string).slice(64, 128) || "0"}`);
     return makeResult<ApprovalAnalysisDetails>({
       analyzer: "approval",
       decision: "BLOCK",

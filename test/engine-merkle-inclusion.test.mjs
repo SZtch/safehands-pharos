@@ -145,6 +145,25 @@ describe("batch verification fails closed", () => {
     }
   });
 
+  it("refuses a batch too large to rebuild inside a hosted call", () => {
+    // Rebuilding is linear in pure-JS keccak, and the 2 MB response cap allows
+    // roughly 6000 records, which measured over 5 s. Refusing above the bound
+    // keeps the failure explicit instead of letting a hosted call time out.
+    const huge = Array.from({ length: 2001 }, (_, i) => ({ ...batch[0], score: i % 101 }));
+    const out = verifyBatchAgainstRoot(huge, committed);
+    assert.strictEqual(out.verified, false);
+    assert.strictEqual(out.reason, "batch-too-large");
+  });
+
+  it("still verifies a batch exactly at the bound", () => {
+    // The guard must reject only ABOVE the limit, never at it.
+    const rnd2 = mulberry32(0x2000);
+    const atLimit = Array.from({ length: 2000 }, () => randomRecord(rnd2));
+    const root = buildMerkleTree(atLimit).getHexRoot();
+    const out = verifyBatchAgainstRoot(atLimit.map(asCommitted), root);
+    assert.strictEqual(out.verified, true, "a batch at exactly the bound must still verify");
+  });
+
   it("refuses an empty batch and a batch holding an unencodable record", () => {
     assert.strictEqual(verifyBatchAgainstRoot([], committed).reason, "batch-empty");
     assert.strictEqual(verifyBatchAgainstRoot("not-an-array", committed).reason, "batch-empty");

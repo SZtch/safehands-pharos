@@ -1650,6 +1650,14 @@ function merkleRootSortedPairs(leaves) {
   return "0x" + layer[0].toString("hex");
 }
 
+// Rebuilding the tree is linear in the batch, in pure-JS keccak. Measured on
+// the reference machine: about 0.8 s at 1,000 records and 5.2 s at 6,000, which
+// is roughly what the 2 MB response cap allows. A hosted call cannot afford the
+// upper end, and an unbounded rebuild would turn into a silent timeout as the
+// batch grows. Refusing above the bound is the honest failure: the caller is
+// told why and pointed at the authoritative tool, instead of waiting.
+const MAX_VERIFIABLE_BATCH_RECORDS = 2000;
+
 /**
  * Rebuild the batch root and compare it to the committed one. Returns the
  * verification outcome; it never throws and never reports "verified" on partial
@@ -1658,6 +1666,9 @@ function merkleRootSortedPairs(leaves) {
 function verifyBatchAgainstRoot(batchRecords, committedRoot) {
   if (!Array.isArray(batchRecords) || batchRecords.length === 0) {
     return { verified: false, reason: "batch-empty" };
+  }
+  if (batchRecords.length > MAX_VERIFIABLE_BATCH_RECORDS) {
+    return { verified: false, reason: "batch-too-large" };
   }
   if (!/^0x[0-9a-fA-F]{64}$/.test(String(committedRoot)) || /^0x0{64}$/.test(String(committedRoot))) {
     return { verified: false, reason: "no-committed-root" };
@@ -1725,9 +1736,13 @@ async function cmdQuery(subject) {
     // below: no fetch, no parse and no partial batch can leave it true.
     out.recordsVerifiedAgainstRoot = false;
     if (dataURI && /^https:\/\//.test(dataURI) && isFetchableDataUri(dataURI)) {
+      // The deadline must cover the BODY read, not just the headers: aborting
+      // after the response starts still cancels the stream, so a host that
+      // drips bytes cannot hang the engine below the size cap.
+      const ctl = new AbortController();
+      const deadline = setTimeout(() => ctl.abort(), 8000);
       try {
-        const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
-        const res = await fetch(dataURI, { signal: ctl.signal, redirect: "manual" }); clearTimeout(t);
+        const res = await fetch(dataURI, { signal: ctl.signal, redirect: "manual" });
         if (res.status >= 300 && res.status < 400) throw new Error("dataURI redirected; refusing to follow to an unverified host");
         const text = await readCapped(res, 2_000_000);
         const batch = JSON.parse(text);
@@ -1754,9 +1769,12 @@ async function cmdQuery(subject) {
         } else {
           out.records = [];
           out.recordsSource = `dataURI-unverifiable-${proof.reason}`;
-          out.recordsNote = `The batch could not be verified against currentMerkleRoot (${proof.reason}), so its records are withheld. Use verify_risk_inclusion (full SafeHands backend) for an authoritative on-chain inclusion proof.`;
+          out.recordsNote = proof.reason === "batch-too-large"
+            ? `The committed batch holds more than ${MAX_VERIFIABLE_BATCH_RECORDS} records, above what this engine rebuilds within a hosted call, so its records are withheld rather than shown unproven. Use verify_risk_inclusion (full SafeHands backend), which proves a single record with an inclusion proof instead of rebuilding the whole tree.`
+            : `The batch could not be verified against currentMerkleRoot (${proof.reason}), so its records are withheld. Use verify_risk_inclusion (full SafeHands backend) for an authoritative on-chain inclusion proof.`;
         }
       } catch { out.recordsSource = "dataURI-unreachable"; }
+      finally { clearTimeout(deadline); }
     } else if (dataURI && /^https:\/\//.test(dataURI)) {
       // https but the host is local/reserved/IP-literal: refused, never fetched (SSRF guard).
       out.recordsSource = "dataURI-host-not-public";
