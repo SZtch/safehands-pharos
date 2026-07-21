@@ -20,7 +20,9 @@
   --rule:    #222836;
   --shadow:  rgb(0 0 0 / .55);
   --rule-2:  #333B4D;
-  --brand:   #4D9BFF;
+  --vc:      #FF5A6E;   /* set by main.js from the live verdict */
+  --edge: #000000;
+  --on-vc: #0B0E13;
   --allow:   #34D399;
   --warn:    #F0A93B;
   --block:   #FF5A6E;
@@ -37,7 +39,15 @@
     --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
     --rule: #D3D7E0; --rule-2: #B4BAC8;
     --shadow: rgb(15 23 42 / .16);
-    --brand: #1B6FE8;
+    --vc: #C2192C; --edge: #0A0D14; --on-vc: #FFFFFF;
+    --allow: #07845A; --warn: #96570B; --block: #C2192C;
+  }
+}
+    --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA;
+    --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
+    --rule: #D3D7E0; --rule-2: #B4BAC8;
+    --shadow: rgb(15 23 42 / .16);
+    --vc: #C2192C; --edge: #0A0D14; --on-vc: #FFFFFF;
     --allow: #07845A; --warn: #96570B; --block: #C2192C;
   }
 }
@@ -45,14 +55,14 @@
   --ground: #0B0E13; --panel: #12161F; --panel-2: #171C27; --shadow: rgb(0 0 0 / .55);
   --ink: #E7EBF3; --ink-2: #99A2B6; --ink-3: #626B80;
   --rule: #222836; --rule-2: #333B4D;
-  --brand: #4D9BFF;
+  --vc: #FF5A6E; --edge: #000000; --on-vc: #0B0E13;
   --allow: #34D399; --warn: #F0A93B; --block: #FF5A6E;
 }
 :root[data-theme="light"] {
   --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA; --shadow: rgb(15 23 42 / .16);
   --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
   --rule: #D3D7E0; --rule-2: #B4BAC8;
-  --brand: #1B6FE8;
+  --vc: #C2192C; --edge: #0A0D14; --on-vc: #FFFFFF;
   --allow: #07845A; --warn: #96570B; --block: #C2192C;
 }
 
@@ -60,8 +70,7 @@
 /* The instrument itself stays square, because a measuring face is square.
    Everything a hand touches gets a small radius: that is the difference
    between a product and a specification sheet. */
-.btn, .pill, .tab, .theme, .side a, .inst, .code, .tbl-wrap, .pledge, .seq, .req { border-radius: 8px; }
-.pills, .tabs { border-radius: 8px; overflow: hidden; }
+.btn, .pill, .tab, .theme, .side a, .inst, .code, ..pills, .tabs { border-radius: 8px; overflow: hidden; }
 .tabs { border-radius: 8px 8px 0 0; }
 .code { border-radius: 0 8px 8px 8px; }
 html { scroll-behavior: smooth; }
@@ -72,8 +81,8 @@ body {
   -webkit-font-smoothing: antialiased; overflow-x: hidden;
 }
 a { color: inherit; text-decoration: none; }
-::selection { background: var(--brand); color: #fff; }
-:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+::selection { background: var(--vc); color: #fff; }
+:focus-visible { outline: 2px solid var(--vc); outline-offset: 2px; }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
 p { margin: 0; }
 
@@ -105,7 +114,7 @@ header {
   font: inherit; background: none; border: 1px solid var(--rule-2); color: var(--ink-2);
   width: 32px; height: 32px; cursor: pointer; display: grid; place-items: center;
 }
-.theme:hover { border-color: var(--brand); color: var(--brand); }
+.theme:hover { border-color: var(--ink); color: var(--ink); }
 @media (max-width: 840px) { .hbar nav { display: none; } }
 
 /* ── the calibration rail: sections hang off a measured edge ────────── */
@@ -115,7 +124,7 @@ section::before {
   content: ""; position: absolute; left: 0; top: 0; width: 9px; height: 1px; background: var(--rule-2);
 }
 .eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-.eyebrow .idx { color: var(--brand); }
+.eyebrow .idx { color: var(--vc); }
 h2 { font-size: clamp(1.85rem, 4.2vw, 2.75rem); font-weight: 680; letter-spacing: -.038em; line-height: 1.12; max-width: 20ch; }
 .sub { color: var(--ink-2); max-width: 66ch; margin-top: 14px; }
 
@@ -126,23 +135,21 @@ h1 {
   font-size: clamp(2rem, 5.2vw, 3.35rem); font-weight: 700;
   letter-spacing: -.045em; line-height: 1.04; max-width: 20ch;
 }
-h1 em { font-style: normal; color: var(--brand); }
+h1 em { font-style: normal; color: var(--vc); }
 .lead { color: var(--ink-2); font-size: 1.05rem; max-width: 58ch; margin-top: 18px; }
 .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
 .btn { display: inline-flex; align-items: center; padding: 11px 18px; font-size: .93rem; font-weight: 560; border: 1px solid transparent; }
 .btn.p {
-  background: var(--brand); color: #fff;
-  box-shadow: 0 8px 24px -10px color-mix(in srgb, var(--brand) 70%, transparent);
+  background: var(--vc); color: var(--on-vc);
 }
 .btn.p:hover { filter: brightness(1.1); }
 .btn.g { border-color: var(--rule-2); font-family: var(--mono); font-size: .85rem; }
-.btn.g:hover { border-color: var(--brand); color: var(--brand); }
+.btn.g:hover { border-color: var(--ink); color: var(--ink); }
 
 /* ── the instrument ────────────────────────────────────────────────── */
 .inst {
   margin-top: 46px; border: 1px solid var(--rule-2); background: var(--panel);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent) inset,
-              0 18px 48px -24px var(--shadow);
+  box-shadow: 6px 6px 0 var(--edge);
 }
 .inst-top {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -288,7 +295,7 @@ h1 em { font-style: normal; color: var(--brand); }
 .st:last-child { border-right: 0; }
 .st .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .72rem; letter-spacing: .1em; color: var(--ink-3); }
 .st.key { background: var(--panel); }
-.st.key .n { color: var(--brand); }
+.st.key .n { color: var(--vc); }
 .st h3 { font-size: 1rem; font-weight: 630; letter-spacing: -.018em; }
 .st p { font-size: .87rem; color: var(--ink-2); }
 .note { margin-top: 28px; color: var(--ink-2); max-width: 66ch; font-size: 1.02rem; }
@@ -301,25 +308,14 @@ h1 em { font-style: normal; color: var(--brand); }
 .row p { color: var(--ink-2); font-size: .92rem; }
 
 /* ── table ─────────────────────────────────────────────────────────── */
-.tbl-wrap { overflow-x: auto; margin-top: 26px; border: 1px solid var(--rule); }
-table { border-collapse: collapse; width: 100%; min-width: 660px; }
-th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--rule); font-size: .89rem; vertical-align: top; color: var(--ink-2); }
-th { font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-3); background: var(--panel-2); }
-tr:last-child td { border-bottom: 0; }
-td.lv { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; white-space: nowrap; }
-tr.fit { background: var(--panel); }
-tr.fit td.lv { color: var(--brand); }
-
-/* ── code ──────────────────────────────────────────────────────────── */
-.tabs { display: flex; margin-top: 26px; border: 1px solid var(--rule-2); border-bottom: 0; width: fit-content; }
-.tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; }
+..tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; }
 .tab:last-child { border-right: 0; }
 .tab:hover { color: var(--ink); }
 .tab[aria-selected="true"] { background: var(--panel); color: var(--ink); }
 .code { border: 1px solid var(--rule-2); background: var(--panel); overflow-x: auto; }
 .code pre { margin: 0; padding: 18px; font-family: var(--mono); font-size: .83rem; line-height: 1.75; color: var(--ink); }
 .code .c { color: var(--ink-3); }
-.code .k { color: var(--brand); }
+.code .k { color: var(--ink); }
 .code .s { color: var(--allow); }
 .code .m { color: var(--ink); font-weight: 600; }
 .code .x { color: var(--block); }
@@ -340,22 +336,21 @@ tr.fit td.lv { color: var(--brand); }
 .eco { display: grid; grid-template-columns: 1fr 360px; gap: 44px; align-items: start; }
 @media (max-width: 860px) { .eco { grid-template-columns: 1fr; gap: 26px; } }
 .eco p { color: var(--ink-2); margin-top: 12px; max-width: 46ch; }
-.eco code { font-family: var(--mono); color: var(--brand); }
+.eco code { font-family: var(--mono); color: var(--vc); }
 .side { border: 1px solid var(--rule-2); }
 .side a { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--rule); font-size: .91rem; }
 .side a:last-child { border-bottom: 0; }
-.side a:hover { background: var(--panel); color: var(--brand); }
+.side a:hover { background: var(--panel-2); color: var(--ink); }
 .side a .arw { color: var(--ink-3); }
-.side a:hover .arw { color: var(--brand); }
+.side a:hover .arw { color: var(--ink); }
 
 /* ── footer ────────────────────────────────────────────────────────── */
 footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
 .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
 .foot .mark { width: 22px; height: 22px; }
 .fl { display: flex; flex-wrap: wrap; gap: 18px; margin-left: auto; font-size: .89rem; color: var(--ink-2); }
-.fl a:hover { color: var(--brand); }
+.fl a:hover { color: var(--ink); }
 .disc { flex-basis: 100%; color: var(--ink-3); font-size: .83rem; max-width: 80ch; }
-
 
 /* ── platform figures ───────────────────────────────────────────────────
    Large numerals, the way a product page states its scale. Every figure is
@@ -371,7 +366,7 @@ footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border
   font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700;
   letter-spacing: -.045em; line-height: 1; color: var(--ink);
 }
-.fig b em { font-style: normal; color: var(--brand); }
+.fig b em { font-style: normal; color: var(--vc); }
 .fig span { font-size: .87rem; color: var(--ink-2); }
 @media (max-width: 900px) { .figures { grid-template-columns: repeat(2, 1fr); gap: 28px 24px; } }
 @media (max-width: 620px) { .figures { padding: 40px 20px; } }

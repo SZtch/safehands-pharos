@@ -69,7 +69,6 @@
   };
 
   var elReq = document.getElementById("req");
-  var elGauge = document.getElementById("gauge");
   var elWord = document.getElementById("word");
   var elScore = document.getElementById("score");
   var elFill = document.getElementById("fill");
@@ -96,7 +95,11 @@
 
   function paint(key) {
     var s = SAMPLES[key];
-    elGauge.style.setProperty("--vc", "var(--" + s.v + ")");
+    // The verdict colour is the page's only colour, so it is set on the root:
+    // the gauge, the hero highlight, the section marks and the ground tint all
+    // read from it. Land on a blocked approval and the page is red; ask about a
+    // verified swap and it turns green. The colour is the product working.
+    root.style.setProperty("--vc", getComputedStyle(root).getPropertyValue("--" + s.v).trim());
     elReq.innerHTML = s.req;
     elWord.textContent = s.word;
     elFind.innerHTML = "";
