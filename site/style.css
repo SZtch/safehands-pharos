@@ -18,8 +18,9 @@
   --ink-2:   #99A2B6;
   --ink-3:   #626B80;
   --rule:    #222836;
+  --shadow:  rgb(0 0 0 / .55);
   --rule-2:  #333B4D;
-  --brand:   #6F80FF;
+  --brand:   #4D9BFF;
   --allow:   #34D399;
   --warn:    #F0A93B;
   --block:   #FF5A6E;
@@ -35,26 +36,34 @@
     --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA;
     --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
     --rule: #D3D7E0; --rule-2: #B4BAC8;
-    --brand: #2E2AF0;
+    --shadow: rgb(15 23 42 / .16);
+    --brand: #1B6FE8;
     --allow: #07845A; --warn: #96570B; --block: #C2192C;
   }
 }
 :root[data-theme="dark"] {
-  --ground: #0B0E13; --panel: #12161F; --panel-2: #171C27;
+  --ground: #0B0E13; --panel: #12161F; --panel-2: #171C27; --shadow: rgb(0 0 0 / .55);
   --ink: #E7EBF3; --ink-2: #99A2B6; --ink-3: #626B80;
   --rule: #222836; --rule-2: #333B4D;
-  --brand: #6F80FF;
+  --brand: #4D9BFF;
   --allow: #34D399; --warn: #F0A93B; --block: #FF5A6E;
 }
 :root[data-theme="light"] {
-  --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA;
+  --ground: #EEF0F4; --panel: #FFFFFF; --panel-2: #F5F6FA; --shadow: rgb(15 23 42 / .16);
   --ink: #0A0D14; --ink-2: #4A5265; --ink-3: #767E92;
   --rule: #D3D7E0; --rule-2: #B4BAC8;
-  --brand: #2E2AF0;
+  --brand: #1B6FE8;
   --allow: #07845A; --warn: #96570B; --block: #C2192C;
 }
 
-* { box-sizing: border-box; border-radius: 0; }
+* { box-sizing: border-box; }
+/* The instrument itself stays square, because a measuring face is square.
+   Everything a hand touches gets a small radius: that is the difference
+   between a product and a specification sheet. */
+.btn, .pill, .tab, .theme, .side a, .inst, .code, .tbl-wrap, .pledge, .seq, .req { border-radius: 8px; }
+.pills, .tabs { border-radius: 8px; overflow: hidden; }
+.tabs { border-radius: 8px 8px 0 0; }
+.code { border-radius: 0 8px 8px 8px; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
@@ -121,13 +130,20 @@ h1 em { font-style: normal; color: var(--brand); }
 .lead { color: var(--ink-2); font-size: 1.05rem; max-width: 58ch; margin-top: 18px; }
 .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
 .btn { display: inline-flex; align-items: center; padding: 11px 18px; font-size: .93rem; font-weight: 560; border: 1px solid transparent; }
-.btn.p { background: var(--brand); color: #fff; }
+.btn.p {
+  background: var(--brand); color: #fff;
+  box-shadow: 0 8px 24px -10px color-mix(in srgb, var(--brand) 70%, transparent);
+}
 .btn.p:hover { filter: brightness(1.1); }
 .btn.g { border-color: var(--rule-2); font-family: var(--mono); font-size: .85rem; }
 .btn.g:hover { border-color: var(--brand); color: var(--brand); }
 
 /* ── the instrument ────────────────────────────────────────────────── */
-.inst { margin-top: 46px; border: 1px solid var(--rule-2); background: var(--panel); }
+.inst {
+  margin-top: 46px; border: 1px solid var(--rule-2); background: var(--panel);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent) inset,
+              0 18px 48px -24px var(--shadow);
+}
 .inst-top {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 11px 18px; border-bottom: 1px solid var(--rule); background: var(--panel-2);
@@ -339,3 +355,36 @@ footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border
 .fl { display: flex; flex-wrap: wrap; gap: 18px; margin-left: auto; font-size: .89rem; color: var(--ink-2); }
 .fl a:hover { color: var(--brand); }
 .disc { flex-basis: 100%; color: var(--ink-3); font-size: .83rem; max-width: 80ch; }
+
+
+/* ── platform figures ───────────────────────────────────────────────────
+   Large numerals, the way a product page states its scale. Every figure is
+   checkable in the repository, so nothing here is a vanity metric: no user
+   counts, no volume, nothing that cannot be verified by reading the code. */
+.figures {
+  padding: 56px 28px; border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px;
+}
+.fig { display: flex; flex-direction: column; gap: 6px; }
+.fig b {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700;
+  letter-spacing: -.045em; line-height: 1; color: var(--ink);
+}
+.fig b em { font-style: normal; color: var(--brand); }
+.fig span { font-size: .87rem; color: var(--ink-2); }
+@media (max-width: 900px) { .figures { grid-template-columns: repeat(2, 1fr); gap: 28px 24px; } }
+@media (max-width: 620px) { .figures { padding: 40px 20px; } }
+
+/* The boundary sits under the trust properties now, as the other half of the
+   same argument rather than a section of its own. */
+.never-head {
+  margin-top: 44px; font-size: 1.15rem; font-weight: 640;
+  letter-spacing: -.025em; color: var(--ink);
+}
+.nl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; margin-top: 14px; }
+@media (max-width: 760px) { .nl { grid-template-columns: 1fr; } }
+
+/* Figures and the verified names are one proof band, divided by a rule
+   rather than by a section break. */
+.vrow { grid-column: 1 / -1; margin-top: 12px; padding-top: 26px; border-top: 1px solid var(--rule); }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="SafeHands is a deterministic transaction firewall for AI agents on Pharos Pacific Mainnet. It reads the intent and the exact bytes, then returns one verdict on a published scale: allow, warn, or block, with named reasons. Read-only and zero-custody.">
-<meta name="theme-color" content="#2E2AF0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#EEF0F4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B0E13" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="safehands.jpg">
 <link rel="canonical" href="https://safehands.fun/">
@@ -33,7 +33,6 @@
     <nav>
       <a href="#how">How it works</a>
       <a href="#trust">Why trust it</a>
-      <a href="#levels">Autonomy</a>
       <a href="#integrate">Integrate</a>
     </nav>
     <button class="theme" id="theme" aria-label="Toggle light and dark theme" title="Toggle theme">&#9680;</button>
@@ -49,7 +48,7 @@
       <span>Native PROS</span>
     </div>
     <h1>Every transaction an agent proposes is <em>measured</em> before it is signed.</h1>
-    <p class="lead">SafeHands is a deterministic firewall for AI agents that move funds. It reads the intent and the exact bytes, then returns one verdict on a published scale: allow, warn, or block, with named reasons.</p>
+    <p class="lead">An AI agent signs whatever it decides to sign, and <span class="bad">one unlimited approval empties the wallet</span>. SafeHands reads the intent and the exact bytes first, then returns one verdict on a published scale: allow, warn, or block, with named reasons.</p>
     <div class="cta">
       <a class="btn p" href="#demo">Watch it block a drainer</a>
       <a class="btn g" href="#integrate">npx skills add SZtch/safehands-pharos</a>
@@ -94,19 +93,20 @@
     </div>
   </section>
 
-  <section class="verified">
+  <section class="figures">
+    <div class="fig"><b><em>0</em></b><span>Private keys held, by design. It signs nothing.</span></div>
+    <div class="fig"><b>33</b><span>Safety tools across MCP, HTTP and CLI</span></div>
+    <div class="fig"><b>12</b><span>Protocols verified against first-party evidence</span></div>
+    <div class="fig"><b>70</b><span>The published score at which it stops being a warning</span></div>
+    <div class="vrow">
     <span class="lab">Registry-verified on chain 1672</span>
     <div class="names">
       <span>Pharos infrastructure</span><span>Chainlink price feeds</span><span>Morpho</span>
       <span>AquaFlux</span><span>OKX DEX</span><span>Circle USDC</span>
     </div>
+    </div>
   </section>
 
-  <section>
-    <div class="eyebrow"><span class="lab idx">01</span><span class="lab">The problem</span></div>
-    <p class="thesis">An AI agent signs whatever it decides to sign. <span class="bad">One unlimited approval empties the wallet.</span></p>
-    <p class="note">Language models are probabilistic. Money is not. The gap between "usually right" and "safe with your funds" is exactly where SafeHands sits: a check that runs before the signature, every time, with no model in the decision.</p>
-  </section>
 
   <section id="how">
     <div class="eyebrow"><span class="lab idx">02</span><span class="lab">How it works</span></div>
@@ -130,23 +130,17 @@
       <div class="row"><h3>Zero-custody</h3><p>Read-only by design. No keys, no signing, no broadcasting on the hosted surface. Write paths exist for self-hosting, off by default behind explicit gates.</p></div>
       <div class="row"><h3>Live on mainnet</h3><p>Running against Pharos Pacific Mainnet, chain 1672, with live Chainlink prices and risk records committed on-chain and proven against the published Merkle root.</p></div>
     </div>
+
+    <h3 class="never-head">And what it never does.</h3>
+    <div class="nl">
+      <div><span class="x">[X]</span><p>Never holds a private key, and never signs or broadcasts on the hosted surface.</p></div>
+      <div><span class="x">[X]</span><p>Never quotes a price it did not read live from Chainlink. A stale feed is reported, never guessed.</p></div>
+      <div><span class="x">[X]</span><p>Never grants trust from anywhere but the registry's first-party evidence.</p></div>
+      <div><span class="x">[X]</span><p>Never downgrades a block. Aggregation can only raise severity, never lower it.</p></div>
+    </div>
+    <p class="note">A verdict binds to exactly what was inspected. Act on different bytes, or after it expires, and it no longer applies. The calling agent is expected to check that binding, not to assume it.</p>
   </section>
 
-  <section id="levels">
-    <div class="eyebrow"><span class="lab idx">04</span><span class="lab">Where it fits</span></div>
-    <h2>SafeHands makes Level 2 and 3 agents safe.</h2>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Level</th><th>What the agent does</th><th>The SafeHands role</th><th>Fit</th></tr></thead>
-        <tbody>
-          <tr><td class="lv">L0-L1</td><td>Informs and recommends; a human does everything</td><td>Optional: verified facts instead of guessed ones</td><td>Useful</td></tr>
-          <tr class="fit"><td class="lv">L2</td><td>Prepares the transaction; a human signs</td><td>Verdict-gated prepare: a block never reaches the wallet</td><td>Designed for this</td></tr>
-          <tr class="fit"><td class="lv">L3</td><td>Executes on its own, within limits</td><td>The limit is the verdict: autonomy bounded by a check it cannot talk its way past</td><td>Designed for this</td></tr>
-          <tr><td class="lv">L4</td><td>Manages a portfolio with full autonomy</td><td>Discouraged: nothing makes an unbounded agent safe</td><td>Not recommended</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
 
   <section id="integrate">
     <div class="eyebrow"><span class="lab idx">05</span><span class="lab">Integrate</span></div>
@@ -161,22 +155,6 @@
     <div class="code" id="code"></div>
   </section>
 
-  <section>
-    <div class="eyebrow"><span class="lab idx">06</span><span class="lab">The trust boundary</span></div>
-    <h2>What SafeHands never does.</h2>
-    <div class="never">
-      <div class="nl">
-        <div><span class="x">[X]</span><p>Never holds a private key, and never signs or broadcasts on the hosted surface.</p></div>
-        <div><span class="x">[X]</span><p>Never quotes a price it did not read live from Chainlink. A stale feed is reported, never guessed.</p></div>
-        <div><span class="x">[X]</span><p>Never grants trust from anywhere but the registry's first-party evidence.</p></div>
-        <div><span class="x">[X]</span><p>Never downgrades a block. Aggregation can only raise severity, never lower it.</p></div>
-      </div>
-      <div class="pledge">
-        <p>A verdict binds to exactly what was inspected. Act on different bytes, or after it expires, and it no longer applies. The calling agent is expected to check that binding, not to assume it.</p>
-        <p class="sig lab">The agent-to-agent contract</p>
-      </div>
-    </div>
-  </section>
 
   <section>
     <div class="eyebrow"><span class="lab idx">07</span><span class="lab">Get started</span></div>
