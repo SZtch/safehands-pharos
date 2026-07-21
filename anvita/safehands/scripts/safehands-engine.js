@@ -68,7 +68,7 @@ const EXPLORER = NET.explorerUrl || "https://www.pharosscan.xyz";
 const GOPLUS_BASE = process.env.GOPLUS_API_BASE || "https://api.gopluslabs.io"; // public v1 endpoints, no key required
 // Engine version: MUST equal the repo package.json version. Enforced by
 // scripts/sync-anvita-assets.ts --check (UA drift guard); update both together.
-const ENGINE_VERSION = "2.7.0";
+const ENGINE_VERSION = "2.8.0";
 const ENGINE_UA = `SafeHands/${ENGINE_VERSION}`;
 
 const CMAP = CONTRACTS.contracts || CONTRACTS; // supports both {contracts:{...}} and flat shapes
@@ -1140,8 +1140,10 @@ function analyzeTxCalldata(data, to, depth = 0) {
   c.selector = hex.slice(0, 10);
   const body = hex.slice(10);
   const words = body.length / 64;
-  const malformed = (method) => {
-    c.method = method; c.floor = Math.max(c.floor, 45);
+  // The selector family is known even when the payload is not decodable, so the
+  // category is still reported; `decoded` stays false to mark the payload state.
+  const malformed = (method, category) => {
+    c.method = method; c.category = category; c.floor = Math.max(c.floor, 45);
     c.factors.push(`Calldata matches ${method} but the payload is malformed; held for review, never treated as safe`);
     return c;
   };
@@ -1149,7 +1151,7 @@ function analyzeTxCalldata(data, to, depth = 0) {
   const sel = c.selector;
   if (sel === SEL.approve || sel === SEL.increaseAllowance) {
     const method = sel === SEL.approve ? "approve" : "increaseAllowance";
-    if (words !== 2) return malformed(method);
+    if (words !== 2) return malformed(method, "approval");
     c.method = method; c.category = "approval"; c.decoded = true;
     c.spender = wordToAddress(wordAt(body, 0));
     const amount = BigInt("0x" + (wordAt(body, 1) || "0"));
@@ -1158,7 +1160,7 @@ function analyzeTxCalldata(data, to, depth = 0) {
     applyApprovalFloor(c, method);
     if (method === "increaseAllowance" && !c.isRevoke) c.notes.push("increaseAllowance raises an existing allowance on top of the current one");
   } else if (sel === SEL.permit) {
-    if (words !== 7) return malformed("permit");
+    if (words !== 7) return malformed("permit", "approval");
     c.method = "permit"; c.category = "approval"; c.decoded = true;
     c.spender = wordToAddress(wordAt(body, 1));
     const value = BigInt("0x" + (wordAt(body, 2) || "0"));
@@ -1167,7 +1169,7 @@ function analyzeTxCalldata(data, to, depth = 0) {
     applyApprovalFloor(c, "permit");
     c.notes.push("ERC-2612 permit is a gasless, signature-based approval: the allowance is granted off-chain and can later authorize transfers");
   } else if (sel === SEL.permit2Approve) {
-    if (words !== 4) return malformed("Permit2 approve");
+    if (words !== 4) return malformed("Permit2 approve", "approval");
     c.method = "permit2_approve"; c.category = "approval"; c.decoded = true;
     c.token = wordToAddress(wordAt(body, 0)) || c.token;
     c.spender = wordToAddress(wordAt(body, 1));
@@ -1177,9 +1179,9 @@ function analyzeTxCalldata(data, to, depth = 0) {
     applyApprovalFloor(c, "Permit2 approval");
     c.notes.push("Permit2 approval: authorizes the spender to move the token via Permit2 signatures; deep PermitSingle/PermitBatch decode is out of scope");
   } else if (sel === SEL.setApprovalForAll) {
-    if (words !== 2) return malformed("setApprovalForAll");
+    if (words !== 2) return malformed("setApprovalForAll", "approval");
     const approvedWord = BigInt("0x" + (wordAt(body, 1) || "0"));
-    if (approvedWord > 1n) return malformed("setApprovalForAll");
+    if (approvedWord > 1n) return malformed("setApprovalForAll", "approval");
     c.method = "setApprovalForAll"; c.category = "approval"; c.decoded = true;
     c.operator = wordToAddress(wordAt(body, 0)); c.approved = approvedWord === 1n;
     if (!c.operator) { c.floor = Math.max(c.floor, 90); c.factors.push("setApprovalForAll operator word is not a clean address: malformed or deceptive calldata"); }
@@ -1192,7 +1194,7 @@ function analyzeTxCalldata(data, to, depth = 0) {
   } else if (sel === SEL.transfer || sel === SEL.transferFrom) {
     const isFrom = sel === SEL.transferFrom;
     const method = isFrom ? "transferFrom" : "transfer";
-    if (words !== (isFrom ? 3 : 2)) return malformed(method);
+    if (words !== (isFrom ? 3 : 2)) return malformed(method, "transfer");
     c.method = method; c.category = "transfer"; c.decoded = true;
     if (isFrom) c.from = wordToAddress(wordAt(body, 0));
     c.recipient = wordToAddress(wordAt(body, isFrom ? 1 : 0));
@@ -1201,7 +1203,7 @@ function analyzeTxCalldata(data, to, depth = 0) {
     else if (isDenylistedRecipient(c.recipient)) { c.recipientDenylisted = true; c.floor = Math.max(c.floor, 95); c.factors.push(`${method} recipient ${c.recipient} is on the operator denylist (SAFEHANDS_RECIPIENT_DENYLIST); blocked`); }
     else { c.floor = Math.max(c.floor, 35); c.factors.push(`${method} moves tokens to ${c.recipient}; recipient is not verified; confirm before signing`); }
   } else if (sel === SEL.decreaseAllowance) {
-    if (words !== 2) return malformed("decreaseAllowance");
+    if (words !== 2) return malformed("decreaseAllowance", "approval");
     c.method = "decreaseAllowance"; c.category = "approval"; c.decoded = true;
     c.spender = wordToAddress(wordAt(body, 0));
     c.amountRaw = BigInt("0x" + (wordAt(body, 1) || "0")).toString();
@@ -1210,8 +1212,8 @@ function analyzeTxCalldata(data, to, depth = 0) {
   } else if (DANGEROUS_ADMIN[sel]) {
     const [method, label] = DANGEROUS_ADMIN[sel];
     const expectedWords = { transferOwnership: 1, renounceOwnership: 0, upgradeTo: 1, changeAdmin: 1 };
-    if (method in expectedWords && words !== expectedWords[method]) return malformed(method);
-    if (method === "upgradeToAndCall" && words < 3) return malformed(method);
+    if (method in expectedWords && words !== expectedWords[method]) return malformed(method, "admin");
+    if (method === "upgradeToAndCall" && words < 3) return malformed(method, "admin");
     c.method = method; c.category = "admin"; c.decoded = true; c.dangerous = true;
     const target = words >= 1 ? wordToAddress(wordAt(body, 0)) : null;
     if (target) { c.spender = target; classify(target); }
@@ -1577,6 +1579,103 @@ async function cmdAnalyze(raw) {
 // unparseable score becomes null (unknown), NEVER a fabricated 0 that would read
 // as a permissive "allow". level/recommendation accept either the numeric enum
 // index (as flushed) or an already-decoded string.
+// ── Merkle inclusion: recompute the committed batch root ──────────────────
+// The registry commits a root plus a data-availability pointer, and this engine
+// already fetches the whole batch behind that pointer. With every record in
+// hand it needs no inclusion proof: it can rebuild every leaf, rebuild the tree
+// and compare the result to currentMerkleRoot. A match proves the batch really
+// is what the chain commits to; a mismatch means the pointer's content has
+// drifted from the commitment (stale or tampered) and is refused.
+//
+// The leaf encoding MUST stay identical to src/lib/merkleBatcher.ts
+// computeRiskLeaf and to the contract's own verifyRiskRecord double-keccak
+// scheme. LEAF_ABI there is `address,bytes32,uint8,uint8,uint8,bytes32,bytes32,
+// uint64`: every parameter is static, so the encoding is exactly eight
+// right-aligned 32-byte words with no offsets and no dynamic tail.
+const HEX32_RE = /^0x[0-9a-fA-F]{64}$/;
+const leafAddressWord = (v) => (ADDRESS_RE.test(String(v || "")) ? pad32(String(v).slice(2)) : null);
+const leafBytes32Word = (v) => (HEX32_RE.test(String(v || "")) ? String(v).slice(2).toLowerCase() : null);
+/** Unsigned word, tolerating the BigInt-serialized "123n" the batch writer emits. */
+function leafUintWord(v, bits) {
+  if (v === null || v === undefined) return null;
+  let s = String(v).trim();
+  if (/^\d+n$/.test(s)) s = s.slice(0, -1);
+  if (!/^\d+$/.test(s)) return null;
+  const n = BigInt(s);
+  if (n < 0n || n >= 1n << BigInt(bits)) return null;
+  return n.toString(16).padStart(64, "0");
+}
+
+/**
+ * Canonical leaf for one committed risk record, or null when any field cannot
+ * be encoded. Null is never treated as "close enough": a batch containing one
+ * unencodable record cannot be verified at all.
+ */
+function computeRiskLeaf(rec) {
+  const r = rec || {};
+  const words = [
+    leafAddressWord(r.target),
+    leafBytes32Word(r.actionHash),
+    leafUintWord(r.score, 8),
+    leafUintWord(r.level, 8),
+    leafUintWord(r.recommendation, 8),
+    leafBytes32Word(r.policyVersionHash),
+    leafBytes32Word(r.evidenceHash),
+    leafUintWord(r.expiresAt, 64),
+  ];
+  if (words.some((w) => w === null)) return null;
+  // Double keccak, matching computeRiskLeaf and the on-chain verifier.
+  return keccak256Hex(keccak256(Buffer.from(words.join(""), "hex")));
+}
+
+/**
+ * Merkle root over the leaves in batch order, matching merkletreejs
+ * `{ sortPairs: true }` as used by buildMerkleTree: each pair is concatenated in
+ * sorted byte order before hashing, and an odd node is carried up unchanged.
+ */
+function merkleRootSortedPairs(leaves) {
+  if (!Array.isArray(leaves) || leaves.length === 0) return null;
+  let layer = leaves.map((l) => Buffer.from(String(l).slice(2), "hex"));
+  while (layer.length > 1) {
+    const next = [];
+    for (let i = 0; i < layer.length; i += 2) {
+      if (i + 1 === layer.length) { next.push(layer[i]); continue; }
+      const pair = Buffer.compare(layer[i], layer[i + 1]) <= 0
+        ? [layer[i], layer[i + 1]]
+        : [layer[i + 1], layer[i]];
+      next.push(Buffer.from(keccak256(Buffer.concat(pair)).slice(2), "hex"));
+    }
+    layer = next;
+  }
+  return "0x" + layer[0].toString("hex");
+}
+
+/**
+ * Rebuild the batch root and compare it to the committed one. Returns the
+ * verification outcome; it never throws and never reports "verified" on partial
+ * or unparseable data.
+ */
+function verifyBatchAgainstRoot(batchRecords, committedRoot) {
+  if (!Array.isArray(batchRecords) || batchRecords.length === 0) {
+    return { verified: false, reason: "batch-empty" };
+  }
+  if (!/^0x[0-9a-fA-F]{64}$/.test(String(committedRoot)) || /^0x0{64}$/.test(String(committedRoot))) {
+    return { verified: false, reason: "no-committed-root" };
+  }
+  const leaves = batchRecords.map(computeRiskLeaf);
+  if (leaves.some((l) => l === null)) {
+    return { verified: false, reason: "record-not-encodable" };
+  }
+  let computedRoot;
+  try { computedRoot = merkleRootSortedPairs(leaves); }
+  catch { return { verified: false, reason: "root-computation-failed" }; }
+  if (!computedRoot) return { verified: false, reason: "root-computation-failed" };
+  if (computedRoot.toLowerCase() !== String(committedRoot).toLowerCase()) {
+    return { verified: false, reason: "root-mismatch", computedRoot };
+  }
+  return { verified: true, computedRoot };
+}
+
 function normalizeBatchRecord(r) {
   const rec = r || {};
   const rawScore = String(rec.score ?? rec.riskScore ?? "").replace(/n$/, "");
@@ -1622,8 +1721,8 @@ async function cmdQuery(subject) {
       isAuthorizedAgent: decUint(agentHex) === 1n,
       explorer: `${EXPLORER}/address/${REGISTRY_ADDR}`,
     };
-    // Records are read from the committed data-availability pointer but are NOT
-    // cryptographically proven against currentMerkleRoot by the hosted engine.
+    // Defaults to false and is only ever raised by a successful root rebuild
+    // below: no fetch, no parse and no partial batch can leave it true.
     out.recordsVerifiedAgainstRoot = false;
     if (dataURI && /^https:\/\//.test(dataURI) && isFetchableDataUri(dataURI)) {
       try {
@@ -1636,10 +1735,27 @@ async function cmdQuery(subject) {
         // and the canonical src reader normalizeRiskRecords, which requires Array.isArray). A
         // { records: [...] } wrapper is tolerated too so either shape reads correctly.
         const batchRecords = Array.isArray(batch) ? batch : (Array.isArray(batch.records) ? batch.records : []);
-        const recs = batchRecords.filter((r) => r && String(r.target || "").toLowerCase() === subject.toLowerCase());
-        out.records = recs.map(normalizeBatchRecord);
-        out.recordsSource = "dataURI";
-        out.recordsNote = "Records come from the on-chain-committed data-availability pointer (currentDataURI); the hosted engine does NOT verify them against currentMerkleRoot. Treat as advisory. Use verify_risk_inclusion (full SafeHands backend) for an authoritative on-chain inclusion proof.";
+        // Prove the fetched batch is the one the chain commits to BEFORE any of
+        // its records are shown. A batch that does not rebuild to the committed
+        // root is refused outright: content that disagrees with the commitment
+        // is stale or tampered, and showing it flagged still risks it being
+        // relayed as fact.
+        const proof = verifyBatchAgainstRoot(batchRecords, root);
+        out.recordsVerifiedAgainstRoot = proof.verified;
+        if (proof.verified) {
+          const recs = batchRecords.filter((r) => r && String(r.target || "").toLowerCase() === subject.toLowerCase());
+          out.records = recs.map(normalizeBatchRecord);
+          out.recordsSource = "dataURI";
+          out.recordsNote = "Records come from the on-chain-committed data-availability pointer (currentDataURI), and the batch was rebuilt and cryptographically matched against currentMerkleRoot: these records are exactly what the chain commits to.";
+        } else if (proof.reason === "root-mismatch") {
+          out.records = [];
+          out.recordsSource = "dataURI-root-mismatch";
+          out.recordsNote = `The data-availability batch does NOT match the committed currentMerkleRoot (rebuilt ${proof.computedRoot}, committed ${root}). The batch is stale or has been altered, so its records are withheld entirely rather than shown as fact.`;
+        } else {
+          out.records = [];
+          out.recordsSource = `dataURI-unverifiable-${proof.reason}`;
+          out.recordsNote = `The batch could not be verified against currentMerkleRoot (${proof.reason}), so its records are withheld. Use verify_risk_inclusion (full SafeHands backend) for an authoritative on-chain inclusion proof.`;
+        }
       } catch { out.recordsSource = "dataURI-unreachable"; }
     } else if (dataURI && /^https:\/\//.test(dataURI)) {
       // https but the host is local/reserved/IP-literal: refused, never fetched (SSRF guard).
@@ -2422,4 +2538,4 @@ if (invokedDirectly()) {
 
 // Exported for unit tests (import does not trigger the CLI above). These are the
 // pure decision/normalization helpers whose behavior the audit locks.
-export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress, keccak256, keccak256Hex, bindCalldata, bindIntent, knownCodeMatch, KNOWN_CODEHASHES, buildChatSummary };
+export { composeComponent, sanitizeOnchainString, isFetchableDataUri, formatUnits, normalizeBatchRecord, scoreToRec, scoreToLevel, resolveAliasCore, slotToAddress, keccak256, keccak256Hex, bindCalldata, bindIntent, knownCodeMatch, KNOWN_CODEHASHES, buildChatSummary, analyzeTxCalldata, classifyCounterparty, computeRiskLeaf, merkleRootSortedPairs, verifyBatchAgainstRoot };

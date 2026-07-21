@@ -12,7 +12,7 @@ SafeHands is a **zero-custody, read-only, pre-execution safety gateway**. This f
 | GoPlus public token-security API | keyless honeypot / tax / owner / malicious-address intel | built-in (`GOPLUS_API_BASE`) |
 | Bundled registries | canonical contracts + official Pharos Token Registry; also power `resolve_alias` (name-to-address, exact match, no network call) and codehash recognition (keccak256 of verified bytecode, so a byte-identical copy at another address is recognized and a silent code change at a verified address is caught: recognition, never canonical trust) | `assets/known-pharos.json`, `assets/supported-protocols.json`, `assets/known-code.json` |
 | Configured public providers | subgraph / indexer / pool, **only if public, verified, keyless, DNS-resolvable** | `assets/supported-protocols.json` |
-| Registry-committed risk-batch file | the `query` command fetches the batch file at the `currentDataURI` the SafeHands registry owner committed on-chain; **https only**, 8 s timeout, response size capped | on-chain `SafeHandsRegistry.currentDataURI` |
+| Registry-committed risk-batch file | the `query` command fetches the batch file at the `currentDataURI` the SafeHands registry owner committed on-chain; **https only**, 8 s timeout, response size capped. The fetched batch is then rebuilt into a Merkle tree and matched against the on-chain `currentMerkleRoot` before any record is shown: a batch that does not match is withheld entirely, so records are proven, never merely fetched | on-chain `SafeHandsRegistry.currentDataURI` + `currentMerkleRoot` |
 
 ## Forbidden
 

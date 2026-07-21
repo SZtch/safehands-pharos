@@ -47,6 +47,8 @@ The hosted engine also performs an **offline calldata decode** (approve / permit
 
 Its read-path has since grown, all in the same escalate-only, fail-closed direction (bands and thresholds unchanged): codehash recognition of a byte-identical copy of a verified LOGIC contract (never a proxy shell) and a silent-change guard on verified addresses; permissioned-RWA detection (ERC-3643 identity gating and pre-sign eligibility, ERC-1400 controllable) that only raises concern; ERC-4626 vault and AMM pool safety probes with an unverified-container floor of 45; a holdings-exposure factor on fund-moving intents; verdict hash-binding (a keccak256 digest of exactly what was analyzed, with an expiry) on intent and calldata verdicts; and `resolve_alias`, wallet balance, `get_portfolio`, and `get_active_approvals` read commands. Every meaningful verdict also carries a `chatSummary`: a ready-to-show, plain-text rendering (verdict marker, score, every finding, action) with no hex or JSON, complete by construction. None of these relax a verdict.
 
+`query` records are now **proven, not merely fetched**: the engine rebuilds every leaf of the committed batch, recomputes the tree with its own keccak256 and matches the result against the on-chain `currentMerkleRoot`, reporting `recordsVerifiedAgainstRoot`. A batch that fails to match is withheld in full rather than shown with a caveat, so a stale or altered data-availability file cannot be relayed as a record. The leaf encoding and sorted-pair tree are differential-tested against the canonical writer (`src/lib/merkleBatcher.ts`, viem + merkletreejs) in `test/engine-merkle-inclusion.test.mjs`.
+
 ## Thresholds (documented divergence)
 
 The two score-based engines use **different, intentional** block boundaries:

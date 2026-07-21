@@ -65,12 +65,16 @@ Out (success):
                 "hasCommittedRoot": true, "currentDataURI": "https://…", "isAuthorizedAgent": false },
   "records": [ { "target": "0x…", "riskScore": 72, "riskLevel": "high",
                  "recommendation": "warn", "expiresAt": "…", "expired": false } ],
-  "recordsSource": "dataURI|dataURI-unreachable|null",
+  "recordsVerifiedAgainstRoot": true,
+  "recordsSource": "dataURI|dataURI-root-mismatch|dataURI-unverifiable-<reason>|dataURI-unreachable|null",
+  "recordsNote": "…",
   "reputation": { "configured": true, "verifiedActionCount": 3, "lastVerifiedActionAt": 1710000000,
                   "interpretation": "…" },
   "network": "pacific-mainnet", "chainId": 1672, "timestamp": "…" }
 ```
 If `assets/contracts.json` addresses are empty, `registry.configured`/`reputation.configured` are false and a top-level `note` explains; analysis features are unaffected.
+
+`recordsVerifiedAgainstRoot` is true only when the engine rebuilt every leaf of the fetched batch, recomputed the tree and matched the on-chain `currentMerkleRoot`. Anything else withholds the records: `dataURI-root-mismatch` means the committed pointer's content no longer matches the commitment (stale or altered), and `dataURI-unverifiable-<reason>` covers an empty batch, an unencodable record, or no committed root. Records are never shown unproven.
 
 ## Market & network read commands
 ```text

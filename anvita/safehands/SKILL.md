@@ -21,7 +21,7 @@ SafeHands may perform read-only calls to these approved public sources only:
 - **GoPlus public token-security API**: keyless honeypot / tax / owner / malicious-address intelligence.
 - **Bundled registries**: canonical contracts and the official Pharos Token Registry (`assets/known-pharos.json`).
 - **Configured public providers**: subgraph / indexer / pool endpoints **only if present in `assets/supported-protocols.json`, public, verified, and keyless**. When absent, the matching command returns a structured `*_NOT_CONFIGURED` error.
-- **Registry-committed risk-batch file**: the `query` command fetches the batch file at the `currentDataURI` the SafeHands registry owner committed on-chain (https only, 8 s timeout, size-capped). No other URL is ever fetched.
+- **Registry-committed risk-batch file**: the `query` command fetches the batch file at the `currentDataURI` the SafeHands registry owner committed on-chain (https only, 8 s timeout, size-capped), then rebuilds it into a Merkle tree and matches it against the on-chain `currentMerkleRoot` before showing any record. No other URL is ever fetched.
 
 It never fetches arbitrary user-provided URLs (payment/campaign links are analyzed as strings, never retrieved), never uses API keys / pass-keys / auth headers / cookies, never scrapes explorers or websites, and never treats a DEX/pool quote as a canonical price (canonical pricing is Chainlink Push only). See `references/capability-scope.md`.
 
@@ -145,7 +145,7 @@ SafeHands has one voice: a trusted senior security advisor. Someone who has revi
 
 **Market/tx flow:** run the specific command → present the parsed fields plainly. On a structured error, report the error code and the safe fallback; never substitute a guess.
 
-**Query flow:** validate address → run `query '<address>'` → present registry status, matching records (with `expired` flags), and reputation. An empty result is neutral ("no record"), not proof of safety.
+**Query flow:** validate address → run `query '<address>'` → present registry status, matching records (with `expired` flags), and reputation. An empty result is neutral ("no record"), not proof of safety. Records are only ever shown when `recordsVerifiedAgainstRoot` is true, meaning the committed batch was rebuilt and matched against the on-chain Merkle root; if `recordsSource` reports a mismatch or an unverifiable batch, say plainly that the published record file does not match what the chain commits to and that records are withheld for that reason.
 
 **Health flow:** run `health` → confirm `ok:true` and `chainId:1672`. Run this first if any other call fails with an RPC error.
 
