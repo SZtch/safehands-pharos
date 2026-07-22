@@ -76,6 +76,16 @@
   --allow: #1E7A32; --warn: #96570B; --block: #C22020;
 }
 
+/* Smooth the theme switch: only while the toggle is mid-flight (main.js adds the
+   .theming class for ~0.4s), ease every colour so dark and light cross-fade
+   instead of snapping. Off the rest of the time, so hovers and the instrument
+   animations keep their own timings. */
+:root.theming, :root.theming *, :root.theming *::before, :root.theming *::after {
+  transition: background-color .35s ease, color .35s ease, border-color .35s ease, fill .35s ease, box-shadow .35s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root.theming, :root.theming *, :root.theming *::before, :root.theming *::after { transition: none !important; }
+}
 * { box-sizing: border-box; }
 /* The instrument itself stays square, because a measuring face is square.
    Everything a hand touches gets a small radius: that is the difference

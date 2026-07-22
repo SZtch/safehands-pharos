@@ -8,9 +8,17 @@
   var root = document.documentElement;
   var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  var themeTimer = null;
   document.getElementById("theme").addEventListener("click", function () {
     var cur = root.getAttribute("data-theme");
     if (!cur) cur = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    // Ease the colours across the switch, but only for the moment it takes:
+    // add .theming, flip, then drop it so nothing else carries the transition.
+    if (!reduce) {
+      root.classList.add("theming");
+      if (themeTimer) clearTimeout(themeTimer);
+      themeTimer = setTimeout(function () { root.classList.remove("theming"); }, 400);
+    }
     root.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
   });
 
