@@ -19,6 +19,8 @@ In **hosted Anvita mode**, SafeHands provides no-custody, read-only safety verdi
 ![Hosted mode: no-custody verdict](https://img.shields.io/badge/hosted-no--custody_verdict-16a34a)
 ![License: MIT](https://img.shields.io/badge/license-MIT-black)
 
+**[safehands.fun](https://safehands.fun)** · Hosted on [Anvita Flow](https://flow.anvita.xyz/discover) · [npm package](https://www.npmjs.com/package/safehands-pharos)
+
 ### Which SafeHands is for me?
 
 One deterministic policy engine, delivered where you need the verdict: from a zero-infra hosted call to a self-hosted integration:
@@ -35,7 +37,7 @@ The compact hosted engine returns an `allow / warn / block` risk recommendation;
 
 ## SafeHands on Anvita Flow
 
-SafeHands is live on [Anvita Flow](https://flow.anvita.xyz/home) as **`safehands`**, a fully hosted, non-custodial Service Agent for the Pharos Agent Carnival.
+SafeHands is live on [Anvita Flow](https://flow.anvita.xyz/discover) as **`safehands`**, a fully hosted, non-custodial Service Agent for the Pharos Agent Carnival.
 
 Users can ask their Steward Agent to find **`safehands`** and evaluate a blockchain action before signing. The verdict is computed by a deterministic risk engine, not guessed by an LLM.
 

@@ -27,7 +27,7 @@ Rules your agent must honor: obey the `decision` field rather than re-deriving o
 
 ## Hosted: call the `safehands` agent on Anvita Flow
 
-The hosted agent is live on [Anvita Flow](https://flow.anvita.xyz/home) as `safehands`, discoverable and callable by any Steward Agent; the platform bills 0.01 USDC per call on its x402/USDC rail. Speak to it in natural language and include the wallet address you act for:
+The hosted agent is live on [Anvita Flow](https://flow.anvita.xyz/discover) as `safehands`, discoverable and callable by any Steward Agent; the platform bills 0.01 USDC per call on its x402/USDC rail. Speak to it in natural language and include the wallet address you act for:
 
 ```
 Before I sign: check this swap for 0xYourUserWallet on Pharos.

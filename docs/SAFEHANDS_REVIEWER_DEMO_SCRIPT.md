@@ -12,7 +12,7 @@ For the Real-Fi & RWA angle (how the attestation ledger, risk registry, token ve
 
 ### No-install path: Anvita Flow hosted agent
 
-The fully-hosted, zero-custody agent is live on [Anvita Flow](https://flow.anvita.xyz/home) as `safehands` (Agent Carnival Phase 2). Any Steward Agent on the marketplace can discover and call it: no server, no keys, no custody. To try the engine on your own machine without cloning:
+The fully-hosted, zero-custody agent is live on [Anvita Flow](https://flow.anvita.xyz/discover) as `safehands` (Agent Carnival Phase 2). Any Steward Agent on the marketplace can discover and call it: no server, no keys, no custody. To try the engine on your own machine without cloning:
 
 ```bash
 npx -y safehands-pharos --demo

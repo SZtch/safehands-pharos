@@ -4,7 +4,7 @@ Pharos is a Real-Fi chain: its thesis is tokenized real-world assets and real-wo
 
 **The claim, in one sentence:** before any AI agent moves a tokenized asset or settles a real-world payment on Pharos, SafeHands is the deterministic check that verifies the asset, enforces the transfer policy, caps the settlement; and, on the opt-in attested-broadcast path, writes a privacy-preserving audit record on-chain.
 
-Everything in the "Live today" column below is deployed and verifiable right now: contracts on Pharos Pacific Mainnet (chain `1672`), a read-only HTTP API you can self-host as a reference backend, and a runnable demo. The zero-custody hosted agent is live on [Anvita Flow](https://flow.anvita.xyz/home) as `safehands` (Agent Carnival Phase 2). Nothing in that column is aspirational: every row is running code you can verify today (known limits are disclosed honestly in [SECURITY.md](../SECURITY.md) and [PHAROS_RPC.md](./PHAROS_RPC.md)).
+Everything in the "Live today" column below is deployed and verifiable right now: contracts on Pharos Pacific Mainnet (chain `1672`), a read-only HTTP API you can self-host as a reference backend, and a runnable demo. The zero-custody hosted agent is live on [Anvita Flow](https://flow.anvita.xyz/discover) as `safehands` (Agent Carnival Phase 2). Nothing in that column is aspirational: every row is running code you can verify today (known limits are disclosed honestly in [SECURITY.md](../SECURITY.md) and [PHAROS_RPC.md](./PHAROS_RPC.md)).
 
 ---
 
@@ -46,7 +46,7 @@ npx -y safehands-pharos --demo
 - **Scenario 11: Tokenized-asset transfer compliance.** An agent asks to approve spending of an *unregistered* asset token to an *unverified* spender. SafeHands returns `REQUIRE_CONFIRMATION` (risk `MEDIUM`); not a blind block, but mandatory human review: the transfer-restriction behavior regulated assets require.
 - **Scenario 12: Real-Fi settlement cap.** An agent tries to settle a 5 USDC x402 invoice while the active policy caps settlement at 0.1 USDC per call. SafeHands returns `BLOCK` (risk `HIGH`). The cap is enforced by the deterministic policy engine; an LLM cannot be prompt-injected into raising it.
 
-Or call it as an agent: the hosted SafeHands agent is live on [Anvita Flow](https://flow.anvita.xyz/home) as `safehands` (Agent Carnival Phase 2), discoverable and callable by any Steward Agent. To hit the HTTP API directly, self-host the read-only reference backend locally (`npm run build && node dist/api/server.js`, default port `4022`), then:
+Or call it as an agent: the hosted SafeHands agent is live on [Anvita Flow](https://flow.anvita.xyz/discover) as `safehands` (Agent Carnival Phase 2), discoverable and callable by any Steward Agent. To hit the HTTP API directly, self-host the read-only reference backend locally (`npm run build && node dist/api/server.js`, default port `4022`), then:
 
 ```bash
 # Verify an asset token before an agent touches it
