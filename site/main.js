@@ -12,14 +12,17 @@
   document.getElementById("theme").addEventListener("click", function () {
     var cur = root.getAttribute("data-theme");
     if (!cur) cur = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    // Ease the colours across the switch, but only for the moment it takes:
-    // add .theming, flip, then drop it so nothing else carries the transition.
-    if (!reduce) {
-      root.classList.add("theming");
-      if (themeTimer) clearTimeout(themeTimer);
-      themeTimer = setTimeout(function () { root.classList.remove("theming"); }, 400);
-    }
-    root.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
+    var next = cur === "dark" ? "light" : "dark";
+    if (reduce) { root.setAttribute("data-theme", next); return; }
+    // Turn the cross-fade on, force the browser to commit it as the current
+    // state (the reflow), THEN flip. Without that flush the colour change and
+    // the transition land in one tick and the switch snaps. Drop the class once
+    // the fade is done so nothing else keeps carrying the transition.
+    root.classList.add("theming");
+    root.getBoundingClientRect();
+    root.setAttribute("data-theme", next);
+    if (themeTimer) clearTimeout(themeTimer);
+    themeTimer = setTimeout(function () { root.classList.remove("theming"); }, 450);
   });
 
   // Hamburger: a plain button toggling the nav panel, with aria-expanded kept
