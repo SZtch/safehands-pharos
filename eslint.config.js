@@ -56,6 +56,7 @@ export default tseslint.config(
         document: "readonly",
         window: "readonly",
         matchMedia: "readonly",
+        IntersectionObserver: "readonly",
         getComputedStyle: "readonly",
         navigator: "readonly",
         performance: "readonly",

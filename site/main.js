@@ -239,4 +239,87 @@
     t.addEventListener("click", function () { showTab(t.dataset.tab); });
   });
   showTab("skill");
+
+  // Entrance reveals and the LED count-up. All are added by script, never in
+  // the markup, so with JS off or motion reduced the page stays fully visible.
+  if (!reduce && "IntersectionObserver" in window) {
+    // Play each animation every time its target is scrolled to, not just once:
+    // fire when it is well into view, and re-arm only once it has fully left, so
+    // the boundary never thrashes.
+    function onScrollInOut(el, play, reset) {
+      var armed = true;
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.intersectionRatio >= 0.2 && armed) { armed = false; play(el); }
+          else if (e.intersectionRatio === 0 && !armed) { armed = true; reset(el); }
+        });
+      }, { threshold: [0, 0.2] }).observe(el);
+    }
+
+    // Section reveals: each card rises and fades in, staggered within its group,
+    // and drops back out once the group has left so it replays on return.
+    [".figures .fig", "#trust .row", "#trust .nl > div"].forEach(function (sel) {
+      Array.prototype.forEach.call(document.querySelectorAll(sel), function (el, i) {
+        el.classList.add("reveal");
+        el.style.transitionDelay = (i * 70) + "ms";
+        onScrollInOut(el,
+          function () { el.classList.add("in"); },
+          function () { el.classList.remove("in"); });
+      });
+    });
+
+    // How it works reads as a pipeline: when the strip comes into view a green
+    // signal sweeps across it, the four steps light up in order, and the two
+    // steps that are ours (the green ones) pulse as they activate. Scroll away
+    // and back and the whole sequence plays again.
+    var seq = document.querySelector("#how .seq");
+    if (seq) {
+      var howSteps = Array.prototype.slice.call(seq.querySelectorAll(".st"));
+      howSteps.forEach(function (el) { el.classList.add("reveal"); });
+      var howTimers = [];
+      onScrollInOut(seq,
+        function () {
+          seq.classList.add("flow");
+          howSteps.forEach(function (el, i) {
+            howTimers.push(setTimeout(function () {
+              el.classList.add("in");
+              if (el.classList.contains("key")) {
+                el.classList.remove("lit");
+                void el.offsetWidth;               // restart the pulse cleanly
+                el.classList.add("lit");
+              }
+            }, i * 160));
+          });
+        },
+        function () {
+          howTimers.forEach(clearTimeout);
+          howTimers = [];
+          seq.classList.remove("flow");
+          howSteps.forEach(function (el) { el.classList.remove("in", "lit"); });
+        });
+    }
+
+    // The big figures roll up from zero whenever they scroll into view, and
+    // reset to zero on the way out so the count replays next time. The green 0
+    // keeps its <em> styling, so it is left untouched.
+    Array.prototype.forEach.call(document.querySelectorAll(".figures .fig b"), function (b) {
+      if (b.querySelector("em")) return;
+      var target = parseInt(b.textContent, 10);
+      if (isNaN(target)) return;
+      b.setAttribute("data-to", target);
+      b.textContent = "0";
+      var raf = null;
+      onScrollInOut(b,
+        function () {
+          if (raf) cancelAnimationFrame(raf);
+          var t0 = performance.now(), ms = 900;
+          (function step(now) {
+            var k = Math.min(1, (now - t0) / ms);
+            b.textContent = Math.round(target * (1 - Math.pow(1 - k, 3)));
+            if (k < 1) raf = requestAnimationFrame(step);
+          })(t0);
+        },
+        function () { if (raf) cancelAnimationFrame(raf); b.textContent = "0"; });
+    });
+  }
 })();

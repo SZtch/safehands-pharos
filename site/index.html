@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="SafeHands is a deterministic transaction firewall for AI agents on Pharos Pacific Mainnet. It reads the intent and the exact bytes, then returns one verdict on a published scale: allow, warn, or block, with named reasons. Read-only and zero-custody.">
-<meta name="theme-color" content="#EEF0F4" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0B0E13" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FAFBFA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A0B0D" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="safehands.jpg">
 <link rel="canonical" href="https://safehands.fun/">
 <!-- Social scrapers do not resolve relative paths, so these are absolute. -->
@@ -59,8 +59,8 @@
 
     <div class="inst" id="demo">
       <div class="inst-top">
-        <span class="lab">Preflight inspection</span>
-        <span class="lab who">Read-only &middot; signs nothing</span>
+        <span class="led" aria-hidden="true"></span>
+        <span class="lab">Reads the transaction, signs nothing</span>
       </div>
 
       <div class="specimen">
@@ -97,15 +97,15 @@
   </section>
 
   <section class="figures">
-    <div class="fig"><b><em>0</em></b><span>Private keys held, by design. It signs nothing.</span></div>
-    <div class="fig"><b>33</b><span>Safety tools across MCP, HTTP and CLI</span></div>
-    <div class="fig"><b>12</b><span>Protocols verified against first-party evidence</span></div>
-    <div class="fig"><b>70</b><span>The published score at which it stops being a warning</span></div>
+    <div class="fig"><span class="ch">Custody</span><b><em>0</em></b><span>Private keys held, by design. It signs nothing.</span></div>
+    <div class="fig"><span class="ch">Tooling</span><b>33</b><span>Safety tools across MCP, HTTP and CLI</span></div>
+    <div class="fig"><span class="ch">Verified</span><b>12</b><span>Protocols verified against first-party evidence</span></div>
+    <div class="fig"><span class="ch">Threshold</span><b>70</b><span>The published score at which it stops being a warning</span></div>
   </section>
 
 
   <section id="how">
-    <div class="eyebrow"><span class="lab idx">02</span><span class="lab">How it works</span></div>
+    <div class="eyebrow"><span class="lab idx">01</span><span class="lab">How it works</span></div>
     <h2>Four steps, and only one of them is ours.</h2>
     <div class="seq">
       <div class="st"><span class="n">STEP 01</span><h3>The agent plans</h3><p>Your model finds the opportunity and builds the transaction. It holds the intent, never a key.</p></div>
@@ -117,7 +117,7 @@
   </section>
 
   <section id="trust">
-    <div class="eyebrow"><span class="lab idx">03</span><span class="lab">Why trust it</span></div>
+    <div class="eyebrow"><span class="lab idx">02</span><span class="lab">Why trust it</span></div>
     <h2>Five properties, each one checkable.</h2>
     <div class="rows">
       <div class="row"><h3>Deterministic</h3><p>Every verdict is computed by code and traces to a named check. Run it twice on the same bytes and you get the same answer, with the same reasons.</p></div>
@@ -139,7 +139,7 @@
 
 
   <section id="integrate">
-    <div class="eyebrow"><span class="lab idx">05</span><span class="lab">Integrate</span></div>
+    <div class="eyebrow"><span class="lab idx">03</span><span class="lab">Integrate</span></div>
     <h2>One call before you sign.</h2>
     <p class="sub">The loop is the same on every surface: resolve names from the registry, inspect the intent, inspect the exact bytes, then act only on what cleared. None of these need a server of your own, and the hosted agent on Anvita Flow needs no install at all.</p>
     <div class="tabs" role="tablist" aria-label="Integration methods">
@@ -153,7 +153,7 @@
 
 
   <section>
-    <div class="eyebrow"><span class="lab idx">07</span><span class="lab">Get started</span></div>
+    <div class="eyebrow"><span class="lab idx">04</span><span class="lab">Get started</span></div>
     <div class="eco">
       <div>
         <h2>Put a firewall in front of your agent.</h2>
@@ -174,12 +174,6 @@
 <footer>
   <div class="foot">
     <a class="brand" href="#top"><span class="mark" role="img" aria-label="SafeHands logo"></span> SafeHands</a>
-    <div class="fl">
-      <a href="#how">How it works</a>
-      <a href="#integrate">Integrate</a>
-      <a href="https://github.com/SZtch/safehands-pharos">GitHub</a>
-      <a href="https://flow.anvita.xyz/home">Anvita Flow</a>
-    </div>
     <p class="disc">SafeHands is read-only and zero-custody: it renders a safety verdict and never signs or broadcasts. Write and execution paths exist for self-hosting only, off by default behind explicit gates. Not a formally audited custody system.</p>
   </div>
 </footer>
