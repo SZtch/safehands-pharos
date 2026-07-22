@@ -4,12 +4,11 @@
    block threshold from docs/DECISION_CONTRACT.md, so the verdict is shown
    rather than asserted. No build step: edit this file directly.
 
-   The surface is monochrome: a near-black ground, hairline rules, no brand hue
-   on the chrome. The one accent is a phosphor green, used the way a terminal
-   uses it, for "go". That green is also the allow verdict, so the accent and the
-   product's meaning are the same colour on purpose. Warn amber and block red are
-   the other two verdict states; they surface only on the instrument's live
-   reading, never as decoration. */
+   The palette comes from the SafeHands logo: an electric royal blue on white,
+   two hands cradling something kept safe. That blue is the one brand accent,
+   carried by the chrome and a soft glow. The verdict colours stay separate and
+   semantic: allow green, warn amber, block red, surfacing only on the
+   instrument's live reading, never as decoration, apart from the brand. */
 
 /* Three faces, all SIL Open Font License, self-hosted under site/fonts (licences
    in the *-OFL.txt files). Geist Sans sets prose, Geist Mono sets every piece of
@@ -24,19 +23,19 @@
 @font-face { font-family: "Departure Mono"; font-weight: 400; font-display: swap; src: url("fonts/DepartureMono-Regular.woff2") format("woff2"); }
 
 :root {
-  --ground:  #0A0B0D;
-  --panel:   #101216;
-  --panel-2: #16191E;
-  --ink:     #E9EDEB;
-  --ink-2:   #9AA29D;
-  --ink-3:   #5C655F;
-  --rule:    #1D2025;
-  --rule-2:  #2C3138;
-  --shadow:  rgb(0 0 0 / .62);
-  --brand:   #5BF06A;                    /* phosphor green: the one accent, and "go" */
-  --glow:    rgb(91 240 106 / .20);      /* the same green, spread as a terminal glow */
+  --ground:  #0A0B12;
+  --panel:   #12141E;
+  --panel-2: #181B27;
+  --ink:     #EAECF5;
+  --ink-2:   #9CA1B4;
+  --ink-3:   #616579;
+  --rule:    #1C1F2C;
+  --rule-2:  #2A2E3E;
+  --shadow:  rgb(0 2 14 / .62);
+  --brand:   #5566FF;                    /* the logo's electric blue: the one brand accent */
+  --glow:    rgb(85 102 255 / .30);      /* the same blue, spread as the logo's glow */
   --vc:      #FF5A5A;                     /* set by main.js from the live verdict */
-  --on-vc:   #07130A;
+  --on-vc:   #FFFFFF;
   --allow:   #4ADE80;
   --warn:    #F0A93B;
   --block:   #FF5A5A;
@@ -47,32 +46,32 @@
   --maxw: 1120px;
   --mark: url("safehands.jpg");
 }
-/* Daylight surface: same monochrome logic on a paper ground, phosphor green
-   darkened to hold contrast against white. */
+/* Daylight surface: the same logo blue on a cool paper ground
+   deepened to hold contrast against white. */
 @media (prefers-color-scheme: light) {
   :root {
-    --ground: #FAFBFA; --panel: #FFFFFF; --panel-2: #F3F5F3;
-    --ink: #0C0F0D; --ink-2: #49524D; --ink-3: #6B736E;
-    --rule: #E3E7E4; --rule-2: #CCD2CD;
-    --shadow: rgb(12 22 16 / .12);
-    --brand: #1E7A32; --glow: rgb(30 122 50 / .14);
+    --ground: #F5F6FC; --panel: #FFFFFF; --panel-2: #EDEFF9;
+    --ink: #0B0D1A; --ink-2: #474C60; --ink-3: #686E82;
+    --rule: #E3E5F1; --rule-2: #CBCFE2;
+    --shadow: rgb(20 24 60 / .12);
+    --brand: #2A2DE0; --glow: rgb(42 45 224 / .16);
     --vc: #C22020; --on-vc: #FFFFFF;
     --allow: #1E7A32; --warn: #96570B; --block: #C22020;
   }
 }
 :root[data-theme="dark"] {
-  --ground: #0A0B0D; --panel: #101216; --panel-2: #16191E; --shadow: rgb(0 0 0 / .62);
-  --ink: #E9EDEB; --ink-2: #9AA29D; --ink-3: #5C655F;
-  --rule: #1D2025; --rule-2: #2C3138;
-  --brand: #5BF06A; --glow: rgb(91 240 106 / .20);
-  --vc: #FF5A5A; --on-vc: #07130A;
+  --ground: #0A0B12; --panel: #12141E; --panel-2: #181B27; --shadow: rgb(0 2 14 / .62);
+  --ink: #EAECF5; --ink-2: #9CA1B4; --ink-3: #616579;
+  --rule: #1C1F2C; --rule-2: #2A2E3E;
+  --brand: #5566FF; --glow: rgb(85 102 255 / .30);
+  --vc: #FF5A5A; --on-vc: #FFFFFF;
   --allow: #4ADE80; --warn: #F0A93B; --block: #FF5A5A;
 }
 :root[data-theme="light"] {
-  --ground: #FAFBFA; --panel: #FFFFFF; --panel-2: #F3F5F3; --shadow: rgb(12 22 16 / .12);
-  --ink: #0C0F0D; --ink-2: #49524D; --ink-3: #6B736E;
-  --rule: #E3E7E4; --rule-2: #CCD2CD;
-  --brand: #1E7A32; --glow: rgb(30 122 50 / .14);
+  --ground: #F5F6FC; --panel: #FFFFFF; --panel-2: #EDEFF9; --shadow: rgb(20 24 60 / .12);
+  --ink: #0B0D1A; --ink-2: #474C60; --ink-3: #686E82;
+  --rule: #E3E5F1; --rule-2: #CBCFE2;
+  --brand: #2A2DE0; --glow: rgb(42 45 224 / .16);
   --vc: #C22020; --on-vc: #FFFFFF;
   --allow: #1E7A32; --warn: #96570B; --block: #C22020;
 }
@@ -130,6 +129,18 @@ header { position: sticky; top: 0; z-index: 30; background: var(--ground); }
   width: 32px; height: 32px; cursor: pointer; display: grid; place-items: center;
 }
 .theme:hover { border-color: var(--ink); color: var(--ink); }
+/* Sun or moon, showing the mode a click switches TO. Line icons, monochrome,
+   inheriting the button colour. Handles the OS default and the explicit toggle. */
+.theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.theme .i-sun { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme .i-moon { display: none; }
+  :root:not([data-theme]) .theme .i-sun { display: block; }
+}
+:root[data-theme="dark"] .theme .i-moon { display: none; }
+:root[data-theme="dark"] .theme .i-sun { display: block; }
+:root[data-theme="light"] .theme .i-moon { display: block; }
+:root[data-theme="light"] .theme .i-sun { display: none; }
 /* Hamburger, mobile only. The burger stays hidden on desktop where the inline
    nav shows; below 840px the nav collapses into a panel the burger opens. */
 .burger { display: none; }
@@ -173,7 +184,7 @@ section::before {
 }
 .eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
 /* The section index reads as a channel tag on a faceplate: [01], the number in
-   phosphor, the brackets in the quiet ink. */
+   the brand blue, the brackets in the quiet ink. */
 .eyebrow .idx { color: var(--brand); }
 .eyebrow .idx::before { content: "["; color: var(--ink-3); margin-right: 1px; }
 .eyebrow .idx::after { content: "]"; color: var(--ink-3); margin-left: 1px; }
@@ -182,7 +193,46 @@ h2 { font-size: clamp(1.85rem, 4.2vw, 2.75rem); font-weight: 680; letter-spacing
 
 /* ── hero ──────────────────────────────────────────────────────────── */
 .hero { padding-top: 56px; padding-bottom: 88px; }
-.idline { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 26px; }
+/* The hero sits on a faint calibration grid, the surface a measuring instrument
+   is read against, with a whisper of brand light coming off the instrument to
+   the right. Masked to fade out by the fold, so it reads as precision and not a
+   generic backdrop glow. */
+.hero::after {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(58% 54% at 70% 26%, color-mix(in srgb, var(--brand) 13%, transparent), transparent 70%),
+    linear-gradient(to right, var(--rule) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(to bottom, var(--rule) 1px, transparent 1px) 0 0 / 44px 44px;
+  -webkit-mask-image: radial-gradient(96% 80% at 66% 24%, #000 0%, transparent 64%);
+          mask-image: radial-gradient(96% 80% at 66% 24%, #000 0%, transparent 64%);
+}
+.hero > * { position: relative; z-index: 1; }
+/* Two columns on wide screens: the value proposition on the left, the working
+   instrument on the right, so the product itself is the hero visual. Below
+   980px they stack, instrument under copy. */
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr); gap: 48px; align-items: start; }
+@media (max-width: 980px) { .hero-grid { grid-template-columns: 1fr; gap: 34px; } }
+.hero-copy { min-width: 0; }
+.hero .inst { margin-top: 0; }
+/* A short spec list under the call to action, so the copy column reads to about
+   the height of the instrument beside it. */
+.hero-spec { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.hero-spec li { position: relative; padding-left: 20px; font-size: .9rem; color: var(--ink-2); }
+.hero-spec li::before { content: ">"; position: absolute; left: 2px; top: 0; color: var(--brand); font-family: var(--mono); font-weight: 500; }
+.idline { margin-bottom: 26px; }
+/* A live-status chip: a breathing brand point and a confident sentence-case
+   line. Reads as a running system, not a debug readout. */
+.livechip {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 9px;
+  padding: 6px 12px; border: 1px solid var(--rule-2); border-radius: 6px;
+  background: color-mix(in srgb, var(--brand) 5%, var(--panel)); max-width: 100%;
+}
+.livechip .live {
+  width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--brand);
+  box-shadow: 0 0 8px 1px var(--glow); animation: breathe 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .livechip .live { animation: none; } }
+.lc-main { font-size: .84rem; font-weight: 500; color: var(--ink); letter-spacing: -.004em; }
 h1 {
   font-size: clamp(2rem, 5.2vw, 3.35rem); font-weight: 700;
   letter-spacing: -.045em; line-height: 1.04; max-width: 20ch;
@@ -196,11 +246,11 @@ h1 em { font-style: normal; color: var(--brand); }
   box-shadow: 0 0 46px -6px var(--glow);
 }
 .btn.p:hover { filter: brightness(1.08); }
-/* The install button reads as a terminal line: a green prompt, then the command. */
+/* The install button reads as a terminal line: a blue prompt, then the command. */
 .btn.g { border-color: var(--rule-2); font-family: var(--mono); font-size: .85rem; color: var(--ink-2); }
 .btn.g::before { content: "$"; color: var(--brand); margin-right: 9px; font-weight: 500; }
 .btn.g:hover { border-color: var(--brand); color: var(--ink); }
-/* A phosphor block that blinks after the command, like a live terminal caret. */
+/* A brand-blue block that blinks after the command, like a live terminal caret. */
 .btn.g::after {
   content: ""; display: inline-block; width: .55em; height: 1.02em; margin-left: 8px;
   vertical-align: -.16em; background: var(--brand); box-shadow: 0 0 9px var(--glow);
@@ -215,6 +265,7 @@ h1 em { font-style: normal; color: var(--brand); }
 @media (prefers-reduced-motion: reduce) {
   .btn.g::after { animation: none; }
   .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
+  .path > a .arw { transition: none; }
 }
 
 /* ── the instrument ────────────────────────────────────────────────── */
@@ -226,7 +277,7 @@ h1 em { font-style: normal; color: var(--brand); }
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 11px 18px; border-bottom: 1px solid var(--rule); background: var(--panel-2);
 }
-/* The power LED: a steady phosphor point that breathes, so the faceplate reads
+/* The power LED: a steady brand point that breathes, so the faceplate reads
    as an instrument that is on and listening, not a static picture. */
 .led {
   width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--brand);
@@ -370,16 +421,44 @@ h1 em { font-style: normal; color: var(--brand); }
 /* A deliberately sparse band between two dense ones. Every name here is a
    VERIFIED entry in the ecosystem registry, so it is evidence, not a logo
    wall: recognition on this page means the same thing it means in a verdict. */
+.verified { padding: 30px 28px; border-bottom: 1px solid var(--rule); text-align: center; }
+.vf-label { display: block; margin-bottom: 16px; }
+.vf-names { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 13px 32px; }
+.vf-names span { font-family: var(--mono); font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; color: var(--ink-2); }
 @media (max-width: 620px) {
-  }
+  .verified { padding: 26px 20px; }
+  .vf-names { gap: 11px 22px; }
+  .vf-names span { font-size: .95rem; }
+}
 
 /* ── the problem ───────────────────────────────────────────────────── */
 .lead .bad { color: var(--block); font-weight: 500; }
 
+/* ── what it catches ────────────────────────────────────────────────
+   A grid of real checks. Each cell names a signature an agent should not
+   send and the verdict the instrument would return. The cells share hairline
+   rules like the rest of the faceplate; the only colour is a small verdict
+   chip, so the page stays monochrome and the live instrument keeps being the
+   one thing that lights up. */
+.catch-grid { margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.card { background: var(--panel); padding: 22px 20px; display: flex; flex-direction: column; gap: 11px; }
+.chip {
+  align-self: flex-start; font-family: var(--mono); font-size: .6rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: .16em; padding: 3px 8px;
+  border: 1px solid var(--rule-2); border-radius: 4px; color: var(--ink-3);
+}
+.chip.b { color: var(--block); border-color: color-mix(in srgb, var(--block) 42%, var(--rule-2)); }
+.chip.w { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 42%, var(--rule-2)); }
+.card h3 { font-size: 1.02rem; font-weight: 640; letter-spacing: -.02em; }
+.card p { font-size: .89rem; color: var(--ink-2); }
+.card code { font-family: var(--mono); font-size: .84em; color: var(--ink); }
+@media (max-width: 860px) { .catch-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .catch-grid { grid-template-columns: 1fr; } }
+
 /* ── sequence: the only numbered thing on the page, because it is the
      only real sequence ─────────────────────────────────────────────── */
 .seq { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rule); border-bottom: 0; margin-top: 28px; position: relative; }
-/* A green signal sweeps across the top of the strip, left to right, once the
+/* A brand-blue signal sweeps across the top of the strip, left to right, once the
    pipeline scrolls into view: the data flowing through the four steps. */
 .seq::before {
   content: ""; position: absolute; top: -1px; left: 0; height: 2px; width: 0;
@@ -394,7 +473,7 @@ h1 em { font-style: normal; color: var(--brand); }
 .st .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .72rem; letter-spacing: .1em; color: var(--ink-3); }
 .st.key { background: var(--panel); }
 .st.key .n { color: var(--brand); }
-/* A green step pulses once as the pipeline activates it, then settles. */
+/* A brand-blue step pulses once as the pipeline activates it, then settles. */
 .st.lit { animation: steplit 1.6s ease both; }
 @keyframes steplit {
   0% { box-shadow: none; }
@@ -431,23 +510,66 @@ h1 em { font-style: normal; color: var(--brand); }
 
 /* ── boundary ──────────────────────────────────────────────────────── */
 
-/* ── get started ───────────────────────────────────────────────────── */
-.eco { display: grid; grid-template-columns: 1fr 360px; gap: 44px; align-items: start; }
-@media (max-width: 860px) { .eco { grid-template-columns: 1fr; gap: 26px; } }
-.eco p { color: var(--ink-2); margin-top: 12px; max-width: 46ch; }
-.eco code { font-family: var(--mono); color: var(--brand); }
-.side { border: 1px solid var(--rule-2); }
-.side a { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--rule); font-size: .91rem; }
-.side a:last-child { border-bottom: 0; }
-.side a:hover { background: var(--panel-2); color: var(--ink); }
-.side a .arw { color: var(--ink-3); }
-.side a:hover .arw { color: var(--ink); }
+/* ── who it's for ───────────────────────────────────────────────────
+   Three ways to reach one engine. Same cell-and-hairline system as the other
+   grids; the "for X" kicker and the arrow carry the one accent. */
+.paths { margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.path { background: var(--panel); padding: 24px 22px; display: flex; flex-direction: column; gap: 12px; }
+.path .pk { color: var(--brand); }
+.path h3 { font-size: 1.12rem; font-weight: 660; letter-spacing: -.022em; }
+.path p { font-size: .9rem; color: var(--ink-2); flex: 1 1 auto; }
+.path code { font-family: var(--mono); color: var(--brand); font-size: .86em; }
+.path > a { display: inline-flex; align-items: center; gap: 8px; margin-top: 2px; font-size: .9rem; font-weight: 560; color: var(--ink); }
+.path > a .arw { color: var(--brand); transition: transform .18s ease; }
+.path > a:hover .arw { transform: translateX(3px); }
+@media (max-width: 860px) { .paths { grid-template-columns: 1fr; } }
 
-/* ── footer ────────────────────────────────────────────────────────── */
-footer { padding: 30px 28px 44px; max-width: var(--maxw); margin: 0 auto; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
-.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+/* ── plugs into ─────────────────────────────────────────────────────
+   SafeHands runs as an MCP server, so it drops into any MCP client. Named as
+   plain silkscreen wordmarks, never partner logos. */
+.clients { margin-top: 30px; padding: 20px; border: 1px solid var(--rule); background: var(--panel); display: flex; flex-direction: column; gap: 14px; }
+.clients-row { display: flex; flex-wrap: wrap; gap: 10px 12px; }
+.clients-row span { font-family: var(--mono); font-size: .82rem; color: var(--ink-2); border: 1px solid var(--rule-2); padding: 6px 11px; }
+
+/* ── closing call to action ─────────────────────────────────────────
+   No channel tag, no link list (the footer carries those): just the pitch and
+   the two ways in, so it reads as a close, not a second integrate section. */
+.closer p { color: var(--ink-2); max-width: 54ch; margin-top: 14px; }
+.closer .cta { margin-top: 26px; }
+
+/* ── footer ────────────────────────────────────────────────────────
+   A full footer: brand block with the chain badge and community links on the
+   left, three columns of navigation on the right, the disclaimer as a base
+   bar under a hairline. */
+footer { padding: 54px 28px 40px; max-width: var(--maxw); margin: 0 auto; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+.foot { display: grid; grid-template-columns: 1.25fr 2fr; gap: 40px 32px; }
 .foot .mark { width: 22px; height: 22px; }
-.disc { flex-basis: 100%; color: var(--ink-3); font-size: .83rem; max-width: 80ch; }
+.foot-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.foot-tag { color: var(--ink-2); font-size: .9rem; max-width: 30ch; }
+/* Social marks: the real brand glyphs, rendered monochrome so they sit in the
+   palette, each in a hairline chip that lights to the brand blue with a soft
+   glow on hover, echoing the instrument. Recognisable, never a generic set. */
+.foot-social { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.foot-social a {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; color: var(--ink-2);
+  border: 1px solid var(--rule-2); border-radius: 8px;
+  transition: color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.foot-social a:hover {
+  color: var(--brand); border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  box-shadow: 0 0 18px -7px var(--glow);
+}
+.foot-social svg { width: 17px; height: 17px; fill: currentColor; display: block; }
+.foot-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px 20px; }
+.foot-col { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.foot-h { margin-bottom: 2px; }
+.foot-col a { font-size: .88rem; color: var(--ink-2); }
+.foot-col a:hover { color: var(--ink); }
+.foot-base { margin-top: 42px; padding-top: 22px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: .8rem; letter-spacing: .01em; }
+@media (max-width: 760px) { .foot { grid-template-columns: 1fr; gap: 34px; } }
+@media (max-width: 520px) { .foot-cols { grid-template-columns: repeat(2, 1fr); } }
 
 /* ── platform figures ───────────────────────────────────────────────────
    Large numerals, the way a product page states its scale. Every figure is

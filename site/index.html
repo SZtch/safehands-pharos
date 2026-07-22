@@ -31,11 +31,15 @@
       SafeHands
     </a>
     <nav id="nav">
+      <a href="#catches">What it catches</a>
       <a href="#how">How it works</a>
       <a href="#trust">Why trust it</a>
       <a href="#integrate">Integrate</a>
     </nav>
-    <button class="theme" id="theme" aria-label="Toggle light and dark theme" title="Toggle theme">&#9680;</button>
+    <button class="theme" id="theme" aria-label="Toggle light and dark theme" title="Toggle theme">
+      <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
     <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
       <span></span><span></span><span></span>
     </button>
@@ -45,67 +49,128 @@
 <main id="top">
 
   <section class="hero">
-    <div class="idline lab">
-      <span>Pharos Pacific Mainnet</span>
-      <span>Chain <span class="num">1672</span></span>
-      <span>Native PROS</span>
-    </div>
-    <h1>Every transaction an agent proposes is <em>measured</em> before it is signed.</h1>
-    <p class="lead">An AI agent signs whatever it decides to sign, and <span class="bad">one unlimited approval empties the wallet</span>. SafeHands reads the intent and the exact bytes first, then returns one verdict on a published scale: allow, warn, or block, with named reasons.</p>
-    <div class="cta">
-      <a class="btn p" href="#demo">Watch it block a drainer</a>
-      <a class="btn g" href="#integrate">npx skills add SZtch/safehands-pharos</a>
-    </div>
-
-    <div class="inst" id="demo">
-      <div class="inst-top">
-        <span class="led" aria-hidden="true"></span>
-        <span class="lab">Reads the transaction, signs nothing</span>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="idline livechip">
+          <span class="live" aria-hidden="true"></span>
+          <span class="lc-main">Live on Pharos Pacific Mainnet</span>
+        </div>
+        <h1>Every transaction an agent proposes is <em>measured</em> before it is signed.</h1>
+        <p class="lead">An AI agent signs whatever it decides to sign, and <span class="bad">one unlimited approval empties the wallet</span>. SafeHands reads the intent and the exact bytes first, then returns one verdict on a published scale: allow, warn, or block, with named reasons.</p>
+        <div class="cta">
+          <a class="btn p" href="https://flow.anvita.xyz/discover">Try SafeHands on Anvita Flow</a>
+        </div>
+        <ul class="hero-spec">
+          <li>Reads the intent, then the exact calldata</li>
+          <li>Holds no key, signs nothing</li>
+          <li>One score on a published scale, with named reasons</li>
+        </ul>
       </div>
 
-      <div class="specimen">
-        <span class="lab">Specimen</span>
-        <div class="pills" role="group" aria-label="Example actions to inspect">
-          <button class="pill" data-k="block" aria-pressed="true">Unlimited approval</button>
-          <button class="pill" data-k="allow" aria-pressed="false">Swap 10 USDC</button>
-          <button class="pill" data-k="warn" aria-pressed="false">Transfer to fresh wallet</button>
+      <div class="inst" id="demo">
+        <div class="inst-top">
+          <span class="led" aria-hidden="true"></span>
+          <span class="lab">Reads the transaction, signs nothing</span>
         </div>
-        <div class="req" id="req"></div>
-      </div>
 
-      <div class="gauge" id="gauge">
-        <div class="gauge-head">
-          <span class="verdict-word" id="word"></span>
-          <span class="read"><span class="score" id="score"></span><span class="of"> / 100</span></span>
-        </div>
-        <p class="sr" role="status" aria-live="polite" id="sr"></p>
-        <div class="scale" aria-hidden="true">
-          <div class="zones">
-            <div class="zone a"><span>Allow</span></div>
-            <div class="zone w"><span>Warn</span></div>
-            <div class="zone b"><span>Block</span></div>
-            <span class="fill" id="fill"></span>
-            <span class="needle" id="needle"></span>
-            <span class="thr"></span>
+        <div class="specimen">
+          <span class="lab">Specimen</span>
+          <div class="pills" role="group" aria-label="Example actions to inspect">
+            <button class="pill" data-k="block" aria-pressed="true">Unlimited approval</button>
+            <button class="pill" data-k="allow" aria-pressed="false">Swap 10 USDC</button>
+            <button class="pill" data-k="warn" aria-pressed="false">Transfer to fresh wallet</button>
           </div>
-          <div class="ticks" id="ticks"></div>
+          <div class="req" id="req"></div>
         </div>
-        <ul class="findings" id="findings"></ul>
-        <div class="act" id="act"></div>
+
+        <div class="gauge" id="gauge">
+          <div class="gauge-head">
+            <span class="verdict-word" id="word"></span>
+            <span class="read"><span class="score" id="score"></span><span class="of"> / 100</span></span>
+          </div>
+          <p class="sr" role="status" aria-live="polite" id="sr"></p>
+          <div class="scale" aria-hidden="true">
+            <div class="zones">
+              <div class="zone a"><span>Allow</span></div>
+              <div class="zone w"><span>Warn</span></div>
+              <div class="zone b"><span>Block</span></div>
+              <span class="fill" id="fill"></span>
+              <span class="needle" id="needle"></span>
+              <span class="thr"></span>
+            </div>
+            <div class="ticks" id="ticks"></div>
+          </div>
+          <ul class="findings" id="findings"></ul>
+          <div class="act" id="act"></div>
+        </div>
       </div>
+    </div>
+  </section>
+
+  <!-- A sparse band between two dense ones. Every name here is a VERIFIED entry
+       in the ecosystem registry, so it is evidence, not a logo wall: recognition
+       on this page means the same thing it means in a verdict. -->
+  <section class="verified">
+    <span class="vf-label lab">Verified against first-party evidence on chain <span class="num">1672</span></span>
+    <div class="vf-names">
+      <span>Pharos</span>
+      <span>Morpho</span>
+      <span>AquaFlux</span>
+      <span>OKX</span>
+      <span>Chainlink</span>
+      <span>USDC</span>
     </div>
   </section>
 
   <section class="figures">
     <div class="fig"><span class="ch">Custody</span><b><em>0</em></b><span>Private keys held, by design. It signs nothing.</span></div>
     <div class="fig"><span class="ch">Tooling</span><b>33</b><span>Safety tools across MCP, HTTP and CLI</span></div>
-    <div class="fig"><span class="ch">Verified</span><b>12</b><span>Protocols verified against first-party evidence</span></div>
+    <div class="fig"><span class="ch">Verified</span><b>12</b><span>On-chain registry entries verified against first-party evidence</span></div>
     <div class="fig"><span class="ch">Threshold</span><b>70</b><span>The published score at which it stops being a warning</span></div>
   </section>
 
 
+  <section id="catches">
+    <div class="eyebrow"><span class="lab idx">01</span><span class="lab">What it catches</span></div>
+    <h2>The signatures an agent should never send.</h2>
+    <p class="sub">Each of these is a real check, read from the intent and then from the exact calldata. The verdict word is the one the instrument above would show, on the same published scale.</p>
+    <div class="catch-grid">
+      <div class="card">
+        <span class="chip b">Block</span>
+        <h3>An unlimited approval</h3>
+        <p>An <code>approve</code> for the maximum uint256 hands a spender the entire balance, indefinitely. SafeHands reads the amount in the calldata and blocks the unbounded grant.</p>
+      </div>
+      <div class="card">
+        <span class="chip w">Warn</span>
+        <h3>A brand-new recipient</h3>
+        <p>A transfer to a wallet with no history on chain 1672. It could be correct, or an address-poisoning lookalike a character off. Flagged for a second look.</p>
+      </div>
+      <div class="card">
+        <span class="chip w">Warn</span>
+        <h3>An unverified spender</h3>
+        <p>A router or contract with no first-party registry evidence. Recognition needs proof, so an unknown counterparty never clears on its own.</p>
+      </div>
+      <div class="card">
+        <span class="chip w">Warn</span>
+        <h3>A price it cannot trust</h3>
+        <p>A Chainlink feed that is stale or missing. SafeHands reports it and refuses to quote it: a price it did not read live is never guessed.</p>
+      </div>
+      <div class="card">
+        <span class="chip b">Block</span>
+        <h3>A contract that changed under you</h3>
+        <p>A verified address whose live bytecode no longer matches what was recorded. SafeHands catches the silent swap by code hash and stops.</p>
+      </div>
+      <div class="card">
+        <span class="chip b">Block</span>
+        <h3>A transfer that will revert</h3>
+        <p>A permissioned real-world-asset leg where the wallet is not eligible or the token is frozen. SafeHands checks before you sign, not after it fails.</p>
+      </div>
+    </div>
+  </section>
+
+
   <section id="how">
-    <div class="eyebrow"><span class="lab idx">01</span><span class="lab">How it works</span></div>
+    <div class="eyebrow"><span class="lab idx">02</span><span class="lab">How it works</span></div>
     <h2>Four steps, and only one of them is ours.</h2>
     <div class="seq">
       <div class="st"><span class="n">STEP 01</span><h3>The agent plans</h3><p>Your model finds the opportunity and builds the transaction. It holds the intent, never a key.</p></div>
@@ -117,7 +182,7 @@
   </section>
 
   <section id="trust">
-    <div class="eyebrow"><span class="lab idx">02</span><span class="lab">Why trust it</span></div>
+    <div class="eyebrow"><span class="lab idx">03</span><span class="lab">Why trust it</span></div>
     <h2>Five properties, each one checkable.</h2>
     <div class="rows">
       <div class="row"><h3>Deterministic</h3><p>Every verdict is computed by code and traces to a named check. Run it twice on the same bytes and you get the same answer, with the same reasons.</p></div>
@@ -138,10 +203,49 @@
   </section>
 
 
+  <section id="who">
+    <div class="eyebrow"><span class="lab idx">04</span><span class="lab">Who it's for</span></div>
+    <h2>One engine, three ways to reach it.</h2>
+    <div class="paths">
+      <div class="path">
+        <span class="pk lab">For agent builders</span>
+        <h3>Self-host the engine</h3>
+        <p>Import the SDK, run the MCP server, or call the CLI. It runs on your own machine and the read-only checks cost nothing. Write-gating is there when you self-host, off by default behind explicit gates.</p>
+        <a href="#integrate"><span>Wire it up</span><span class="arw">&rarr;</span></a>
+      </div>
+      <div class="path">
+        <span class="pk lab">For hosted use</span>
+        <h3>Ask the hosted agent</h3>
+        <p>The <code>safehands</code> agent on Anvita Flow needs no install. Ask it in plain words and it returns the same verdict, read-only. Billed by the platform per call.</p>
+        <a href="https://flow.anvita.xyz/discover"><span>Open on Anvita Flow</span><span class="arw">&rarr;</span></a>
+      </div>
+      <div class="path">
+        <span class="pk lab">For protocols</span>
+        <h3>Get recognized</h3>
+        <p>Put your contracts in the registry with first-party evidence, so agents recognize them by code hash instead of guessing. Recognition here means what it means in a verdict.</p>
+        <a href="https://github.com/SZtch/safehands-pharos"><span>See the registry</span><span class="arw">&rarr;</span></a>
+      </div>
+    </div>
+  </section>
+
+
   <section id="integrate">
-    <div class="eyebrow"><span class="lab idx">03</span><span class="lab">Integrate</span></div>
+    <div class="eyebrow"><span class="lab idx">05</span><span class="lab">Integrate</span></div>
     <h2>One call before you sign.</h2>
     <p class="sub">The loop is the same on every surface: resolve names from the registry, inspect the intent, inspect the exact bytes, then act only on what cleared. None of these need a server of your own, and the hosted agent on Anvita Flow needs no install at all.</p>
+
+    <div class="clients">
+      <span class="lab">Runs as a standard MCP server, so it drops into any MCP client</span>
+      <div class="clients-row">
+        <span>Claude Desktop</span>
+        <span>Claude Code</span>
+        <span>Cursor</span>
+        <span>VS Code</span>
+        <span>Windsurf</span>
+        <span>Zed</span>
+      </div>
+    </div>
+
     <div class="tabs" role="tablist" aria-label="Integration methods">
       <button class="tab" role="tab" aria-selected="true" data-tab="skill">Skill</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="mcp">MCP</button>
@@ -152,20 +256,11 @@
   </section>
 
 
-  <section>
-    <div class="eyebrow"><span class="lab idx">04</span><span class="lab">Get started</span></div>
-    <div class="eco">
-      <div>
-        <h2>Put a firewall in front of your agent.</h2>
-        <p>Install it as a skill, wire it into MCP, or import the engine: those run on your own machine and cost nothing. The hosted <code>safehands</code> agent on Anvita Flow needs no install at all and is billed by the platform per call. Same question, same verdict, either way.</p>
-      </div>
-      <div class="side">
-        <a href="#integrate"><span>Install as a skill &middot; one command</span><span class="arw">&rarr;</span></a>
-        <a href="https://flow.anvita.xyz/home"><span>Hosted agent &middot; no install</span><span class="arw">&rarr;</span></a>
-        <a href="https://www.npmjs.com/package/safehands-pharos"><span>npm &middot; safehands-pharos</span><span class="arw">&rarr;</span></a>
-        <a href="https://github.com/SZtch/safehands-pharos"><span>Source &middot; GitHub</span><span class="arw">&rarr;</span></a>
-        <a href="https://www.pharos.xyz/agent-center"><span>Pharos Agent Center</span><span class="arw">&rarr;</span></a>
-      </div>
+  <section id="start" class="closer">
+    <h2>Put a firewall in front of your agent.</h2>
+    <p>Self-host it free, or ask the hosted agent on Anvita Flow. Same question, same verdict, either way.</p>
+    <div class="cta">
+      <a class="btn p" href="https://flow.anvita.xyz/discover">Try SafeHands on Anvita Flow</a>
     </div>
   </section>
 
@@ -173,9 +268,48 @@
 
 <footer>
   <div class="foot">
-    <a class="brand" href="#top"><span class="mark" role="img" aria-label="SafeHands logo"></span> SafeHands</a>
-    <p class="disc">SafeHands is read-only and zero-custody: it renders a safety verdict and never signs or broadcasts. Write and execution paths exist for self-hosting only, off by default behind explicit gates. Not a formally audited custody system.</p>
+    <div class="foot-brand">
+      <a class="brand" href="#top"><span class="mark" role="img" aria-label="SafeHands logo"></span> SafeHands</a>
+      <p class="foot-tag">The transaction firewall for AI agents on Pharos.</p>
+      <div class="foot-social">
+        <a href="https://github.com/SZtch/safehands-pharos" aria-label="SafeHands on GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        </a>
+        <a href="#" aria-label="SafeHands on X">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+        </a>
+        <a href="https://t.me/sztch" aria-label="SafeHands on Telegram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        </a>
+        <a href="#" aria-label="SafeHands on Discord">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/></svg>
+        </a>
+      </div>
+    </div>
+    <nav class="foot-cols" aria-label="Footer">
+      <div class="foot-col">
+        <span class="foot-h lab">Product</span>
+        <a href="#catches">What it catches</a>
+        <a href="#how">How it works</a>
+        <a href="#trust">Why trust it</a>
+        <a href="#integrate">Integrate</a>
+      </div>
+      <div class="foot-col">
+        <span class="foot-h lab">Get it</span>
+        <a href="#integrate">Install as a skill</a>
+        <a href="https://flow.anvita.xyz/discover">Hosted agent</a>
+        <a href="https://www.npmjs.com/package/safehands-pharos">npm package</a>
+        <a href="https://github.com/SZtch/safehands-pharos">Source</a>
+      </div>
+      <div class="foot-col">
+        <span class="foot-h lab">Ecosystem</span>
+        <a href="https://www.pharos.xyz/agent-center">Pharos Agent Center</a>
+        <a href="https://www.pharos.xyz">Pharos</a>
+        <a href="https://docs.pharos.xyz/">Pharos docs</a>
+      </div>
+    </nav>
   </div>
+  <div class="foot-base"><span>&copy; 2026 SafeHands</span></div>
 </footer>
 
 <script src="main.js"></script>
