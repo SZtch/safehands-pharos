@@ -57,6 +57,7 @@ export default tseslint.config(
         window: "readonly",
         matchMedia: "readonly",
         getComputedStyle: "readonly",
+        navigator: "readonly",
         performance: "readonly",
         requestAnimationFrame: "readonly",
         cancelAnimationFrame: "readonly",
