@@ -265,7 +265,7 @@
 
     // Section reveals: each card rises and fades in, staggered within its group,
     // and drops back out once the group has left so it replays on return.
-    [".figures .fig", "#catches .spec", "#trust .row", "#trust .nl > div", "#who .path"].forEach(function (sel) {
+    [".figures .fig", "#realfi .rfi-row", "#catches .spec", "#trust .row", "#trust .nl > div", "#who .path"].forEach(function (sel) {
       Array.prototype.forEach.call(document.querySelectorAll(sel), function (el, i) {
         el.classList.add("reveal");
         el.style.transitionDelay = (i * 70) + "ms";
