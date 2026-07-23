@@ -5,10 +5,15 @@
    rather than asserted. No build step: edit this file directly.
 
    The palette comes from the SafeHands logo: an electric royal blue on white,
-   two hands cradling something kept safe. That blue is the one brand accent,
-   carried by the chrome and a soft glow. The verdict colours stay separate and
-   semantic: allow green, warn amber, block red, surfacing only on the
-   instrument's live reading, never as decoration, apart from the brand. */
+   two hands cradling something kept safe. Blue is the structural brand accent,
+   carried by the chrome, the full-bleed bands and a soft glow. A safety green
+   is the second accent: energy that means what it says, marking what is live,
+   verified and safe to sign. The full verdict spectrum (allow green, warn amber,
+   block red) stays reserved for the instrument's live reading and the specimen
+   readouts, where colour is a measurement rather than decoration.
+
+   Spacing is fluid: --pad-x and --sec-y clamp between phone and desktop, so the
+   rhythm scales smoothly instead of snapping at a handful of breakpoints. */
 
 /* Three faces, all SIL Open Font License, self-hosted under site/fonts (licences
    in the *-OFL.txt files). Geist Sans sets prose, Geist Mono sets every piece of
@@ -32,8 +37,12 @@
   --rule:    #1C1F2C;
   --rule-2:  #2A2E3E;
   --shadow:  rgb(0 2 14 / .62);
-  --brand:   #5566FF;                    /* the logo's electric blue: the one brand accent */
+  --brand:   #5566FF;                    /* the logo's electric blue: the structural brand accent */
   --glow:    rgb(85 102 255 / .30);      /* the same blue, spread as the logo's glow */
+  --safe:    #4ADE80;                    /* safety green: the energy accent (live, verified, safe) */
+  --safe-glow: rgb(74 222 128 / .30);
+  --band:    #2A2DE0;                    /* the true logo blue, used at full strength on the bold band */
+  --on-band: #FFFFFF;
   --vc:      #FF5A5A;                     /* set by main.js from the live verdict */
   --on-vc:   #FFFFFF;
   --allow:   #4ADE80;
@@ -44,6 +53,8 @@
   --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --pixel: "Departure Mono", "Geist Mono", ui-monospace, monospace;
   --maxw: 1120px;
+  --pad-x: clamp(20px, 4vw, 28px);       /* the page gutter, fluid from phone to desktop */
+  --sec-y: clamp(74px, 9.5vw, 120px);    /* section vertical rhythm, fluid */
   --mark: url("safehands.jpg");
 }
 /* Daylight surface: the same logo blue on a cool paper ground
@@ -55,6 +66,7 @@
     --rule: #E3E5F1; --rule-2: #CBCFE2;
     --shadow: rgb(20 24 60 / .12);
     --brand: #2A2DE0; --glow: rgb(42 45 224 / .16);
+    --safe: #12894A; --safe-glow: rgb(18 137 74 / .16);
     --vc: #C22020; --on-vc: #FFFFFF;
     --allow: #1E7A32; --warn: #96570B; --block: #C22020;
   }
@@ -64,6 +76,7 @@
   --ink: #EAECF5; --ink-2: #9CA1B4; --ink-3: #616579;
   --rule: #1C1F2C; --rule-2: #2A2E3E;
   --brand: #5566FF; --glow: rgb(85 102 255 / .30);
+  --safe: #4ADE80; --safe-glow: rgb(74 222 128 / .30);
   --vc: #FF5A5A; --on-vc: #FFFFFF;
   --allow: #4ADE80; --warn: #F0A93B; --block: #FF5A5A;
 }
@@ -72,6 +85,7 @@
   --ink: #0B0D1A; --ink-2: #474C60; --ink-3: #686E82;
   --rule: #E3E5F1; --rule-2: #CBCFE2;
   --brand: #2A2DE0; --glow: rgb(42 45 224 / .16);
+  --safe: #12894A; --safe-glow: rgb(18 137 74 / .16);
   --vc: #C22020; --on-vc: #FFFFFF;
   --allow: #1E7A32; --warn: #96570B; --block: #C22020;
 }
@@ -92,7 +106,11 @@
    between a product and a specification sheet. */
 .btn, .pill, .tab, .theme, .side a, .code { border-radius: 6px; }
 .inst, .tabs, .pills, .side { border-radius: 12px; overflow: hidden; }
-.tabs { border-radius: 12px 12px 0 0; }
+/* A real segmented control, flush on top of the code panel, matching the hero
+   pills. Without display:flex the tab buttons fall back to inline-block and open
+   whitespace gaps between the segments, so the strip reads as loose buttons
+   rather than one connected control. */
+.tabs { display: flex; width: fit-content; max-width: 100%; border: 1px solid var(--rule-2); border-bottom: 0; background: var(--panel-2); border-radius: 12px 12px 0 0; }
 .code { border-radius: 0 12px 12px 12px; position: relative; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -111,7 +129,14 @@ a { color: inherit; text-decoration: none; }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
 p { margin: 0; }
 
-.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--pad-x); }
+
+/* Bold full-bleed bands break out of the calibration rail to the full viewport,
+   the way a lit readout overruns its frame. Content inside is re-constrained by
+   .band-inner. body carries overflow-x:hidden, so the 100vw never scrolls. */
+.fullbleed { width: 100vw; max-width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+.fullbleed::before { display: none; }
+.band-inner { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--pad-x); }
 
 /* Device labels are uppercase because that is what is silkscreened onto an
    instrument. Prose never is. */
@@ -132,8 +157,14 @@ header { position: sticky; top: 0; z-index: 30; background: var(--ground); }
 .mark { background-image: var(--mark); background-size: cover; background-position: center; flex: none; }
 .brand .mark { width: 26px; height: 26px; }
 .hbar nav { display: flex; gap: 24px; margin-left: auto; }
-.hbar nav a { font-size: .9rem; color: var(--ink-2); }
+.hbar nav a { position: relative; font-size: .9rem; color: var(--ink-2); }
 .hbar nav a:hover { color: var(--ink); }
+/* A brand underline wipes in under the hovered nav link, left to right. */
+.hbar nav a::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px;
+  background: var(--brand); transform: scaleX(0); transform-origin: left; transition: transform .22s ease;
+}
+.hbar nav a:hover::after { transform: scaleX(1); }
 .theme {
   font: inherit; background: none; border: 1px solid var(--rule-2); color: var(--ink-2);
   width: 32px; height: 32px; cursor: pointer; display: grid; place-items: center;
@@ -165,6 +196,7 @@ header { position: sticky; top: 0; z-index: 30; background: var(--ground); }
   }
   .hbar nav.open { transform: none; opacity: 1; pointer-events: auto; }
   .hbar nav a { padding: 13px 28px; font-size: 1rem; }
+  .hbar nav a::after { display: none; }
   .hbar nav a:active { background: var(--panel-2); }
   /* nav is absolute here, so nothing pushes the controls right on its own:
      the theme button takes the auto margin and the burger follows it. */
@@ -188,29 +220,29 @@ header { position: sticky; top: 0; z-index: 30; background: var(--ground); }
 
 /* ── the calibration rail: sections hang off a measured edge ────────── */
 main { border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); max-width: var(--maxw); margin: 0 auto; }
-section { padding: 104px 28px; border-bottom: 1px solid var(--rule); position: relative; }
+section { padding: var(--sec-y) var(--pad-x); border-bottom: 1px solid var(--rule); position: relative; }
 section::before {
   content: ""; position: absolute; left: 0; top: 0; width: 9px; height: 1px; background: var(--rule-2);
 }
-.eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
 /* The section index reads as a channel tag on a faceplate: [01], the number in
-   the brand blue, the brackets in the quiet ink. */
+   the brand blue, the brackets and label in the quiet ink. Green is reserved for
+   what it means (live, verified, safe), so navigation labels stay neutral. */
 .eyebrow .idx { color: var(--brand); }
 .eyebrow .idx::before { content: "["; color: var(--ink-3); margin-right: 1px; }
 .eyebrow .idx::after { content: "]"; color: var(--ink-3); margin-left: 1px; }
-h2 { font-size: clamp(1.85rem, 4.2vw, 2.75rem); font-weight: 680; letter-spacing: -.038em; line-height: 1.12; max-width: 20ch; }
-.sub { color: var(--ink-2); max-width: 66ch; margin-top: 14px; }
+h2 { font-size: clamp(2rem, 4.6vw, 3.15rem); font-weight: 680; letter-spacing: -.04em; line-height: 1.1; max-width: 20ch; }
+.sub { color: var(--ink-2); max-width: 66ch; margin-top: 15px; }
 
 /* ── hero ──────────────────────────────────────────────────────────── */
-.hero { padding-top: 56px; padding-bottom: 88px; }
+.hero { padding-top: clamp(36px, 6vw, 68px); padding-bottom: var(--sec-y); }
 /* The hero sits on a faint calibration grid, the surface a measuring instrument
-   is read against, with a whisper of brand light coming off the instrument to
-   the right. Masked to fade out by the fold, so it reads as precision and not a
-   generic backdrop glow. */
+   is read against, with brand light coming off the instrument to the right.
+   Masked to fade out by the fold, so it reads as precision, not a generic glow. */
 .hero::after {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(58% 54% at 70% 26%, color-mix(in srgb, var(--brand) 13%, transparent), transparent 70%),
+    radial-gradient(58% 54% at 70% 26%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 70%),
     linear-gradient(to right, var(--rule) 1px, transparent 1px) 0 0 / 44px 44px,
     linear-gradient(to bottom, var(--rule) 1px, transparent 1px) 0 0 / 44px 44px;
   -webkit-mask-image: radial-gradient(96% 80% at 66% 24%, #000 0%, transparent 64%);
@@ -230,32 +262,34 @@ h2 { font-size: clamp(1.85rem, 4.2vw, 2.75rem); font-weight: 680; letter-spacing
 .hero-spec li { position: relative; padding-left: 20px; font-size: .9rem; color: var(--ink-2); }
 .hero-spec li::before { content: ">"; position: absolute; left: 2px; top: 0; color: var(--brand); font-family: var(--mono); font-weight: 500; }
 .idline { margin-bottom: 26px; }
-/* A live-status chip: a breathing brand point and a confident sentence-case
-   line. Reads as a running system, not a debug readout. */
+/* A live-status chip: a breathing safety-green point and a confident line.
+   Reads as a running, safe system, not a debug readout. */
 .livechip {
   display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 9px;
-  padding: 6px 12px; border: 1px solid var(--rule-2); border-radius: 6px;
-  background: color-mix(in srgb, var(--brand) 5%, var(--panel)); max-width: 100%;
+  padding: 6px 12px; border: 1px solid color-mix(in srgb, var(--safe) 30%, var(--rule-2)); border-radius: 6px;
+  background: color-mix(in srgb, var(--safe) 8%, var(--panel)); max-width: 100%;
 }
 .livechip .live {
-  width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--brand);
-  box-shadow: 0 0 8px 1px var(--glow); animation: breathe 2.4s ease-in-out infinite;
+  width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--safe);
+  box-shadow: 0 0 8px 1px var(--safe-glow); animation: breathe 2.4s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) { .livechip .live { animation: none; } }
 .lc-main { font-size: .84rem; font-weight: 500; color: var(--ink); letter-spacing: -.004em; }
 h1 {
-  font-size: clamp(2rem, 5.2vw, 3.35rem); font-weight: 700;
-  letter-spacing: -.045em; line-height: 1.04; max-width: 20ch;
+  font-size: clamp(2.3rem, 5.8vw, 4.05rem); font-weight: 700;
+  letter-spacing: -.048em; line-height: 1.02; max-width: 18ch;
 }
 h1 em { font-style: normal; color: var(--brand); }
-.lead { color: var(--ink-2); font-size: 1.05rem; max-width: 58ch; margin-top: 18px; }
-.cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-.btn { display: inline-flex; align-items: center; padding: 11px 18px; font-size: .93rem; font-weight: 560; border: 1px solid transparent; }
+.lead { color: var(--ink-2); font-size: 1.08rem; max-width: 58ch; margin-top: 20px; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+.btn { display: inline-flex; align-items: center; padding: 12px 20px; font-size: .95rem; font-weight: 560; border: 1px solid transparent; }
 .btn.p {
   background: var(--brand); color: var(--on-vc); font-weight: 600;
   box-shadow: 0 0 46px -6px var(--glow);
+  transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.btn.p:hover { filter: brightness(1.08); }
+.btn.p:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 10px 34px -12px var(--glow), 0 0 46px -6px var(--glow); }
+.btn.p:active { transform: translateY(0); }
 /* The install button reads as a terminal line: a blue prompt, then the command. */
 .btn.g { border-color: var(--rule-2); font-family: var(--mono); font-size: .85rem; color: var(--ink-2); }
 .btn.g::before { content: "$"; color: var(--brand); margin-right: 9px; font-weight: 500; }
@@ -274,9 +308,25 @@ h1 em { font-style: normal; color: var(--brand); }
 .reveal.in { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .btn.g::after { animation: none; }
+  .btn.p:hover { transform: none; }
+  .hbar nav a::after { transition: none; }
   .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
   .path > a .arw { transition: none; }
 }
+/* An orchestrated hero entrance: the value proposition rises in sequence and the
+   instrument settles in just after, so the page opens with intent. Guarded by
+   no-preference, so reduced motion never sees the hidden start state, and it is
+   pure CSS, so it plays even with scripting off. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-copy .idline   { animation: heroRise .7s cubic-bezier(.22,.61,.36,1) both; animation-delay: .06s; }
+  .hero-copy h1        { animation: heroRise .7s cubic-bezier(.22,.61,.36,1) both; animation-delay: .14s; }
+  .hero-copy .lead     { animation: heroRise .7s cubic-bezier(.22,.61,.36,1) both; animation-delay: .24s; }
+  .hero-copy .cta      { animation: heroRise .7s cubic-bezier(.22,.61,.36,1) both; animation-delay: .33s; }
+  .hero-copy .hero-spec{ animation: heroRise .7s cubic-bezier(.22,.61,.36,1) both; animation-delay: .41s; }
+  .hero .inst          { animation: instSettle .95s cubic-bezier(.22,.61,.36,1) both; animation-delay: .28s; }
+}
+@keyframes heroRise { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: none; } }
+@keyframes instSettle { from { opacity: 0; transform: translateY(22px) scale(.99); } to { opacity: 1; transform: none; } }
 
 /* ── the instrument ────────────────────────────────────────────────── */
 .inst {
@@ -311,6 +361,7 @@ h1 em { font-style: normal; color: var(--brand); }
 .pill {
   font: inherit; font-size: .85rem; padding: 8px 14px; background: none;
   color: var(--ink-2); cursor: pointer; border: 0; border-right: 1px solid var(--rule-2);
+  transition: color .16s ease, background .16s ease;
 }
 .pill:last-child { border-right: 0; }
 .pill:hover { color: var(--ink); background: var(--panel-2); }
@@ -396,17 +447,12 @@ h1 em { font-style: normal; color: var(--brand); }
 .act b { color: var(--ink); font-weight: 620; }
 
 /* ── narrow screens ────────────────────────────────────────────────
-   Segmented controls are the weak point: their dividers are border-right,
-   so once they wrap the rule falls in the wrong place. Below the phone
-   breakpoint they become stacked rows with bottom rules instead, and the
-   long install command gets its own full-width button rather than
-   overflowing the viewport. */
+   Section and gutter spacing is already fluid (--sec-y / --pad-x), so the phone
+   breakpoint only restyles the pieces that must physically change: segmented
+   controls that would wrap wrong, the stacked calls to action, and the
+   instrument's own paddings. */
 @media (max-width: 620px) {
   .inst-top { flex-wrap: wrap; gap: 6px 12px; }
-  section { padding: 68px 20px; }
-  .hero { padding-top: 36px; padding-bottom: 64px; }
-  footer { padding: 26px 20px 36px; }
-  .wrap { padding: 0 20px; }
 
   /* Full-width stacked calls to action, each a comfortable tap height. */
   .cta { flex-direction: column; align-items: stretch; }
@@ -438,17 +484,18 @@ h1 em { font-style: normal; color: var(--brand); }
   .zone span { font-size: .5rem; left: 4px; letter-spacing: .05em; }
 }
 
-/* A deliberately sparse band between two dense ones. Every name here is a
-   VERIFIED entry in the ecosystem registry, so it is evidence, not a logo
-   wall: recognition on this page means the same thing it means in a verdict. */
-.verified { padding: 30px 28px; border-bottom: 1px solid var(--rule); text-align: center; }
-.vf-label { display: block; margin-bottom: 16px; }
-.vf-names { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 13px 32px; }
-.vf-names span { font-family: var(--mono); font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; color: var(--ink-2); }
+/* A deliberately sparse band of evidence before the loud one. Every name here is
+   a VERIFIED entry in the ecosystem registry, so it is evidence, not a logo wall:
+   each carries a safety-green check because recognition on this page means the
+   same thing it means in a verdict. */
+.verified { padding: clamp(34px, 5vw, 48px) var(--pad-x); border-bottom: 1px solid var(--rule); text-align: center; }
+.vf-label { display: block; margin-bottom: 20px; color: var(--safe); }
+.vf-names { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 30px; }
+.vf-names span { position: relative; padding-left: 22px; font-family: var(--mono); font-size: 1.08rem; font-weight: 500; letter-spacing: -.01em; color: var(--ink); }
+.vf-names span::before { content: "\2713"; position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: var(--safe); font-weight: 700; font-size: .95em; }
 @media (max-width: 620px) {
-  .verified { padding: 26px 20px; }
-  .vf-names { gap: 11px 22px; }
-  .vf-names span { font-size: .95rem; }
+  .vf-names { gap: 12px 22px; }
+  .vf-names span { font-size: .96rem; padding-left: 19px; }
 }
 
 /* ── the problem ───────────────────────────────────────────────────── */
@@ -460,11 +507,13 @@ h1 em { font-style: normal; color: var(--brand); }
    single plain line. A recessed mono screen per tile ties the section back to
    the live instrument in the hero, so this band reads differently from the
    plain faceplate grids elsewhere on the page. */
-.specs { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.specs { margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .spec {
   background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
   padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 13px;
+  transition: border-color .18s ease, transform .18s ease;
 }
+.spec:hover { border-color: var(--rule-2); transform: translateY(-2px); }
 .spec-io { display: flex; align-items: center; gap: 10px; }
 .chip {
   flex: none; font-family: var(--mono); font-size: .6rem; font-weight: 500;
@@ -486,11 +535,12 @@ h1 em { font-style: normal; color: var(--brand); }
 .spec.block code u { color: var(--block); }
 .spec.warn code u { color: var(--warn); }
 .spec > p { font-size: .9rem; color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { .spec, .spec:hover { transition: none; transform: none; } }
 @media (max-width: 720px) { .specs { grid-template-columns: 1fr; } }
 
 /* ── sequence: the only numbered thing on the page, because it is the
      only real sequence ─────────────────────────────────────────────── */
-.seq { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rule); border-bottom: 0; margin-top: 28px; position: relative; }
+.seq { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rule); border-bottom: 0; margin-top: 30px; position: relative; }
 /* A brand-blue signal sweeps across the top of the strip, left to right, once the
    pipeline scrolls into view: the data flowing through the four steps. */
 .seq::before {
@@ -526,7 +576,7 @@ h1 em { font-style: normal; color: var(--brand); }
 .row p { color: var(--ink-2); font-size: .92rem; }
 
 /* ── table ─────────────────────────────────────────────────────────── */
-.tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; }
+.tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; transition: color .16s ease, background .16s ease; }
 .tab:last-child { border-right: 0; }
 .tab:hover { color: var(--ink); }
 .tab[aria-selected="true"] { background: var(--panel); color: var(--ink); }
@@ -541,18 +591,23 @@ h1 em { font-style: normal; color: var(--brand); }
 .code .m { color: var(--brand); font-weight: 500; }
 .code .x { color: var(--block); }
 
-/* ── boundary ──────────────────────────────────────────────────────── */
-
 /* ── who it's for ───────────────────────────────────────────────────
    Three ways to reach one engine. Same cell-and-hairline system as the other
-   grids; the "for X" kicker and the arrow carry the one accent. */
-.paths { margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
-.path { background: var(--panel); padding: 24px 22px; display: flex; flex-direction: column; gap: 12px; }
+   grids; the "for X" kicker rides the brand blue, each card closing on a
+   bordered call to action that lights blue on hover. */
+.paths { margin-top: 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.path { background: var(--panel); padding: 26px 24px; display: flex; flex-direction: column; gap: 12px; }
 .path .pk { color: var(--brand); }
-.path h3 { font-size: 1.12rem; font-weight: 660; letter-spacing: -.022em; }
+.path h3 { font-size: 1.16rem; font-weight: 660; letter-spacing: -.022em; }
 .path p { font-size: .9rem; color: var(--ink-2); flex: 1 1 auto; }
 .path code { font-family: var(--mono); color: var(--brand); font-size: .86em; }
-.path > a { display: inline-flex; align-items: center; gap: 8px; margin-top: 2px; font-size: .9rem; font-weight: 560; color: var(--ink); }
+.path > a {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; margin-top: 6px;
+  padding: 9px 15px; font-size: .87rem; font-weight: 560; color: var(--ink);
+  border: 1px solid var(--rule-2); border-radius: 6px;
+  transition: border-color .18s ease, background .18s ease;
+}
+.path > a:hover { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .path > a .arw { color: var(--brand); transition: transform .18s ease; }
 .path > a:hover .arw { transform: translateX(3px); }
 @media (max-width: 860px) { .paths { grid-template-columns: 1fr; } }
@@ -560,21 +615,61 @@ h1 em { font-style: normal; color: var(--brand); }
 /* ── plugs into ─────────────────────────────────────────────────────
    SafeHands runs as an MCP server, so it drops into any MCP client. Named as
    plain silkscreen wordmarks, never partner logos. */
-.clients { margin-top: 30px; padding: 20px; border: 1px solid var(--rule); background: var(--panel); display: flex; flex-direction: column; gap: 14px; }
+.clients { margin-top: 32px; padding: 20px; border: 1px solid var(--rule); background: var(--panel); display: flex; flex-direction: column; gap: 14px; }
 .clients-row { display: flex; flex-wrap: wrap; gap: 10px 12px; }
 .clients-row span { font-family: var(--mono); font-size: .82rem; color: var(--ink-2); border: 1px solid var(--rule-2); padding: 6px 11px; }
 
-/* ── closing call to action ─────────────────────────────────────────
-   No channel tag, no link list (the footer carries those): just the pitch and
-   the two ways in, so it reads as a close, not a second integrate section. */
-.closer p { color: var(--ink-2); max-width: 54ch; margin-top: 14px; }
-.closer .cta { margin-top: 26px; }
+/* ── platform figures: the first bold full-bleed band ────────────────────
+   The one place the page turns fully to brand colour, the way a funded product
+   states its scale. Every figure is checkable in the repository: no user counts,
+   no volume, nothing that cannot be verified by reading the code. */
+.figures { padding: clamp(56px, 8vw, 84px) 0; border-bottom: 0; background: var(--band); color: var(--on-band); }
+.figures-h { text-align: center; color: var(--on-band); font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 660; letter-spacing: -.035em; max-width: 20ch; margin: 0 auto 10px; }
+.figures-sub { text-align: center; color: rgb(255 255 255 / .76); font-size: .98rem; max-width: 44ch; margin: 0 auto clamp(34px, 5vw, 46px); }
+.fig-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; }
+.fig { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgb(255 255 255 / .22); padding-top: 16px; }
+.fig .ch { font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .18em; color: rgb(255 255 255 / .68); }
+.fig b {
+  font-family: var(--pixel); font-variant-numeric: tabular-nums;
+  font-size: clamp(2.3rem, 5.6vw, 3.5rem); font-weight: 400;
+  letter-spacing: .01em; line-height: 1; color: var(--on-band); margin-top: 2px;
+}
+.fig b em { font-style: normal; color: #64F5AE; text-shadow: 0 0 18px rgb(100 245 174 / .5); }
+.fig span:last-child { font-size: .85rem; color: rgb(255 255 255 / .74); }
+@media (max-width: 900px) { .fig-row { grid-template-columns: repeat(2, 1fr); gap: 30px 26px; } }
+@media (max-width: 380px) { .fig-row { grid-template-columns: 1fr; gap: 24px; } }
+
+/* The boundary sits under the trust properties, as the other half of the
+   same argument rather than a section of its own. */
+.never-head {
+  margin-top: 44px; font-size: 1.15rem; font-weight: 640;
+  letter-spacing: -.025em; color: var(--ink);
+}
+.nl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; margin-top: 14px; }
+.nl div { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 13px 0; }
+.nl .x { font-family: var(--mono); font-size: .78rem; color: var(--vc); }
+.nl p { color: var(--ink-2); font-size: .91rem; }
+@media (max-width: 760px) { .nl { grid-template-columns: 1fr; } }
+
+/* ── closing call to action: the second bold band ───────────────────────
+   A dark full-bleed finale, the same in both themes, lit by a wide safety-green
+   glow: the payoff of a page about signing safely. Green eyebrow, blue CTA. */
+.closer { padding: clamp(80px, 11vw, 128px) 0; border-bottom: 0; background: #0C0E17; color: #EAECF5; text-align: center; overflow: hidden; }
+.closer::after {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(58% 130% at 50% 122%, rgb(74 222 128 / .22), transparent 62%);
+}
+.closer .band-inner { position: relative; z-index: 1; }
+.closer-ey { display: block; color: #4ADE80; margin-bottom: 16px; }
+.closer h2 { color: #FFFFFF; font-size: clamp(2.1rem, 5vw, 3.4rem); letter-spacing: -.04em; max-width: 18ch; margin: 0 auto; }
+.closer p { color: #9CA1B4; max-width: 52ch; margin: 18px auto 0; }
+.closer .cta { margin-top: 32px; justify-content: center; }
 
 /* ── footer ────────────────────────────────────────────────────────
-   A full footer: brand block with the chain badge and community links on the
-   left, three columns of navigation on the right, the disclaimer as a base
-   bar under a hairline. */
-footer { padding: 54px 28px 40px; max-width: var(--maxw); margin: 0 auto; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+   A full footer: brand block with the tagline and community links on the left,
+   three columns of navigation on the right, the copyright as a base bar under a
+   hairline. */
+footer { padding: clamp(40px, 6vw, 56px) var(--pad-x) 40px; max-width: var(--maxw); margin: 0 auto; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
 .foot { display: grid; grid-template-columns: 1.25fr 2fr; gap: 40px 32px; }
 .foot .mark { width: 22px; height: 22px; }
 .foot-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
@@ -603,44 +698,6 @@ footer { padding: 54px 28px 40px; max-width: var(--maxw); margin: 0 auto; border
 .foot-base { margin-top: 42px; padding-top: 22px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: .8rem; letter-spacing: .01em; }
 @media (max-width: 760px) { .foot { grid-template-columns: 1fr; gap: 34px; } }
 @media (max-width: 520px) { .foot-cols { grid-template-columns: repeat(2, 1fr); } }
-
-/* ── platform figures ───────────────────────────────────────────────────
-   Large numerals, the way a product page states its scale. Every figure is
-   checkable in the repository, so nothing here is a vanity metric: no user
-   counts, no volume, nothing that cannot be verified by reading the code. */
-.figures {
-  padding: 56px 28px; border-bottom: 1px solid var(--rule);
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px;
-}
-/* Each figure is one channel of the instrument: a silkscreen label naming what
-   is measured, a hairline above it, then the LED reading and its caption. */
-.fig { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--rule-2); padding-top: 15px; }
-.fig .ch {
-  font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
-  letter-spacing: .18em; color: var(--ink-3);
-}
-.fig b {
-  font-family: var(--pixel); font-variant-numeric: tabular-nums;
-  font-size: clamp(2.1rem, 5.4vw, 3.2rem); font-weight: 400;
-  letter-spacing: .01em; line-height: 1; color: var(--ink); margin-top: 2px;
-}
-.fig b em { font-style: normal; color: var(--brand); }
-.fig span:last-child { font-size: .87rem; color: var(--ink-2); }
-@media (max-width: 900px) { .figures { grid-template-columns: repeat(2, 1fr); gap: 28px 24px; } }
-@media (max-width: 620px) { .figures { padding: 40px 20px; } }
-@media (max-width: 480px) { .figures { grid-template-columns: 1fr; gap: 22px; } }
-
-/* The boundary sits under the trust properties now, as the other half of the
-   same argument rather than a section of its own. */
-.never-head {
-  margin-top: 44px; font-size: 1.15rem; font-weight: 640;
-  letter-spacing: -.025em; color: var(--ink);
-}
-.nl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; margin-top: 14px; }
-.nl div { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 13px 0; }
-.nl .x { font-family: var(--mono); font-size: .78rem; color: var(--vc); }
-.nl p { color: var(--ink-2); font-size: .91rem; }
-@media (max-width: 760px) { .nl { grid-template-columns: 1fr; } }
 
 /* Copy button on the code panel: the one thing a developer reaches for that
    the page did not have. Neutral until pressed, then it confirms. */
