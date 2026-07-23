@@ -104,14 +104,8 @@
 /* The instrument itself stays square, because a measuring face is square.
    Everything a hand touches gets a small radius: that is the difference
    between a product and a specification sheet. */
-.btn, .pill, .tab, .theme, .side a, .code { border-radius: 6px; }
-.inst, .tabs, .pills, .side { border-radius: 12px; overflow: hidden; }
-/* A real segmented control, flush on top of the code panel, matching the hero
-   pills. Without display:flex the tab buttons fall back to inline-block and open
-   whitespace gaps between the segments, so the strip reads as loose buttons
-   rather than one connected control. */
-.tabs { display: flex; width: fit-content; max-width: 100%; border: 1px solid var(--rule-2); border-bottom: 0; background: var(--panel-2); border-radius: 12px 12px 0 0; }
-.code { border-radius: 0 12px 12px 12px; position: relative; }
+.btn, .pill, .theme { border-radius: 6px; }
+.inst, .pills { border-radius: 12px; overflow: hidden; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
@@ -465,10 +459,9 @@ h1 em { font-style: normal; color: var(--brand); }
   .gauge { padding: 20px 14px 16px; }
 
   /* Segmented controls become stacked rows, each tall enough to tap. */
-  .pills, .tabs { width: 100%; flex-wrap: wrap; }
+  .pills { width: 100%; flex-wrap: wrap; }
   .pill { flex: 1 1 100%; padding: 13px 14px; border-right: 0; border-bottom: 1px solid var(--rule-2); text-align: left; }
   .pill:last-child { border-bottom: 0; }
-  .tab { flex: 1 1 auto; padding: 12px 12px; text-align: center; }
 
   .gauge-head { flex-wrap: wrap; gap: 6px 12px; }
   .verdict-word, .read .score { font-size: 1.35rem; }
@@ -575,22 +568,6 @@ h1 em { font-style: normal; color: var(--brand); }
 .row h3 { font-size: .98rem; font-weight: 630; letter-spacing: -.018em; }
 .row p { color: var(--ink-2); font-size: .92rem; }
 
-/* ── table ─────────────────────────────────────────────────────────── */
-.tab { font: inherit; font-size: .86rem; padding: 9px 16px; background: none; border: 0; border-right: 1px solid var(--rule-2); color: var(--ink-3); cursor: pointer; transition: color .16s ease, background .16s ease; }
-.tab:last-child { border-right: 0; }
-.tab:hover { color: var(--ink); }
-.tab[aria-selected="true"] { background: var(--panel); color: var(--ink); }
-/* The copy button is an absolute child of .code, so .code must not be the
-   scroll container or a wide snippet scrolls the button off with it. The scroll
-   lives on the <pre>; .code stays put, clips its rounded corners, pins button. */
-.code { border: 1px solid var(--rule-2); background: var(--panel); overflow: hidden; }
-.code pre { margin: 0; padding: 18px; font-family: var(--mono); font-size: .83rem; line-height: 1.75; color: var(--ink); overflow-x: auto; }
-.code .c { color: var(--ink-3); }
-.code .k { color: var(--ink); }
-.code .s { color: var(--allow); }
-.code .m { color: var(--brand); font-weight: 500; }
-.code .x { color: var(--block); }
-
 /* ── who it's for ───────────────────────────────────────────────────
    Three ways to reach one engine. Same cell-and-hairline system as the other
    grids; the "for X" kicker rides the brand blue, each card closing on a
@@ -612,12 +589,43 @@ h1 em { font-style: normal; color: var(--brand); }
 .path > a:hover .arw { transform: translateX(3px); }
 @media (max-width: 860px) { .paths { grid-template-columns: 1fr; } }
 
-/* ── plugs into ─────────────────────────────────────────────────────
-   SafeHands runs as an MCP server, so it drops into any MCP client. Named as
-   plain silkscreen wordmarks, never partner logos. */
-.clients { margin-top: 32px; padding: 20px; border: 1px solid var(--rule); background: var(--panel); display: flex; flex-direction: column; gap: 14px; }
-.clients-row { display: flex; flex-wrap: wrap; gap: 10px 12px; }
-.clients-row span { font-family: var(--mono); font-size: .82rem; color: var(--ink-2); border: 1px solid var(--rule-2); padding: 6px 11px; }
+/* ── the Run card: the install command, minimal ─────────────────────
+   A compact panel, not a big one: a small Works-with row of the MCP clients as
+   MONOCHROME brand glyphs (one ink, never a colour logo wall), the install line
+   as a recessed terminal with a copy button, and two quiet text links. */
+.runcard {
+  margin-top: 28px; max-width: 560px;
+  border: 1px solid var(--rule); border-radius: 10px; background: var(--panel);
+  padding: 18px; display: flex; flex-direction: column; gap: 15px;
+}
+.run-with { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.cls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cl { display: inline-flex; color: var(--ink-3); transition: color .18s ease; }
+.cl:hover { color: var(--ink); }
+.cl svg { width: 20px; height: 20px; fill: currentColor; display: block; }
+/* The install line, a recessed terminal: a blue prompt, the command, a copy. */
+.run-cmd {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--ground); border: 1px solid var(--rule); border-radius: 7px;
+  padding: 8px 8px 8px 13px;
+  box-shadow: inset 0 0 24px -16px rgb(0 0 0 / .7);
+}
+.run-prompt { flex: none; color: var(--brand); font-family: var(--mono); font-weight: 600; font-size: .85rem; }
+.run-cmd code { flex: 1 1 auto; min-width: 0; font-family: var(--mono); font-size: .83rem; color: var(--ink); white-space: nowrap; overflow-x: auto; }
+.run-copy {
+  flex: none; font: inherit; font-size: .73rem; letter-spacing: .03em;
+  padding: 6px 11px; border: 1px solid var(--rule-2); border-radius: 5px;
+  background: var(--panel-2); color: var(--ink-2); cursor: pointer;
+  transition: color .16s ease, border-color .16s ease;
+}
+.run-copy:hover { color: var(--ink); border-color: var(--ink-3); }
+.run-copy.done { color: var(--safe); border-color: color-mix(in srgb, var(--safe) 50%, var(--rule-2)); }
+.run-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.run-links a { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; font-weight: 550; color: var(--ink-2); }
+.run-links a:hover { color: var(--ink); }
+.run-links .arw { color: var(--brand); transition: transform .18s ease; }
+.run-links a:hover .arw { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) { .run-links a:hover .arw { transform: none; } }
 
 /* ── platform figures: the first bold full-bleed band ────────────────────
    The one place the page turns fully to brand colour, the way a funded product
@@ -698,14 +706,3 @@ footer { padding: clamp(40px, 6vw, 56px) var(--pad-x) 40px; max-width: var(--max
 .foot-base { margin-top: 42px; padding-top: 22px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: .8rem; letter-spacing: .01em; }
 @media (max-width: 760px) { .foot { grid-template-columns: 1fr; gap: 34px; } }
 @media (max-width: 520px) { .foot-cols { grid-template-columns: repeat(2, 1fr); } }
-
-/* Copy button on the code panel: the one thing a developer reaches for that
-   the page did not have. Neutral until pressed, then it confirms. */
-.copy {
-  position: absolute; top: 10px; right: 10px;
-  font: inherit; font-size: .72rem; letter-spacing: .04em;
-  padding: 5px 11px; border: 1px solid var(--rule-2); border-radius: 6px;
-  background: var(--panel-2); color: var(--ink-2); cursor: pointer;
-}
-.copy:hover { border-color: var(--ink-3); color: var(--ink); }
-.copy:active { transform: translateY(1px); }

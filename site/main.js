@@ -203,91 +203,49 @@
     setTimeout(function () { press("block"); cyc = 0; nextAuto(); }, 260);
   }
 
-  // Each tab shows its setup step first, then a short example as context. The
-  // copy button never copies the example: it copies the install or integration
-  // artifact only (COPY, below), so a paste always does something and never
-  // drops a comment or a sample prompt into a terminal.
-  var SNIPPETS = {
-    skill:
-'<span class="c"># install it as an agent skill</span>\n' +
-'npx skills add <span class="m">SZtch/safehands-pharos</span>\n\n' +
-'<span class="c"># then, in your agent, in plain words:</span>\n' +
-'<span class="s">"Run a SafeHands preflight before I sign this approval."</span>',
-    mcp:
-'<span class="c">// paste into claude_desktop_config.json, or any MCP client</span>\n' +
-'{\n' +
-'  <span class="k">"mcpServers"</span>: {\n' +
-'    <span class="k">"safehands"</span>: {\n' +
-'      <span class="k">"command"</span>: <span class="s">"npx"</span>,\n' +
-'      <span class="k">"args"</span>: [<span class="s">"-y"</span>, <span class="s">"github:SZtch/safehands-pharos"</span>]\n' +
-'    }\n' +
-'  }\n' +
-'}',
-    sdk:
-'<span class="c"># install the package</span>\n' +
-'npm install <span class="m">safehands-pharos</span>\n\n' +
-'<span class="c">// then, inside your own code:</span>\n' +
-'<span class="k">import</span> { evaluateActionPolicy } <span class="k">from</span> <span class="s">"safehands-pharos"</span>;\n' +
-'<span class="k">const</span> verdict = <span class="m">evaluateActionPolicy</span>(action);\n' +
-'<span class="k">if</span> (!verdict.safeToExecute) <span class="k">return</span>;   <span class="x">// do not auto-sign</span>',
-    cli:
-'<span class="c"># install the command</span>\n' +
-'npm install -g <span class="m">safehands-pharos</span>\n\n' +
-'<span class="c"># then check any action from the terminal:</span>\n' +
-'safehands skill <span class="m">safehands_preflight_check</span> <span class="s">\'{\u2026}\'</span>\n' +
-'<span class="c"># -> { "decision": "BLOCK", "reasons": [...] }</span>'
-  };
-
-  // What the copy button puts on the clipboard: the setup command, or for MCP
-  // the config to paste. Plain text, valid on its own, never the example.
-  var COPY = {
-    skill: "npx skills add SZtch/safehands-pharos",
-    mcp: '{\n  "mcpServers": {\n    "safehands": {\n      "command": "npx",\n      "args": ["-y", "github:SZtch/safehands-pharos"]\n    }\n  }\n}',
-    sdk: "npm install safehands-pharos",
-    cli: "npm install -g safehands-pharos"
-  };
-  var elCode = document.getElementById("code");
-  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
-
-  // The syntax highlighting is <span>s, so the copy button strips them and
-  // un-escapes the entities to hand over exactly what a terminal or config file
-  // expects: no markup, no &amp; or &lt; leaking through.
-  var copyBtn = document.createElement("button");
-  copyBtn.className = "copy";
-  copyBtn.type = "button";
-  copyBtn.textContent = "Copy";
-  copyBtn.setAttribute("aria-label", "Copy code");
-  var copyReset = null;
-
-  function showTab(name) {
-    tabs.forEach(function (q) { q.setAttribute("aria-selected", q.dataset.tab === name ? "true" : "false"); });
-    elCode.innerHTML = "<pre>" + SNIPPETS[name] + "</pre>";
-    elCode.appendChild(copyBtn);
-    copyBtn.textContent = "Copy";
-  }
-
-  copyBtn.addEventListener("click", function () {
-    var text = COPY[document.querySelector('.tab[aria-selected="true"]').dataset.tab];
-    var done = function () {
-      copyBtn.textContent = "Copied";
-      if (copyReset) clearTimeout(copyReset);
-      copyReset = setTimeout(function () { copyBtn.textContent = "Copy"; }, 1600);
+  // The Run card's install command copies to the clipboard. It tries the async
+  // Clipboard API, falls back to execCommand, and if a sandboxed context blocks
+  // both (some embedded previews do), it selects the visible line so a manual
+  // copy still works. The button reports which path was taken.
+  var runCopy = document.getElementById("runcopy");
+  var runCode = document.querySelector(".run-cmd code");
+  if (runCopy && runCode) {
+    var runReset = null;
+    var RUN_CMD = runCode.textContent.trim();
+    var runFlash = function (ok) {
+      runCopy.textContent = ok ? "Copied" : "Ctrl+C";
+      runCopy.classList.toggle("done", ok);
+      if (runReset) clearTimeout(runReset);
+      runReset = setTimeout(function () { runCopy.textContent = "Copy"; runCopy.classList.remove("done"); }, 1800);
     };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done, done);
-    } else {
-      var ta = document.createElement("textarea");
-      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand("copy"); } catch (e) { /* clipboard unavailable */ }
-      document.body.removeChild(ta); done();
-    }
-  });
-
-  tabs.forEach(function (t) {
-    t.addEventListener("click", function () { showTab(t.dataset.tab); });
-  });
-  showTab("skill");
+    var runSelect = function () {
+      var sel = window.getSelection();
+      if (!sel) return;
+      var range = document.createRange();
+      range.selectNodeContents(runCode);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+    runCopy.addEventListener("click", function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(RUN_CMD).then(
+          function () { runFlash(true); },
+          function () { runSelect(); runFlash(false); }
+        );
+        return;
+      }
+      var ok = false;
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = RUN_CMD; ta.style.position = "fixed"; ta.style.top = "-9999px"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch (e) { /* copy blocked in this context; ok stays false */ }
+      if (!ok) runSelect();
+      runFlash(ok);
+    });
+  }
 
   // Entrance reveals and the LED count-up. All are added by script, never in
   // the markup, so with JS off or motion reduced the page stays fully visible.
