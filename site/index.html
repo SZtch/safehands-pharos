@@ -56,21 +56,22 @@
           <span class="lc-main">Live on Pharos Pacific Mainnet</span>
         </div>
         <h1>Every transaction an agent proposes is <em>measured</em> before it is signed.</h1>
-        <p class="lead">An AI agent signs whatever it decides to sign, and <span class="bad">one unlimited approval empties the wallet</span>. SafeHands reads the intent and the exact bytes first, then returns one verdict on a published scale: allow, warn, or block, with named reasons.</p>
+        <p class="lead">An agent signs whatever it decides to, and <span class="bad">one unlimited approval empties the wallet</span>. SafeHands reads the intent and the exact bytes first, then answers: allow, warn, or block, with named reasons.</p>
         <div class="cta">
           <a class="btn p" href="https://flow.anvita.xyz/discover">Try SafeHands on Anvita Flow</a>
         </div>
         <ul class="hero-spec">
           <li>Reads the intent, then the exact calldata</li>
           <li>Holds no key, signs nothing</li>
-          <li>One score on a published scale, with named reasons</li>
+          <li>One score on a published scale, reasons named</li>
         </ul>
       </div>
 
       <div class="inst" id="demo">
         <div class="inst-top">
           <span class="led" aria-hidden="true"></span>
-          <span class="lab">Reads the transaction, signs nothing</span>
+          <span class="lab">Live inspector</span>
+          <span class="lab inst-hint" id="hint">cycling specimens</span>
         </div>
 
         <div class="specimen">
@@ -125,7 +126,7 @@
   <section class="figures">
     <div class="fig"><span class="ch">Custody</span><b><em>0</em></b><span>Private keys held, by design. It signs nothing.</span></div>
     <div class="fig"><span class="ch">Tooling</span><b>33</b><span>Safety tools across MCP, HTTP and CLI</span></div>
-    <div class="fig"><span class="ch">Verified</span><b>12</b><span>On-chain registry entries verified against first-party evidence</span></div>
+    <div class="fig"><span class="ch">Verified</span><b>12</b><span>On-chain registry entries proven against first-party evidence</span></div>
     <div class="fig"><span class="ch">Threshold</span><b>70</b><span>The published score at which it stops being a warning</span></div>
   </section>
 
@@ -133,37 +134,49 @@
   <section id="catches">
     <div class="eyebrow"><span class="lab idx">01</span><span class="lab">What it catches</span></div>
     <h2>The signatures an agent should never send.</h2>
-    <p class="sub">Each of these is a real check, read from the intent and then from the exact calldata. The verdict word is the one the instrument above would show, on the same published scale.</p>
-    <div class="catch-grid">
-      <div class="card">
-        <span class="chip b">Block</span>
-        <h3>An unlimited approval</h3>
-        <p>An <code>approve</code> for the maximum uint256 hands a spender the entire balance, indefinitely. SafeHands reads the amount in the calldata and blocks the unbounded grant.</p>
+    <p class="sub">Six real checks, each read from the intent and then the exact bytes. The verdict is the one the inspector above would return, on the same scale.</p>
+    <div class="specs">
+      <div class="spec block">
+        <div class="spec-io">
+          <span class="chip b">Block</span>
+          <code>approve(spender, <u>UNLIMITED</u>)</code>
+        </div>
+        <p>An unbounded grant hands a spender the whole balance, indefinitely.</p>
       </div>
-      <div class="card">
-        <span class="chip w">Warn</span>
-        <h3>A brand-new recipient</h3>
-        <p>A transfer to a wallet with no history on chain 1672. It could be correct, or an address-poisoning lookalike a character off. Flagged for a second look.</p>
+      <div class="spec warn">
+        <div class="spec-io">
+          <span class="chip w">Warn</span>
+          <code>transfer &rarr; 0xa1&hellip;f30c <u>no history</u></code>
+        </div>
+        <p>A brand-new recipient could be a typo, or an address-poisoning lookalike.</p>
       </div>
-      <div class="card">
-        <span class="chip w">Warn</span>
-        <h3>An unverified spender</h3>
-        <p>A router or contract with no first-party registry evidence. Recognition needs proof, so an unknown counterparty never clears on its own.</p>
+      <div class="spec warn">
+        <div class="spec-io">
+          <span class="chip w">Warn</span>
+          <code>spender 0x4d&hellip;c1b2 <u>not in registry</u></code>
+        </div>
+        <p>An unverified counterparty never clears on its own. Recognition needs proof.</p>
       </div>
-      <div class="card">
-        <span class="chip w">Warn</span>
-        <h3>A price it cannot trust</h3>
-        <p>A Chainlink feed that is stale or missing. SafeHands reports it and refuses to quote it: a price it did not read live is never guessed.</p>
+      <div class="spec warn">
+        <div class="spec-io">
+          <span class="chip w">Warn</span>
+          <code>price feed <u>STALE</u></code>
+        </div>
+        <p>A stale or missing Chainlink feed is reported, never quoted.</p>
       </div>
-      <div class="card">
-        <span class="chip b">Block</span>
-        <h3>A contract that changed under you</h3>
-        <p>A verified address whose live bytecode no longer matches what was recorded. SafeHands catches the silent swap by code hash and stops.</p>
+      <div class="spec block">
+        <div class="spec-io">
+          <span class="chip b">Block</span>
+          <code>codehash <u>&ne; recorded</u></code>
+        </div>
+        <p>A verified address whose live bytecode changed under you. Caught by code hash.</p>
       </div>
-      <div class="card">
-        <span class="chip b">Block</span>
-        <h3>A transfer that will revert</h3>
-        <p>A permissioned real-world-asset leg where the wallet is not eligible or the token is frozen. SafeHands checks before you sign, not after it fails.</p>
+      <div class="spec block">
+        <div class="spec-io">
+          <span class="chip b">Block</span>
+          <code>RWA leg <u>wallet not eligible</u></code>
+        </div>
+        <p>A permissioned transfer that would revert. Caught before you sign, not after.</p>
       </div>
     </div>
   </section>
@@ -171,58 +184,58 @@
 
   <section id="how">
     <div class="eyebrow"><span class="lab idx">02</span><span class="lab">How it works</span></div>
-    <h2>Four steps, and only one of them is ours.</h2>
+    <h2>Four steps, and only one is ours.</h2>
     <div class="seq">
-      <div class="st"><span class="n">STEP 01</span><h3>The agent plans</h3><p>Your model finds the opportunity and builds the transaction. It holds the intent, never a key.</p></div>
-      <div class="st key"><span class="n">STEP 02</span><h3>The engine reads</h3><p>SafeHands checks the intent, then the exact calldata, against the on-chain registry and live evidence.</p></div>
-      <div class="st key"><span class="n">STEP 03</span><h3>A verdict, not a vibe</h3><p>One score on a published scale, with named reasons. Same bytes in, same verdict out.</p></div>
+      <div class="st"><span class="n">STEP 01</span><h3>The agent plans</h3><p>Your model builds the transaction and holds the intent, never a key.</p></div>
+      <div class="st key"><span class="n">STEP 02</span><h3>The engine reads</h3><p>SafeHands checks the intent, then the exact calldata, against on-chain evidence.</p></div>
+      <div class="st key"><span class="n">STEP 03</span><h3>A verdict, not a vibe</h3><p>One score on a published scale, reasons named. Same bytes in, same verdict out.</p></div>
       <div class="st"><span class="n">STEP 04</span><h3>Your wallet acts</h3><p>Only what cleared reaches a signature. SafeHands never touches a key.</p></div>
     </div>
-    <p class="note">A firewall that cannot move funds is one nobody has to trust with funds. That is the whole design: safety you can put in front of an agent without handing anything over.</p>
+    <p class="note">A firewall that cannot move funds is one nobody has to trust with funds. That is the whole design.</p>
   </section>
 
   <section id="trust">
     <div class="eyebrow"><span class="lab idx">03</span><span class="lab">Why trust it</span></div>
     <h2>Five properties, each one checkable.</h2>
     <div class="rows">
-      <div class="row"><h3>Deterministic</h3><p>Every verdict is computed by code and traces to a named check. Run it twice on the same bytes and you get the same answer, with the same reasons.</p></div>
-      <div class="row"><h3>Registry-backed trust</h3><p>Recognition comes only from first-party, on-chain registry evidence. Being listed somewhere is not trust, and a contract recognized by name is still not a contract approved to spend.</p></div>
-      <div class="row"><h3>Fail-closed</h3><p>Missing evidence is reported as unknown and pushes the verdict up. Aggregation can only raise severity. A block is never downgraded by anything downstream.</p></div>
-      <div class="row"><h3>Zero-custody</h3><p>Read-only by design. No keys, no signing, no broadcasting on the hosted surface. Write paths exist for self-hosting, off by default behind explicit gates.</p></div>
-      <div class="row"><h3>Live on mainnet</h3><p>Running against Pharos Pacific Mainnet, chain 1672, with live Chainlink prices and risk records committed on-chain and proven against the published Merkle root.</p></div>
+      <div class="row"><h3>Deterministic</h3><p>Computed by code, traceable to a named check. Same bytes in, same answer out.</p></div>
+      <div class="row"><h3>Registry-backed trust</h3><p>Recognition comes only from first-party on-chain evidence. Being listed somewhere is not trust.</p></div>
+      <div class="row"><h3>Fail-closed</h3><p>Missing evidence reads as unknown and raises the verdict. Aggregation can only escalate.</p></div>
+      <div class="row"><h3>Zero-custody</h3><p>No keys, no signing on the hosted surface. Write paths are off by default, for self-hosting only.</p></div>
+      <div class="row"><h3>Live on mainnet</h3><p>Running on Pharos Pacific, chain 1672, with live Chainlink prices and on-chain risk records.</p></div>
     </div>
 
     <h3 class="never-head">And what it never does.</h3>
     <div class="nl">
-      <div><span class="x">[X]</span><p>Never holds a private key, and never signs or broadcasts on the hosted surface.</p></div>
-      <div><span class="x">[X]</span><p>Never quotes a price it did not read live from Chainlink. A stale feed is reported, never guessed.</p></div>
+      <div><span class="x">[X]</span><p>Never holds a key, and never signs or broadcasts on the hosted surface.</p></div>
+      <div><span class="x">[X]</span><p>Never quotes a price it did not read live. A stale feed is reported, not guessed.</p></div>
       <div><span class="x">[X]</span><p>Never grants trust from anywhere but the registry's first-party evidence.</p></div>
-      <div><span class="x">[X]</span><p>Never downgrades a block. Aggregation can only raise severity, never lower it.</p></div>
+      <div><span class="x">[X]</span><p>Never downgrades a block. Severity only ever goes up.</p></div>
     </div>
-    <p class="note">A verdict binds to exactly what was inspected. Act on different bytes, or after it expires, and it no longer applies. The calling agent is expected to check that binding, not to assume it.</p>
+    <p class="note">A verdict binds to the exact bytes it inspected. Act on different bytes, or after it expires, and it no longer applies.</p>
   </section>
 
 
   <section id="who">
     <div class="eyebrow"><span class="lab idx">04</span><span class="lab">Who it's for</span></div>
-    <h2>One engine, three ways to reach it.</h2>
+    <h2>One engine, three ways in.</h2>
     <div class="paths">
       <div class="path">
         <span class="pk lab">For agent builders</span>
         <h3>Self-host the engine</h3>
-        <p>Import the SDK, run the MCP server, or call the CLI. It runs on your own machine and the read-only checks cost nothing. Write-gating is there when you self-host, off by default behind explicit gates.</p>
+        <p>Import the SDK, run the MCP server, or call the CLI. The read-only checks cost nothing.</p>
         <a href="#integrate"><span>Wire it up</span><span class="arw">&rarr;</span></a>
       </div>
       <div class="path">
         <span class="pk lab">For hosted use</span>
         <h3>Ask the hosted agent</h3>
-        <p>The <code>safehands</code> agent on Anvita Flow needs no install. Ask it in plain words and it returns the same verdict, read-only. Billed by the platform per call.</p>
+        <p>The <code>safehands</code> agent on Anvita Flow needs no install. Ask in plain words, get the same verdict.</p>
         <a href="https://flow.anvita.xyz/discover"><span>Open on Anvita Flow</span><span class="arw">&rarr;</span></a>
       </div>
       <div class="path">
         <span class="pk lab">For protocols</span>
         <h3>Get recognized</h3>
-        <p>Put your contracts in the registry with first-party evidence, so agents recognize them by code hash instead of guessing. Recognition here means what it means in a verdict.</p>
+        <p>Put your contracts in the registry with first-party evidence, so agents recognize them by code hash.</p>
         <a href="https://github.com/SZtch/safehands-pharos"><span>See the registry</span><span class="arw">&rarr;</span></a>
       </div>
     </div>
@@ -232,7 +245,7 @@
   <section id="integrate">
     <div class="eyebrow"><span class="lab idx">05</span><span class="lab">Integrate</span></div>
     <h2>One call before you sign.</h2>
-    <p class="sub">The loop is the same on every surface: resolve names from the registry, inspect the intent, inspect the exact bytes, then act only on what cleared. None of these need a server of your own, and the hosted agent on Anvita Flow needs no install at all.</p>
+    <p class="sub">The loop is the same on every surface: resolve names, inspect the intent, inspect the exact bytes, then act on what cleared. The hosted agent on Anvita Flow needs no install at all.</p>
 
     <div class="clients">
       <span class="lab">Runs as a standard MCP server, so it drops into any MCP client</span>

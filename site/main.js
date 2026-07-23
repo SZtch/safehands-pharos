@@ -155,15 +155,53 @@
     requestAnimationFrame(function () { requestAnimationFrame(set); });
   }
 
+  var inst = document.getElementById("demo");
+  var order = ["block", "allow", "warn"];
+  var cyc = 0, hovered = false, userTook = false, autoTimer = null;
+
+  function press(key) {
+    pills.forEach(function (q) { q.setAttribute("aria-pressed", q.dataset.k === key ? "true" : "false"); });
+    paint(key);
+  }
+
+  // The inspector steps through the specimens on its own, so the instrument is
+  // visibly live, then hands control over the moment one is chosen by hand. It
+  // pauses while the pointer is on it (a reader is never interrupted mid-finding)
+  // and while the tab is hidden, and never runs when reduced motion is asked for.
+  function nextAuto() {
+    if (reduce || userTook) return;
+    autoTimer = setTimeout(function () {
+      if (userTook) return;
+      if (document.hidden || hovered) { nextAuto(); return; }
+      cyc = (cyc + 1) % order.length;
+      press(order[cyc]);
+      nextAuto();
+    }, 4200);
+  }
+  function stopAuto() {
+    userTook = true;
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    if (inst) inst.classList.add("interacted");
+  }
+  if (inst) {
+    inst.addEventListener("mouseenter", function () { hovered = true; });
+    inst.addEventListener("mouseleave", function () { hovered = false; });
+  }
+
   pills.forEach(function (p) {
     p.addEventListener("click", function () {
-      pills.forEach(function (q) { q.setAttribute("aria-pressed", q === p ? "true" : "false"); });
-      paint(p.dataset.k);
+      stopAuto();
+      cyc = order.indexOf(p.dataset.k);
+      press(p.dataset.k);
     });
   });
+
   elScore.textContent = "0";
-  if (reduce) paint("block");
-  else setTimeout(function () { paint("block"); }, 260);
+  if (reduce) {
+    press("block");
+  } else {
+    setTimeout(function () { press("block"); cyc = 0; nextAuto(); }, 260);
+  }
 
   // Each tab shows its setup step first, then a short example as context. The
   // copy button never copies the example: it copies the install or integration
@@ -269,7 +307,7 @@
 
     // Section reveals: each card rises and fades in, staggered within its group,
     // and drops back out once the group has left so it replays on return.
-    [".figures .fig", "#catches .card", "#trust .row", "#trust .nl > div", "#who .path"].forEach(function (sel) {
+    [".figures .fig", "#catches .spec", "#trust .row", "#trust .nl > div", "#who .path"].forEach(function (sel) {
       Array.prototype.forEach.call(document.querySelectorAll(sel), function (el, i) {
         el.classList.add("reveal");
         el.style.transitionDelay = (i * 70) + "ms";
