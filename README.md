@@ -12,7 +12,7 @@ AI agents are starting to run real financial workflows on Pharos: payments, trea
 
 In **hosted Anvita mode**, SafeHands provides no-custody, read-only safety verdicts; it does not sign, broadcast, or execute transactions today. In **self-hosted integrations**, the same policy model can gate execution itself. It ships as an MCP server, an HTTP API, and a CLI, exposing 33 tools that any agent in the Pharos ecosystem can call against Pharos Pacific Mainnet (chain `1672`).
 
-[![CI](https://github.com/SZtch/safehands-pharos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SZtch/safehands-pharos/actions/workflows/ci.yml)
+[![CI](https://github.com/Rzbyte/safehands-pharos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Rzbyte/safehands-pharos/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Pharos Pacific Mainnet](https://img.shields.io/badge/Pharos_Pacific_Mainnet-1672-6d28d9)
 ![33 tools](https://img.shields.io/badge/tools-33-0891b2)
@@ -54,7 +54,7 @@ Building an agent that should call SafeHands before signing? Start at **[docs/AG
 
 ```bash
 npx -y safehands-pharos --demo
-# (from source: npx -y github:SZtch/safehands-pharos --demo · or locally: git clone → npm install → node dist/index.js --demo)
+# (from source: npx -y github:Rzbyte/safehands-pharos --demo · or locally: git clone → npm install → node dist/index.js --demo)
 ```
 
 Watch the deterministic policy engine issue real safety decisions (`ALLOW`, `BLOCK`, `REQUIRE_CONFIRMATION`) against Pharos Pacific Mainnet. It runs twelve deterministic safety checks in your terminal (wallet health, policy decisions, token-registry lookups, x402 preflight, SSRF blocking, risk scoring, RWA transfer-compliance and settlement-cap scenarios) and touches nothing on-chain. The full check list and expected outputs are in [docs/REVIEWER_QUICKSTART.md](docs/REVIEWER_QUICKSTART.md).
@@ -174,7 +174,7 @@ Read-only usage needs no `.env`, no private key, and no authorization.
 ## Install
 
 ```bash
-npx skills add SZtch/safehands-pharos
+npx skills add Rzbyte/safehands-pharos
 ```
 
 ### Claude Desktop (or any MCP client)
@@ -186,7 +186,7 @@ Add to `claude_desktop_config.json` and restart. The default is read-only, with 
   "mcpServers": {
     "safehands": {
       "command": "npx",
-      "args": ["-y", "github:SZtch/safehands-pharos"]
+      "args": ["-y", "github:Rzbyte/safehands-pharos"]
     }
   }
 }
@@ -300,4 +300,4 @@ The goal: be the safety decision every AI agent consults *before* it acts on-cha
 
 ## License
 
-MIT © [SZtch](https://github.com/SZtch)
+MIT © [Rzbyte](https://github.com/Rzbyte)
